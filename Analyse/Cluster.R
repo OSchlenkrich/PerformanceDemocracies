@@ -85,15 +85,31 @@ dmx_trade_cluster = bind_rows(dmx_trade_dimension_unequal_w_outlier %>%
                                 select(-outlier), 
                               dmx_trade_dimension_same %>% 
                                 mutate(cluster = max(hc_classes) + 1)
-                              )
+                              ) %>% 
+  mutate(cluster_label = as.factor(cluster),
+         cluster_label = fct_recode(cluster_label, 
+                                    "fEC" = "1", # egalitarian + control
+                                    "fEc" = "2", # egalitarian 
+                                    "FeC" = "3", # liberal + control
+                                    "Fec" = "4", # liberal
+                                    "FEC" = "5", # balanced
+                                    ),
+         cluster_label = fct_relevel(cluster_label,
+                                     "fEC",
+                                     "Fec"
+                                     )
+         )
 
 # Boxplot
-boxplot_dim(dmx_trade_cluster, dmx_trade_cluster$cluster, "A: DIANA (5 Clusters)") + 
+boxplot_dim(dmx_trade_cluster, dmx_trade_cluster$cluster_label, "A: DIANA (5 Clusters)") + 
   geom_vline(xintercept = 1.5) + geom_vline(xintercept = 2.5) + geom_vline(xintercept = 3.5) +
   geom_vline(xintercept = 4.5) 
 
-# Cleaning
+# Plotting
+plot_random_countries_dim(5)
 
+
+# Cleaning
 rm(dmx_trade_dimension_unequal_w_outlier)
 rm(hc_classes)
 rm(correlation_distance)
