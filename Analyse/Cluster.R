@@ -109,7 +109,7 @@ boxplot_dim(dmx_trade_cluster, dmx_trade_cluster$cluster_label, "A: DIANA (5 Clu
 plot_random_countries_dim(5)
 
 plot_random_countries_dim(c("Germany", "Sweden","United Kingdom", "New Zealand"))
-
+plot_random_countries_dim(c("United States of America"))
 
 # Cleaning
 rm(dmx_trade_dimension_unequal_w_outlier)
