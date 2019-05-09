@@ -51,3 +51,19 @@ plot_silhoutte = function(silhoutte_obj, method) {
 
 
 
+plot_random_countries_dim = function(No_countries) {
+  
+  if (is.numeric(No_countries)==T) {
+    random_countries = sample(n_distinct(dmx_trade_cluster$country), No_countries)
+    selected_countries = unique(dmx_trade_cluster$country)[random_countries]
+  } else {
+    selected_countries = No_countries
+  }
+  
+  plotted_country = dmx_trade_cluster %>%
+    filter(country %in% selected_countries)
+  
+  p1 = ggplot(plotted_country, aes(x=year, y=cluster_label)) + geom_point(size=4) + facet_wrap(country~.) + theme_bw() +
+    scale_x_continuous(limits=c(1900, 2020), breaks=seq(1900, 2020, 20)) + theme(axis.text.x = element_text(angle=90)) + xlab("") + ylab("")
+  return(p1)
+}
