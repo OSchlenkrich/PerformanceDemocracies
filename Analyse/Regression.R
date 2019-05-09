@@ -36,34 +36,43 @@ dmx_trade_cluster_ext =  dmx_trade_cluster %>%
 unique(dmx_trade_cluster_ext$country)
 unique(oecd_social_data$country)
 
+SOCX = dmx_trade_cluster_ext %>% 
+  select(country, year, SOCX, mod_cluster) %>% 
+  filter(year == 1980 | year == 1985 | year == 1990  
+         | year == 1995 | year == 2000 |   year == 2005 |  year == 2010 |   year == 2015) 
 
+for (i in 1:length(unique(SOCX$year))) {
+  SOCX$year_id[SOCX$year == unique(SOCX$year)[i]] = i
+}
 
 # test = dmx_trade_cluster_ext %>% 
 #   group_by(year, med_cluster) %>% 
 #   summarize(n())
 # 
 dmx_trade_cluster_ext %>%
-  group_by(med_cluster, year) %>%
+  group_by(mod_cluster, year) %>%
   summarise(variable = mean(SOCX, na.rm=T)) %>%
   na.omit() %>% 
-  ggplot(aes(x=year, y=variable, col=med_cluster)) +
+  ggplot(aes(x=year, y=variable, col=mod_cluster)) +
   geom_line(size=1.1)
 
 
 
-dmx_plm_data <- pdata.frame(dmx_trade_cluster_ext, index=c("country", "year"))
+dmx_plm_data <- pdata.frame(SOCX, index=c("country", "year_id"))
 
 
-my_reg = plm(SOCX ~ lag(SOCX) + lag(e_wbgi_rqn) + mod_cluster, dmx_plm_data, model="pooling")
+my_reg = plm(SOCX ~ lag(SOCX) + mod_cluster, dmx_plm_data, model="pooling")
 my_reg = plm(PovertyRate60 ~ lag(PovertyRate60) + lag(e_wbgi_rqn) + mod_cluster, dmx_plm_data, model="pooling")
 my_reg = plm(v2peedueq ~ lag(v2peedueq) + mod_cluster, dmx_plm_data, model="pooling")
 my_reg = plm(e_wbgi_rqn ~ lag(e_wbgi_rqn) + mod_cluster, dmx_plm_data, model="pooling")
 
 summary(my_reg)
+
 coeftest(my_reg, vcov.=function(x) vcovHC(x, type="sss", cluster="group"))
-
-
-
 pwtest(my_reg)
 
+myfactor = factor("fEc", levels(dmx_plm_data$mod_cluster))
 
+predict_data = data.frame(country="X", year_id = 1:7, SOCX = 15, mod_cluster = myfactor)
+
+predict(my_reg, predict_data)
