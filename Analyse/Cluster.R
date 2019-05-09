@@ -107,6 +107,7 @@ boxplot_dim(dmx_trade_cluster, dmx_trade_cluster$cluster_label, "A: DIANA (5 Clu
 
 # Plotting
 plot_random_countries_dim(5)
+
 plot_random_countries_dim(c("Germany", "Sweden","United Kingdom", "New Zealand"))
 
 
