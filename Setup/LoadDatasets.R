@@ -1,7 +1,7 @@
 # Load Datasets
 
 # Democracy Matrix ----
-dmx_data = fread("Datasets/DemocracyMatrix_v1_1.csv")
+dmx_data = fread("unzip -p Datasets/DemocracyMatrix_v1_1.zip")
 
 dmx_data_trade = dmx_data %>% 
   select_at(vars(country, year, regions, classification_context, matches("dim_index_trade_off"))) %>% 
@@ -32,7 +32,7 @@ V_dem = fread("C:/RTest/V-Dem-CY+Others-v8.csv") %>%
 # OECD ----
 
 
-oecd_social_data = fread("Datasets/OECD_Social_Protection.csv") %>% 
+oecd_social_data = fread("unzip -p Datasets/OECD_Social_Protection.zip") %>% 
   filter(Measure == "In percentage of Gross Domestic Product",
          Source == "Public",
          Branch == "Total",
@@ -49,7 +49,7 @@ oecd_social_data = fread("Datasets/OECD_Social_Protection.csv") %>%
   arrange(country, year)
 
 
-oecd_poverty_data = fread("Datasets/OECD_Poverty.csv") %>% 
+oecd_poverty_data = fread("unzip -p Datasets/OECD_Poverty.zip") %>% 
   filter(Measure == "Gini (disposable income, post taxes and transfers)",
          `Age group` == "Total population",
          Definition == "Current definition") %>% 
