@@ -116,11 +116,6 @@ plot_silhoutte(sil_hc1, "DIANA")
 # print(robust_cluster)
 
 
-dmx_trade_cluster = dmx_trade_dimension_unequal_w_outlier %>% 
-                                mutate(cluster_1st = hc_classes) %>% 
-  bind_cols(data.frame(pam_cluster6$membership))
-
-
 # Create Dataset
 dmx_trade_cluster = bind_rows(dmx_trade_dimension_unequal_w_outlier %>% 
                                 mutate(cluster_1st = pam_cluster,

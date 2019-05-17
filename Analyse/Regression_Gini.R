@@ -1,6 +1,15 @@
+source("Setup/Packages.R")
+source("Setup/Plotting_Functions.R")
+source("Setup/LoadDatasets.R")
+source("Analyse/Cluster.R")
+source("Setup/Base_Functions.R")
+source("Setup/MergeToFinalDataset.R")
+
+
+
 # GINI
 GINI_data = dmx_trade_cluster_ext %>% 
-  select(country, year, year_factor,  total_index_context, 
+  select(country, year, year_factor,  SOCX, total_index_context, 
          classification_context, family_name_short, left_right, log_pop, union_density, 
          inflation, Gini, age65, cso, gdp_export, mod_cluster_1st, mod_cluster_2nd, gdp_capita) %>% 
   group_by(country) %>% 
@@ -33,6 +42,7 @@ GINI_df_data = GINI_data %>%
          Gini_df = (Gini - dplyr::lag(Gini, 1)),
          Gini_df_lag = dplyr::lag(Gini_df, 1),
          Gini_lag = dplyr::lag(Gini, 1),
+         SOCX_lag = SOCX - dplyr::lag(SOCX,1),
          gdp_capita_lag = lag(gdp_capita - dplyr::lag(gdp_capita, 1),1),
          gdp_capita_lag2 = lag(gdp_capita_lag - dplyr::lag(gdp_capita_lag, 1),1), 
          age65_lag = lag(age65 - dplyr::lag(age65, 1),1), 
@@ -50,7 +60,7 @@ GINI_plm <- pdata.frame(data.frame(GINI_df_data), index=c("country", "year_id"))
 unique(GINI_df_data$country)
 
 
-purtest_function(GINI_df_data, "Gini", 4)
+purtest_function(GINI_df_data, "SOCX_lag",1)
 
 
 test = GINI_df_data %>% 
@@ -73,6 +83,8 @@ giniAR = panelAR(Gini ~
                    gdp_capita_lag2 +
                    log_pop_lag2 +
                    age65_lag + 
+                   
+                   SOCX_lag +
                    
                    cso_lag +
                    union_density +
@@ -121,6 +133,8 @@ femod_between <- plm::plm(Gini ~  Gini_lag +
                             log_pop_lag2 +
                             age65_lag + 
                             
+                            SOCX_lag +
+                            
                             cso_lag +
                             union_density +
                             
@@ -135,8 +149,6 @@ femod_between <- plm::plm(Gini ~  Gini_lag +
 coeftest(femod_between, vcov=vcovBK)
 
 round(coef(femod_between),3)
-
-
 
 summary(femod_between)
 plm::ranef(femod_between)
