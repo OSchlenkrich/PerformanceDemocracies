@@ -26,3 +26,24 @@ purtest_function = function(dataset, variable, lags) {
 }
 
 
+# detrending function
+detrending = function(dataset, year, variable){
+  frame = data.frame(country="test", year =as.factor(year))
+  
+  if (length(na.omit(dataset))!=0 ) {
+    dataset = data.frame(detrend_var = dataset,
+                         year = year,
+                         country = "test") 
+    dataset = pdata.frame(dataset, index=c("country", "year"))
+    
+    detrend_result = plm(detrend_var ~ as.numeric(year) + I(as.numeric(year)^2) , 
+                         dataset, model="pooling")
+    
+    results = data.frame(year=index(detrend_result)[,2], resid = detrend_result$residuals) %>% 
+      full_join(frame, by="year")
+    return(results$resid)
+  } else {
+    return(NA)
+  }
+  
+  }
