@@ -195,5 +195,3 @@ ParlGov_Family_yearly = fread("Datasets/ParlGov_Frame.csv", header=T) %>%
   arrange(-seats) %>% 
   slice(1)
   
-
-

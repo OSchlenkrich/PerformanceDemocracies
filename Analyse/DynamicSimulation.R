@@ -5,26 +5,27 @@ all_means_numeric = femod_between$model %>%
   summarise_if(is.numeric, mean) %>% 
   melt() 
 
-quantile(femod_between$model$gdp_capita_lag2, 0.95)
+quantile(femod_between$model$mean_cso, 0.5)
+quantile(femod_between$model$mean_cso, 0.05)
 
 # create scenario
 high_scenario = data.frame(variable = names(coef(femod_between)), row.names = NULL) %>% 
   left_join(all_means_numeric) %>% 
-  mutate(value = if_else(variable=="union_density", 39.7659706185, value),
-         value = if_else(variable=="mod_cluster_1stFEC", 1, value),
+  mutate(value = if_else(variable=="mean_cso", 0.4842975, value),
+         value = if_else(variable=="mod_cluster_1stFEC", 0, value),
          value = if_else(is.na(value)==T,0,value),
          value = if_else(variable=="(Intercept)", 1, value)) 
 
 # create scenario
 low_scenario = data.frame(variable = names(coef(femod_between)), row.names = NULL) %>% 
   left_join(all_means_numeric) %>% 
-  mutate(value = if_else(variable=="union_density", 39.7659706185, value),
-         value = if_else(variable=="mod_cluster_1stFec", 0, value),
+  mutate(value = if_else(variable=="mean_cso", 0.4842975, value),
+         value = if_else(variable=="mod_cluster_1stFec", 1, value),
          value = if_else(is.na(value)==T,0,value),
          value = if_else(variable=="(Intercept)", 1, value))  
 
 
-gini_mean = mean(femod_between$model$Gini, na.rm=T)
+gini_mean = mean(femod_between$model$Gini_imp, na.rm=T)
 Timep = max(as.numeric(GINI_plm$year_id))
 library(mvtnorm)
 
@@ -39,7 +40,7 @@ get_timepoints = function(Scenario_type_data, name_scenario) {
   for(i in 2:Timep) {
     
     Scenario_type_data = Scenario_type_data %>% 
-      mutate(value = if_else(variable=="Gini_lag", mean( my_results[i-1,]), value))
+      mutate(value = if_else(variable=="Gini_imp_lag", mean( my_results[i-1,]), value))
     
     my_results[i,] =  coef_mat %*% Scenario_type_data$value
   }
