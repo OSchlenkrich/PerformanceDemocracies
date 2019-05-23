@@ -7,7 +7,7 @@ getmode <- function(v) {
 }
 
 # unit root test
-purtest_function = function(dataset, variable, lags) {
+purtest_function = function(dataset, variable, lags, exo) {
   print(variable)
   for (i in 1:length(unique(dataset$country))) {
     dataset2check = dataset %>% 
@@ -16,7 +16,7 @@ purtest_function = function(dataset, variable, lags) {
     
     dataset_plm <- pdata.frame(data.frame(dataset2check), index=c("country", "year_id"))
     
-    parameter = round(purtest(dataset_plm$var2check, test="hadri", exo="intercept", lags = lags)$statistic$p.value, 2)
+    parameter = round(purtest(dataset_plm$var2check, test="hadri", exo=exo, lags = lags)$statistic$p.value, 2)
     
     print(paste(unique(dataset$country)[i], 
                 parameter)
@@ -46,4 +46,27 @@ detrending = function(dataset, year, variable){
     return(NA)
   }
   
-  }
+}
+
+
+
+# Summary Table to Excel
+
+
+results_to_excel = function(reg_obj, filename) {
+  results_df = data.frame(varnames = rownames(round(summary(reg_obj)$coefficients, 3)),
+                          round(summary(reg_obj)$coefficients, 3)
+  ) %>% 
+    rename(prb = 5) %>% 
+    mutate(Std.Er = paste("(", Std..Error, ")", sep="")) %>%  # xx must be removed in Excel
+    mutate(Sign = if_else(prb < 0.001, "***", 
+                          if_else(prb < 0.01, "**", 
+                                  if_else(prb < 0.05, "*", " ")))) %>%
+    mutate(Estimate = paste(Estimate, Sign, sep="")) %>% 
+    mutate(Estimate = paste(Estimate, Std.Er, sep=" ")) %>% 
+    select(varnames, Estimate) 
+  
+  file = paste("Results/", filename, ".csv", sep="")
+  write.csv2(results_df, file=file, row.names = T)
+}
+

@@ -27,10 +27,22 @@ GINI_data %>%
 
 # treat NAs
 
-withoutNA = GINI_data %>% 
+gapsize = GINI_data %>% 
   filter(is.na(Gini) == F) %>% 
   group_by(country) %>% 
+  mutate(gapsize = year - dplyr::lag(year,1),
+         year = dplyr::lag(year,1)) %>% 
+  select(country, year, gapsize) %>% 
+  filter(is.na(year) == F) %>% 
+  mutate(flag = if_else(gapsize > 5, 1, 0))
+
+withoutNA = GINI_data %>% 
+  left_join(gapsize, by= c("country", "year")) %>% 
+  filter(is.na(Gini) == F, flag == 0) %>% 
+  group_by(country) %>% 
   summarise(minimum = min(year), maximum = max(year))
+
+
 
 Gini_final = data.frame()
 for (i in 1:length(unique(GINI_data$country))) {
@@ -43,12 +55,16 @@ for (i in 1:length(unique(GINI_data$country))) {
 
 Gini_final = Gini_final %>% 
   group_by(country) %>% 
-  mutate(Gini_imp = na.interpolation(Gini))
+  mutate(Gini_imp = na.interpolation(Gini)) %>% 
+  filter(year >= 1985) %>%  # canada is only countrz with values of gini before 1985
+  arrange(year, country)
 
 
 for (i in 1:length(unique(Gini_final$year))) {
   Gini_final$year_id[Gini_final$year == unique(Gini_final$year)[i]] = i
 }
+
+#### Some Plots
 
 Gini_final %>%
   group_by(country, year) %>%
@@ -59,14 +75,20 @@ Gini_final %>%
 
 
 
-year()Gini_final %>%
+
+Gini_final %>%
   group_by(mod_cluster_1st, year) %>%
   summarise(variable = mean(Gini, na.rm=T)) %>%
   na.omit() %>% 
   ggplot(aes(x=year, y=variable, col=mod_cluster_1st)) +
   geom_line(size=1.1)
 
+####
 
+lag_percentage = function(x1) {
+  x1_df = x1 - dplyr::lag(x1, 1)
+  return(x1_df)
+}
 
 GINI_df_data = Gini_final %>% 
   #filter(country != "United States of America", country != "Switzerland") %>%
@@ -76,52 +98,56 @@ GINI_df_data = Gini_final %>%
          
          Gini_df = (Gini - dplyr::lag(Gini, 1)),
          Gini_df_lag = dplyr::lag(Gini_df, 1),
+         
          Gini_lag = dplyr::lag(Gini, 1),
          Gini_imp_lag = dplyr::lag(Gini_imp, 1),
          
-         SOCX_lag = SOCX - dplyr::lag(SOCX,1),
-         SOCX_tr = dplyr::lag(detrending(SOCX, year_id, "SOCX"),1),
-         
-         gdp_capita_lag = lag(gdp_capita - dplyr::lag(gdp_capita, 1),1),
-         gdp_capita_lag2 = lag(gdp_capita_lag - dplyr::lag(gdp_capita_lag, 1),1),
-         gdp_capita_tr = dplyr::lag(detrending(gdp_capita, year_id, "gdp_capita"),1),
-         
-         age65_lag = lag(age65 - dplyr::lag(age65, 1),1), 
-         age65_lag2 = lag(age65_lag - dplyr::lag(age65_lag, 1),1),
-         age65_tr = dplyr::lag(detrending(age65, year_id, "age65"),1),
-         
-         inflation_lag = lag(inflation - dplyr::lag(inflation, 1),1), 
+         SOCX_lag = dplyr::lag(lag_percentage(SOCX),1),
+
+         gdp_capita_lag = dplyr::lag(lag_percentage(gdp_capita),1),
+
+         age65_lag = dplyr::lag(lag_percentage(age65),1), 
+
          left_right_lag = dplyr::lag(left_right, 1), 
          
-         gdp_export_lag = lag(gdp_export - dplyr::lag(gdp_export, 1),1), 
-         gdp_export_tr = dplyr::lag(detrending(gdp_export, year_id, "gdp_export"),1),
+         gdp_export_lag = dplyr::lag(lag_percentage(gdp_export),1), 
          
+         cso_lag = dplyr::lag(lag_percentage(cso), 1),
          
-         cso_lag = lag(cso - dplyr::lag(cso, 1), 1),
          family_name_short_lag = dplyr::lag(family_name_short, 1),
-         log_pop_lag = dplyr::lag(log_pop  - dplyr::lag(log_pop, 1), 1),
-         log_pop_lag2 = dplyr::lag(log_pop_lag  - dplyr::lag(log_pop_lag, 1), 1), 
-         log_pop_tr = dplyr::lag(detrending(log_pop, year_id, "log_pop"),1),
          
-         classification_context_lag = dplyr::lag(classification_context, 1)
+         log_pop_lag = dplyr::lag(lag_percentage(log_pop), 1)
   )
 
 GINI_df_data_mean = GINI_df_data %>% 
   group_by(country) %>% 
-  summarize(mean_SOCX = mean(SOCX, na.rm=T),
-            mean_gdp_capita = mean(gdp_capita, na.rm=T),
-            mean_age65 = mean(age65, na.rm=T),
-            mean_log_pop = mean(log_pop, na.rm=T),
-            mean_cso = mean(cso, na.rm=T),
-            mean_gdp_export = mean(gdp_export, na.rm=T),
-            mean_left_right = mean(left_right, na.rm=T)) %>% 
-  right_join(GINI_df_data, by="country")
+  summarize(mean_SOCX = mean(SOCX_lag, na.rm=T),
+            mean_gdp_capita = mean(gdp_capita_lag, na.rm=T),
+            mean_age65 = mean(age65_lag, na.rm=T),
+            mean_log_pop = mean(log_pop_lag, na.rm=T),
+            mean_cso = mean(cso_lag, na.rm=T),
+            mean_gdp_export = mean(gdp_export_lag, na.rm=T),
+            mean_left_right = mean(left_right_lag, na.rm=T)) %>% 
+  right_join(GINI_df_data, by="country") %>% 
+  mutate(
+    SOCX_w = SOCX_lag - mean_SOCX,
+    gdp_capita_w = gdp_capita_lag - mean_gdp_capita,
+    age65_w = age65_lag - mean_age65,
+    log_pop_w = log_pop_lag - mean_log_pop,
+    cso_w = cso_lag - mean_cso,
+    gdp_export_w = gdp_export_lag - mean_gdp_export,
+    left_right_w = left_right_lag - mean_left_right,
+  ) %>% 
+  mutate_at(vars(ends_with("_w")), scale) %>% 
+  mutate_at(vars(starts_with("mean")), scale)
 
 
+describe(GINI_df_data_mean)
 GINI_plm_all <- pdata.frame(data.frame(GINI_df_data_mean), index=c("country", "year_id"))
 
 
-BeckTest = plm(Gini_imp ~ Gini_imp_lag, GINI_plm_all,
+
+BeckTest = plm(cso ~ 1, GINI_plm_all,
                model="pooling")
 summary(BeckTest)
 
@@ -135,93 +161,82 @@ rBeckTest = plm(dResid ~ lagdResid, demo_resid,
                 model="pooling")
 summary(rBeckTest)
 
+#### Descriptive Statistics
 
 
-purtest(GINI_plm_all$Gini_imp_lag, test="hadri", exo="trend")
-purtest_function(GINI_df_data, "Gini",2)
+min(GINI_df_data_mean$year)
+max(GINI_df_data_mean$year)
 
 
-reduced_Gini_dataset = GINI_df_data_mean %>% 
-  filter(country!="Canada",
-         country!="Denmark",
-         country!="Finland",
-         country!="Germany",
-         country!="United States of America"
-         ) 
-
-reduced_Gini_dataset %>% 
-  select(country, Gini) %>% 
-  na.omit() %>% 
-  group_by(country) %>% 
-  summarise(n())
-
-
-GINI_plm <- pdata.frame(data.frame(reduced_Gini_dataset), index=c("country", "year_id"))
-
-purtest(GINI_plm_all$gdp_capita, test="hadri", exo="trend", lags=0)
-
-
-
-
-GINI_plm %>% 
-  group_by(year) %>% 
-  summarise(y=mean(Gini, na.rm=T)) %>% 
-  ggplot(aes(y=y, x=year)) +
-  geom_line()
-
-
-GINI_df_data %>%
-  group_by(country, year) %>%
-  summarise(variable = mean(SOCX_tr, na.rm=T)) %>%
-  na.omit() %>% 
-  ggplot(aes(x=year, y=variable, col=country)) +
-  geom_line(size=1.1) 
-
-giniAR = panelAR(Gini ~ 
-                   log_pop_tr +
-                   age65_tr + 
-                   
-                   SOCX_tr +
-                   
-                   cso_lag +
-                   union_density +
-                   
-                   gdp_export_tr +
-                   left_right_lag +
-                   family_name_short_lag +
-                   mod_cluster_1st, 
-                 panelVar = "country", timeVar = "year_id", 
-                 data.frame(reduced_Gini_dataset), 
-                 rho.na.rm=T,
-                 panelCorrMethod ="pcse", 
-                 bound.rho=T,
-                 autoCorr='ar1')
-summary(giniAR)
-
-
-giniAR_year = panelAR(Gini_imp ~ 
+#### Prais-Winsten: 1st Cluster Solution
+giniAR_mod_cluster_1st = panelAR(Gini_imp ~ 
                         year_id +
-                   gdp_capita_lag +
-                    mean_gdp_capita +
-                     
-                   log_pop_lag +
-                    mean_log_pop +
-                     
-                   age65_lag + 
-                   mean_age65 +
-                   
-                   SOCX_lag +
-                    mean_SOCX +
-                   
-                   cso_lag +
-                    mean_cso +
-                   union_density +
-                   
-                   gdp_export_lag +
-                     mean_gdp_export + 
-                   left_right_lag +
-                  mean_left_right + 
-                   mod_cluster_1st, 
+                          gdp_capita_w +
+                          mean_gdp_capita +
+                          
+                          log_pop_w +
+                          mean_log_pop +
+                          
+                          
+                          age65_w + 
+                          mean_age65 +
+                          
+                          SOCX_w + 
+                          mean_SOCX +
+                          
+                          cso_w + 
+                          mean_cso +
+                          
+                          union_density +
+                          
+                          gdp_export_w +
+                          mean_gdp_export +
+                          
+                          left_right_w +
+                          mean_left_right + 
+                          
+                        mod_cluster_1st, 
+                      
+                      panelVar = "country", timeVar = "year_id", 
+                      data.frame(GINI_df_data_mean), 
+                      rho.na.rm=T,
+                      panelCorrMethod ="pcse", 
+                      bound.rho=T,
+                      rhotype = "scorr",
+                      autoCorr='ar1')
+summary(giniAR_mod_cluster_1st)
+
+round(summary(giniAR_mod_cluster_1st)$coefficients, 3)
+giniAR_mod_cluster_1st$panelStructure$rho
+results_to_excel(giniAR_mod_cluster_1st, "PW_1")
+
+
+giniAR_mod_cluster_2nd = panelAR(Gini_imp ~ 
+                        year_id +
+                          gdp_capita_w +
+                          mean_gdp_capita +
+                          
+                          log_pop_w +
+                          mean_log_pop +
+                          
+                          
+                          age65_w + 
+                          mean_age65 +
+                          
+                          SOCX_w + 
+                          mean_SOCX +
+                          
+                          cso_w + 
+                          mean_cso +
+                          
+                          union_density +
+                          
+                          gdp_export_w +
+                          mean_gdp_export +
+                          
+                          left_right_w +
+                          mean_left_right + 
+                   mod_cluster_2nd, 
                    
                  panelVar = "country", timeVar = "year_id", 
                  data.frame(GINI_df_data_mean), 
@@ -230,42 +245,50 @@ giniAR_year = panelAR(Gini_imp ~
                  bound.rho=T,
                  rhotype = "scorr",
                  autoCorr='ar1')
-summary(giniAR_year)
+summary(giniAR_mod_cluster_2nd)
+round(summary(giniAR_mod_cluster_2nd)$coefficients, 3)
+giniAR_mod_cluster_2nd$panelStructure$rho
+results_to_excel(giniAR_mod_cluster_2nd, "PW_2")
+
 
 
 # Residuals
-test = data.frame(row_nr = names(giniAR_year$residuals), resid = giniAR_year$residuals, 
-                  year_id = giniAR_year$model$year_id,
-                  country = giniAR_year$model$country)
+test = data.frame(row_nr = names(giniAR_mod_cluster_1st$residuals), 
+                  resid = scale(giniAR_mod_cluster_1st$residuals), 
+                  year_id = giniAR_mod_cluster_1st$model$year_id,
+                  country = giniAR_mod_cluster_1st$model$country)
 
 test %>% 
   ggplot(aes(x=year_id, y=resid, col=country)) +
   geom_point() +
   geom_smooth(method = "loess", size = 1.5,se=F)
 
+### Random Effects Models
 
+re_mod_cluster_1st <- plm::plm(Gini_imp ~  Gini_imp_lag +
+                            as.numeric(year_id) +
 
-femod_between <- plm::plm(Gini_imp ~  Gini_imp_lag +
-                            
-                            year_id +
-                            
-                            gdp_capita_lag +
+                            gdp_capita_w +
                             mean_gdp_capita +
+                              
+                            log_pop_w +
+                            mean_log_pop +
                             
-
-                            age65_lag + 
+                            age65_w + 
                             mean_age65 +
 
-                            SOCX_lag + 
+                            SOCX_w + 
                             mean_SOCX +
                             
-                            cso_lag + 
+                            cso_w + 
                             mean_cso +
+                              
+                            union_density +
                             
-                            gdp_export_lag +
+                            gdp_export_w +
                             mean_gdp_export +
                             
-                            left_right_lag +
+                            left_right_w +
                             mean_left_right +
                             
                             mod_cluster_1st,
@@ -274,9 +297,56 @@ femod_between <- plm::plm(Gini_imp ~  Gini_imp_lag +
                           model ="random",
                           random.method = "walhus")
 
-coeftest(femod_between, vcov=vcovBK)
-summary(femod_between)
-ranef(femod_between)
+round(coeftest(re_mod_cluster_1st, vcov=vcovBK),3)
+summary(re_mod_cluster_1st)
+ranef(re_mod_cluster_1st)
+results_to_excel(re_mod_cluster_1st, "RE_1")
+
+
+
+re_mod_cluster_2nd <- plm::plm(Gini_imp ~  Gini_imp_lag +
+                                 as.numeric(year_id) +
+                                 
+                                 gdp_capita_w +
+                                 mean_gdp_capita +
+                                 
+                                 log_pop_w +
+                                 mean_log_pop +
+                                 
+                                 
+                                 age65_w + 
+                                 mean_age65 +
+                                 
+                                 SOCX_w + 
+                                 mean_SOCX +
+                                 
+                                 cso_w + 
+                                 mean_cso +
+                                 
+                                 union_density +
+                                 
+                                 gdp_export_w +
+                                 mean_gdp_export +
+                                 
+                                 left_right_w +
+                                 mean_left_right +
+                                 
+                                 mod_cluster_2nd,
+                               
+                               data=GINI_plm_all,
+                               
+                               model ="random",
+                               random.method = "walhus")
+
+round(coeftest(re_mod_cluster_2nd, vcov=vcovBK),3)
+summary(re_mod_cluster_2nd)
+ranef(re_mod_cluster_2nd)
+results_to_excel(re_mod_cluster_2nd, "RE_2")
+
+
+#####
+qqnorm(residuals(femod_between), ylab = 'Residuals')
+qqline(residuals(femod_between))
 
 
 X <- model.matrix(femod_between, model = "pooling")

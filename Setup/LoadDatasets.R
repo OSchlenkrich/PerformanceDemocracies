@@ -25,10 +25,7 @@ V_dem = fread("C:/RTest/V-Dem-CY+Others-v8.csv") %>%
          educ_equal = v2peedueq, 
          wgi_rq = e_wbgi_rqe,
          gini_vdem = e_peginiwi,
-         e_population,
-         region = e_regionpol) %>% 
-  mutate(log_pop = log(e_population))
-
+         region = e_regionpol) 
 # OECD ----
 
 
@@ -142,7 +139,22 @@ Age65_percent = fread("Datasets/Age65_percent.csv", header=T) %>%
          country = as.character(country)
   )
 
-
+##
+population_total = fread("Datasets/WB_population.csv", header=T) %>% 
+  mutate_at(vars(starts_with("19")), log) %>% 
+  mutate_at(vars(starts_with("20")), log) %>% 
+  rename(country = "Country Name") %>% 
+  select(-"Country Code", -"Indicator Name", -"Indicator Code", -V64) %>% 
+  melt(id.vars = c("country"), variable.name = "year", value.name = "log_pop") %>% 
+  mutate(year = as.numeric(levels(year))[year]) %>% 
+  mutate(country = as.factor(country),
+         country = fct_recode(country,
+                              "South Korea" = "Korea, Rep.",
+                              "Slovakia" = "Slovak Republic",
+                              "United States of America" = "United States"
+         ),
+         country = as.character(country)
+  ) 
 ##
 
 Trade_union = fread("Datasets/ILO_trade_union_density.csv", header=T) %>% 

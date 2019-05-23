@@ -40,7 +40,7 @@ median_cluster_1st = dmx_trade_cluster %>%
   arrange(country, year) %>%
   filter(year >= 1940) %>%
   group_by(country) %>%
-  mutate(mod_cluster_1st = rollapply(cluster_1st,5, FUN = function(x) getmode(x),
+  mutate(mod_cluster_1st = rollapply(cluster_1st,15, FUN = function(x) getmode(x),
                                      fill=NA, align="right", partial=T))
 
 median_cluster_1st$mod_cluster_1st = as.factor(median_cluster_1st$mod_cluster_1st)
@@ -84,7 +84,7 @@ median_cluster_2nd = dmx_trade_cluster %>%
   arrange(country, year) %>%
   filter(year >= 1940) %>%
   group_by(country) %>%
-  mutate(mod_cluster_2nd = rollapply(cluster_2nd,10, FUN = function(x) getmode(x),
+  mutate(mod_cluster_2nd = rollapply(cluster_2nd,15, FUN = function(x) getmode(x),
                                      fill=NA, align="right", partial=T))
 
 median_cluster_2nd$mod_cluster_2nd = as.factor(median_cluster_2nd$mod_cluster_2nd)
@@ -123,6 +123,7 @@ dmx_trade_cluster_ext =  dmx_trade_cluster %>%
   left_join(oecd_poverty_data, by=c("country", "year")) %>%  
   left_join(V_dem, by=c("country", "year")) %>%
   left_join(WB_gdp, by=c("country", "year")) %>%  
+  left_join(population_total, by=c("country", "year")) %>%
   left_join(WB_export, by=c("country", "year")) %>%  
   left_join(WB_inflation, by=c("country", "year")) %>%  
   left_join(Age65_percent , by=c("country", "year")) %>%   
@@ -138,7 +139,8 @@ dmx_trade_cluster_ext =  dmx_trade_cluster %>%
          gdp_capita = log(gdp_capita)) %>% 
   arrange(country, year)
 
-# Norway
+
+names(dmx_trade_cluster_ext)
 
 
 
