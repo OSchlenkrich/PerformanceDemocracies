@@ -1,12 +1,19 @@
 ## Creating Final dataset
-
+OECD_countries %in% unique(GINI_data$country) 
 # Creating whole dataset
 # Turkey not included; 
+# OECD_countries = c("Belgium","Denmark","Germany","France","Greece",
+#                    "Ireland","Iceland","Italy","Canada","Luxembourg",
+#                    "Netherlands","Norway","Austria","Portugal","Sweden",
+#                    "Switzerland","Spain","United States of America","United Kingdom",
+#                    "Japan","Finland","Australia","New Zealand")
 OECD_countries = c("Belgium","Denmark","Germany","France","Greece",
                    "Ireland","Iceland","Italy","Canada","Luxembourg",
                    "Netherlands","Norway","Austria","Portugal","Sweden",
                    "Switzerland","Spain","United States of America","United Kingdom",
-                   "Japan","Finland","Australia","New Zealand")
+                   "Japan","Finland","Australia","New Zealand",
+                   "Mexico", "Czech Republic", "South Korea", "Hungary", "Poland",
+                   "Slovakia", "Chile", "Slovenia", "Israel", "Latvia", "Lithuania", "Estonia")
 
 # year frame
 year_frame = data.frame(country = rep(unique(dmx_trade_cluster$country), each=length(1900:2017)),

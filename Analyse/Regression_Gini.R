@@ -54,7 +54,7 @@ for (i in 1:length(unique(GINI_data$country))) {
 }
 
 Gini_final = Gini_final %>% 
-  group_by(country) %>% 
+  group_by(country) %>%
   mutate(Gini_imp = na.interpolation(Gini)) %>% 
   filter(year >= 1985) %>%  # canada is only countrz with values of gini before 1985
   arrange(year, country)
@@ -146,8 +146,8 @@ describe(GINI_df_data_mean)
 GINI_plm_all <- pdata.frame(data.frame(GINI_df_data_mean), index=c("country", "year_id"))
 
 
-
-BeckTest = plm(cso ~ 1, GINI_plm_all,
+#### Beck's Test for Unit Root
+BeckTest = plm(Gini_imp ~ Gini_imp_lag, GINI_plm_all,
                model="pooling")
 summary(BeckTest)
 
@@ -194,6 +194,7 @@ giniAR_mod_cluster_1st = panelAR(Gini_imp ~
                           
                           left_right_w +
                           mean_left_right + 
+                          classification_context +
                           
                         mod_cluster_1st, 
                       
@@ -235,7 +236,9 @@ giniAR_mod_cluster_2nd = panelAR(Gini_imp ~
                           mean_gdp_export +
                           
                           left_right_w +
-                          mean_left_right + 
+                          mean_left_right +
+                          classification_context +
+                          
                    mod_cluster_2nd, 
                    
                  panelVar = "country", timeVar = "year_id", 
@@ -290,7 +293,8 @@ re_mod_cluster_1st <- plm::plm(Gini_imp ~  Gini_imp_lag +
                             
                             left_right_w +
                             mean_left_right +
-                            
+                            classification_context +
+                              
                             mod_cluster_1st,
                           
                           data=GINI_plm_all,
@@ -330,6 +334,7 @@ re_mod_cluster_2nd <- plm::plm(Gini_imp ~  Gini_imp_lag +
                                  
                                  left_right_w +
                                  mean_left_right +
+                                 classification_context +
                                  
                                  mod_cluster_2nd,
                                

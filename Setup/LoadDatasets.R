@@ -182,7 +182,7 @@ ParlGov_Cabinet_yearly = fread("Datasets/ParlGov_Frame.csv", header=T) %>%
   filter(cabinet_party == 1) %>% 
   select(country = country_name, year, party_id, left_right) %>% 
   group_by(country, year) %>%
-  summarise(left_right = mean(left_right))
+  summarise(left_right = mean(left_right, na.rm=T))
   
 ParlGov_Family_yearly = fread("Datasets/ParlGov_Frame.csv", header=T) %>% 
   filter(id_type == "cabinet") %>%
