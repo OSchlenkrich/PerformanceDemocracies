@@ -97,8 +97,25 @@ adjustedRandIndex(hc_classes, hclust_average_classes)
 boxplot_dim(dmx_trade_dimension_unequal_w_outlier, hclust_average_classes, "A: HClust - average linkage (4 Clusters)") + 
   geom_vline(xintercept = 1.5) + geom_vline(xintercept = 2.5) + geom_vline(xintercept = 3.5)
 
+
 # pam as best solutions
-pam_cluster = pam(correlation_distance, 4)$clustering
+# extract medoids from DIANA
+DIANA_med = dmx_trade_dimension_unequal_w_outlier %>% 
+  mutate(DIANA_class = hc_classes) %>% 
+  group_by(DIANA_class) %>% 
+  summarise(freedom_med = mean(freedom), equality_med = mean(equality), control_med = mean(control)) %>% 
+  right_join(dmx_trade_dimension_unequal_w_outlier %>%  mutate(DIANA_class = hc_classes, row_id = row_number()), by="DIANA_class") %>% 
+  mutate(diff_f = abs(freedom - freedom_med),
+         diff_e = abs(equality - equality_med),
+         diff_c = abs(control - control_med),
+         difference = diff_f + diff_e + diff_c
+  ) %>% 
+  group_by(DIANA_class) %>% 
+  arrange(difference) %>% 
+  slice(1)
+
+
+pam_cluster = pam(correlation_distance, medoids = DIANA_med$row_id, 4)$clustering
 
 
 adjustedRandIndex(hc_classes, pam_cluster)
@@ -188,5 +205,5 @@ rm(hc1)
 rm(hc_outlier)
 rm(dmx_trade_dimension_same)
 rm(dmx_trade_dimension_unequal)
-
+rm(DIANA_med)
 
