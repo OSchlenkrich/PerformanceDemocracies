@@ -53,10 +53,24 @@ detrending = function(dataset, year, variable){
 # Summary Table to Excel
 
 
-results_to_excel = function(reg_obj, filename) {
-  results_df = data.frame(varnames = rownames(round(summary(reg_obj)$coefficients, 3)),
-                          round(summary(reg_obj)$coefficients, 3)
-  ) %>% 
+results_to_excel = function(reg_obj, filename, PCSE = F) {
+  if (PCSE == F) {
+    print("No PCSEs")
+    results_df = data.frame(varnames = rownames(round(summary(reg_obj)$coefficients, 3)),
+                            round(summary(reg_obj)$coefficients, 3))
+  } else {
+    coef_obj = data.frame(as.matrix.data.frame(round(coeftest(re_mod_cluster_1st, vcov=vcovBK),3))) %>% 
+      rename("Estimate" = 1,
+             "Std..Error"  = 2,
+             "t.value"  = 3,
+             "Pr...t.." = 4)
+    
+    
+    results_df = data.frame(varnames = rownames(round(summary(reg_obj)$coefficients, 3)),
+                            coef_obj)
+                            
+  }
+  results_df = results_df %>% 
     rename(prb = 5) %>% 
     mutate(Std.Er = paste("(", Std..Error, ")", sep="")) %>%  # xx must be removed in Excel
     mutate(Sign = if_else(prb < 0.001, "***", 
@@ -64,7 +78,7 @@ results_to_excel = function(reg_obj, filename) {
                                   if_else(prb < 0.05, "*", " ")))) %>%
     mutate(Estimate = paste(Estimate, Sign, sep="")) %>% 
     mutate(Estimate = paste(Estimate, Std.Er, sep=" ")) %>% 
-    select(varnames, Estimate) 
+    dplyr::select(varnames, Estimate) 
   
   file = paste("Results/", filename, ".csv", sep="")
   write.csv2(results_df, file=file, row.names = T)

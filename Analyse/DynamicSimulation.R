@@ -1,24 +1,24 @@
-# dnyamic simulation
+# dynamic simulation
 
 # get means of all numeric variables
 all_means_numeric = re_mod_cluster_1st$model %>% 
   summarise_if(is.numeric, mean) %>% 
   melt() 
 
-quantile(re_mod_cluster_1st$model$union_density, 0.95)
-quantile(re_mod_cluster_1st$model$union_density, 0.05)
+quantile(re_mod_cluster_1st$model$gdp_export_lag, 0.95)
+quantile(re_mod_cluster_1st$model$gdp_export_lag, 0.05)
 
 # create scenario
 high_scenario = data.frame(variable = names(coef(re_mod_cluster_1st)), row.names = NULL) %>% 
   left_join(all_means_numeric) %>% 
-  mutate(value = if_else(variable=="mod_cluster_1stFec", 0, value),
+  mutate(value = if_else(variable=="mod_cluster_1stFec", 1, value),
          value = if_else(is.na(value)==T,0,value),
          value = if_else(variable=="(Intercept)", 1, value)) 
 
 # create scenario
 low_scenario = data.frame(variable = names(coef(re_mod_cluster_1st)), row.names = NULL) %>% 
   left_join(all_means_numeric) %>% 
-  mutate(value = if_else(variable=="mod_cluster_1stFec", 1, value),
+  mutate(value = if_else(variable=="mod_cluster_1stFec", 0, value),
          value = if_else(is.na(value)==T,0,value),
          value = if_else(variable=="(Intercept)", 1, value))  
 
@@ -56,8 +56,8 @@ get_timepoints = function(Scenario_type_data, name_scenario) {
 }
 
 
-get_timepoints(high_scenario, "Fec + Union Density (High)") %>% 
-  bind_rows(get_timepoints(low_scenario, "Fec + Union Density (Low)")) %>% 
+get_timepoints(high_scenario, "High Export(% GDP)") %>% 
+  bind_rows(get_timepoints(low_scenario, "Low Export(% GDP)")) %>% 
   ggplot(aes(y = y_mean, ymin=y_min, ymax=y_max, x=x, fill=Scenario)) + 
   geom_line() +
   geom_ribbon(alpha=0.5) +

@@ -13,7 +13,7 @@ stat_box_count <- function(y, upper_limit = 0.3) {
 boxplot_dim = function(dim_data, clustering, algorithm) {
   plotdata = dim_data %>%
     mutate(cluster = as.factor(clustering)) %>%
-    select(freedom, equality, control, cluster) %>%
+    dplyr::select(freedom, equality, control, cluster) %>%
     melt(id.vars="cluster")
   
   ggplot(plotdata, aes(x=cluster, y=value, fill=variable)) + geom_boxplot()  + theme_bw() +

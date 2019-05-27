@@ -17,6 +17,8 @@ library(imputeTS)
 library(scales)
 library(bit64)
 library(psych)
+library(effects)
+library(corrplot)
 
 # for correct display of tibbles
 options(crayon.enabled = FALSE)

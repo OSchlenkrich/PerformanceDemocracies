@@ -5,7 +5,6 @@ source("Setup/LoadDatasets.R")
 # With NAs: 3427
 # Without NAs: 2906
 
-
 # Cluster Analysis
 # Extract Same Level
 dmx_trade_dimension_prep = dmx_data_trade %>%
@@ -15,11 +14,11 @@ dmx_trade_dimension_prep = dmx_data_trade %>%
          equality = equality - minimum,
          control = control - minimum
   ) %>%
-  select(-minimum) %>%
+  dplyr::select(-minimum) %>%
   ungroup()
 
 dmx_trade_dimension_prep$class = apply(dmx_trade_dimension_prep %>% 
-                                         select(freedom, equality, control), 1, 
+                                         dplyr::select(freedom, equality, control), 1, 
                                        FUN=function(x) length(which(x >= 0 & x < 0.05 | x <= 0 & x > -0.05)))
 
 dmx_trade_dimension_prep = dmx_trade_dimension_prep %>%
@@ -28,12 +27,12 @@ dmx_trade_dimension_prep = dmx_trade_dimension_prep %>%
 dmx_trade_dimension_same = dmx_data_trade %>%
   mutate(class = dmx_trade_dimension_prep$class) %>%
   filter(class==1) %>%
-  select(-class) 
+  dplyr::select(-class) 
 
 dmx_trade_dimension_unequal = dmx_data_trade %>%
   mutate(class = dmx_trade_dimension_prep$class) %>%
   filter(class==0) %>%
-  select(-class) 
+  dplyr::select(-class) 
 
 dim(dmx_trade_dimension_same)
 dim(dmx_trade_dimension_unequal)
@@ -41,7 +40,7 @@ dim(dmx_trade_dimension_unequal)
 ###
 
 # outlier detection
-correlation_distance_out = as.dist(1-cor(t(dmx_trade_dimension_unequal %>% select(freedom, equality, control))))
+correlation_distance_out = as.dist(1-cor(t(dmx_trade_dimension_unequal %>% dplyr::select(freedom, equality, control))))
 hc_outlier = hclust(correlation_distance_out, "single")
 plot(hc_outlier, label=F)
 nr_cuts_out = 2
@@ -54,18 +53,18 @@ hc_out_color %>% set("labels_cex", 0.001) %>% set("branches_lwd", 2) %>% plot(ma
 
 
 dmx_trade_dimension_unequal_w_outlier = dmx_trade_dimension_unequal %>% 
-  select(country, year, regions, classification_context, freedom, equality, control) %>% 
+  dplyr::select(country, year, regions, classification_context, freedom, equality, control) %>% 
   mutate(outlier = stats::cutree(hc_outlier, nr_cuts_out)) %>%
   filter(outlier == 1)
 dmx_trade_dimension_unequal_outlier = dmx_trade_dimension_unequal %>% 
-  select(country, year, regions, classification_context, freedom, equality, control) %>% 
+  dplyr::select(country, year, regions, classification_context, freedom, equality, control) %>% 
   mutate(outlier = stats::cutree(hc_outlier, nr_cuts_out)) %>%
   filter(outlier !=1)
 
 ##
 
 # DIANA Clustering
-correlation_distance = as.dist(1-cor(t(dmx_trade_dimension_unequal_w_outlier %>% select(freedom, equality, control))))
+correlation_distance = as.dist(1-cor(t(dmx_trade_dimension_unequal_w_outlier %>% dplyr::select(freedom, equality, control))))
 dim(dmx_trade_dimension_unequal_w_outlier)
 
 hc1 = diana(correlation_distance, diss=T)
@@ -138,7 +137,7 @@ plot_silhoutte(sil_hc1, "PAM")
 dmx_trade_cluster = bind_rows(dmx_trade_dimension_unequal_w_outlier %>% 
                                 mutate(cluster_1st = pam_cluster,
                                        cluster_2nd = hclust_average_classes) %>% 
-                                select(-outlier), 
+                                dplyr::select(-outlier), 
                               dmx_trade_dimension_same %>% 
                                 mutate(cluster_1st = max(pam_cluster) + 1,
                                        cluster_2nd = max(hclust_average_classes) + 1)
@@ -200,7 +199,7 @@ plot_random_countries_dim(c("United States of America"))
 # Plotting: Time Development Cluster
 
 plot_types_N = dmx_trade_cluster %>%
-  select(cluster_label_1st, year) %>%
+  dplyr::select(cluster_label_1st, year) %>%
   group_by(year) %>%
   summarise(n_total=n())
 
@@ -208,7 +207,7 @@ complete_data_cluster = data.frame(cluster_label_1st = rep(unique(dmx_trade_clus
                                    year = rep(unique(dmx_trade_cluster$year), length(unique(dmx_trade_cluster$cluster_label_1st))))
 
 plot_types_yearly = dmx_trade_cluster %>%
-  select(cluster_label_1st, year) %>%
+  dplyr::select(cluster_label_1st, year) %>%
   group_by(year, cluster_label_1st) %>%
   summarise(n=n()) %>%
   ungroup() %>%

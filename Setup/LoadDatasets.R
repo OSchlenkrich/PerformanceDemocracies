@@ -4,7 +4,7 @@
 dmx_data = fread("unzip -p Datasets/DemocracyMatrix_v1_1.zip")
 
 dmx_data_trade = dmx_data %>% 
-  select_at(vars(country, year, regions, classification_context, matches("dim_index_trade_off"))) %>% 
+  dplyr::select_at(vars(country, year, regions, classification_context, matches("dim_index_trade_off"))) %>% 
   rename(freedom = freedom_dim_index_trade_off,
          equality = equality_dim_index_trade_off,
          control = control_dim_index_trade_off) %>% 
@@ -16,16 +16,28 @@ dmx_data_trade = dmx_data %>%
 
 
 dmx_data_context = dmx_data %>% 
-  select_at(vars(country, year, regions, matches("total_index_context"))) 
+  dplyr::select_at(vars(country, year, regions, matches("total_index_context"))) 
 
 # VDEM ----
 
 V_dem = fread("C:/RTest/V-Dem-CY+Others-v8.csv") %>% 
-  select(country = country_name, year, cso = v2csstruc_1, 
+  dplyr::select(country = country_name, year, cso = v2csstruc_1, 
          educ_equal = v2peedueq, 
          wgi_rq = e_wbgi_rqe,
          gini_vdem = e_peginiwi,
-         region = e_regionpol) 
+         region = e_regionpol) %>%
+  mutate(region = as.factor(region),
+         region = fct_recode(region, 
+                                  "Eastern Europe and Central Asia" = "1",
+                                  "Latin America" = "2",
+                                  "The Middle East and North Africa/MENA" = "3" ,
+                                  "Sub-Saharan Africa" = "4",
+                                  "Western Europe and North America" = "5",
+                                  "East Asia" = "6",
+                                  "South-East Asia" = "7",
+                                  "South Asia" = "8",
+                                  "The Pacific" = "9",
+                                  "The Caribbean" = "10"))
 # OECD ----
 
 
@@ -34,7 +46,7 @@ oecd_social_data = fread("unzip -p Datasets/OECD_Social_Protection.zip") %>%
          Source == "Public",
          Branch == "Total",
          `Type of Expenditure` == "Total") %>% 
-  select(country = Country, year = Year, SOCX = Value) %>% 
+  dplyr::select(country = Country, year = Year, SOCX = Value) %>% 
   mutate(country = as.factor(country),
          country = fct_recode(country,
                               "South Korea"  = "Korea",
@@ -50,7 +62,7 @@ oecd_poverty_data = fread("unzip -p Datasets/OECD_Poverty.zip") %>%
   filter(Measure == "Gini (disposable income, post taxes and transfers)",
          `Age group` == "Total population",
          Definition == "Current definition") %>% 
-  select(country = Country, year = Year, Gini = Value) %>% 
+  dplyr::select(country = Country, year = Year, Gini = Value) %>% 
   group_by(country, year) %>%
   slice(1) %>% 
   ungroup( ) %>% 
@@ -68,7 +80,7 @@ oecd_poverty_data = fread("unzip -p Datasets/OECD_Poverty.zip") %>%
 ###
 WB_inflation = fread("Datasets/WB_inflation.csv", header=T) %>% 
   rename(country = "Country Name") %>% 
-  select(-"Country Code", -"Indicator Name", -"Indicator Code", -V64) %>% 
+  dplyr::select(-"Country Code", -"Indicator Name", -"Indicator Code", -V64) %>% 
   melt(id.vars = c("country"), variable.name = "year", value.name = "inflation") %>% 
   mutate(year = as.numeric(levels(year))[year]) %>% 
   mutate(country = as.factor(country),
@@ -84,7 +96,7 @@ WB_inflation = fread("Datasets/WB_inflation.csv", header=T) %>%
 ###
 WB_gdp = fread("Datasets/WB_gdp_capita.csv", header=T) %>% 
   rename(country = "Country Name") %>% 
-  select(-"Country Code", -"Indicator Name", -"Indicator Code", -V64) %>% 
+  dplyr::select(-"Country Code", -"Indicator Name", -"Indicator Code", -V64) %>% 
   melt(id.vars = c("country"), variable.name = "year", value.name = "gdp_capita") %>% 
   mutate(year = as.numeric(levels(year))[year]) %>% 
   mutate(country = as.factor(country),
@@ -99,7 +111,7 @@ WB_gdp = fread("Datasets/WB_gdp_capita.csv", header=T) %>%
 ##
 WB_export = fread("Datasets/WB_export.csv", header=T) %>% 
   rename(country = "Country Name") %>% 
-  select(-"Country Code", -"Indicator Name", -"Indicator Code", -V64) %>% 
+  dplyr::select(-"Country Code", -"Indicator Name", -"Indicator Code", -V64) %>% 
   melt(id.vars = c("country"), variable.name = "year", value.name = "gdp_export") %>% 
   mutate(year = as.numeric(levels(year))[year]) %>% 
   mutate(country = as.factor(country),
@@ -113,21 +125,21 @@ WB_export = fread("Datasets/WB_export.csv", header=T) %>%
 
 ###
 frame = fread("C:/RTest/V-Dem-CY+Others-v8.csv") %>% 
-  select(country = country_name, ccy_code = country_text_id, year)
+  dplyr::select(country = country_name, ccy_code = country_text_id, year)
 
 
 Unemployment_percent = fread("Datasets/unemployment.csv", header=T) %>% 
   filter(SUBJECT == "TOT", FREQUENCY == "A") %>% 
-  select(ccy_code = LOCATION, year = TIME, unempl = Value) %>% 
+  dplyr::select(ccy_code = LOCATION, year = TIME, unempl = Value) %>% 
   mutate(year = as.numeric(year)) %>% 
   left_join(frame, by=c("ccy_code", "year")) %>% 
-  select(-ccy_code)
+  dplyr::select(-ccy_code)
 
 
 ##
 Age65_percent = fread("Datasets/Age65_percent.csv", header=T) %>% 
   rename(country = "Country Name") %>% 
-  select(-"Country Code", -"Indicator Name", -"Indicator Code", -V64) %>% 
+  dplyr::select(-"Country Code", -"Indicator Name", -"Indicator Code", -V64) %>% 
   melt(id.vars = c("country"), variable.name = "year", value.name = "age65") %>% 
   mutate(year = as.numeric(levels(year))[year]) %>% 
   mutate(country = as.factor(country),
@@ -144,7 +156,7 @@ population_total = fread("Datasets/WB_population.csv", header=T) %>%
   mutate_at(vars(starts_with("19")), log) %>% 
   mutate_at(vars(starts_with("20")), log) %>% 
   rename(country = "Country Name") %>% 
-  select(-"Country Code", -"Indicator Name", -"Indicator Code", -V64) %>% 
+  dplyr::select(-"Country Code", -"Indicator Name", -"Indicator Code", -V64) %>% 
   melt(id.vars = c("country"), variable.name = "year", value.name = "log_pop") %>% 
   mutate(year = as.numeric(levels(year))[year]) %>% 
   mutate(country = as.factor(country),
@@ -158,7 +170,7 @@ population_total = fread("Datasets/WB_population.csv", header=T) %>%
 ##
 
 Trade_union = fread("Datasets/ILO_trade_union_density.csv", header=T) %>% 
-  select(country = ref_area.label, year = time, union_density = obs_value) %>% 
+  dplyr::select(country = ref_area.label, year = time, union_density = obs_value) %>% 
   mutate(country = as.factor(country),
          country = fct_recode(country,
                               "South Korea" = "Korea, Republic of",
@@ -173,14 +185,14 @@ Trade_union = fread("Datasets/ILO_trade_union_density.csv", header=T) %>%
 
 ParlGov_Cabinet = fread("Datasets/ParlGov_Cabinet.csv", header=T)
 ParlGov_Party = fread("Datasets/ParlGov_Party.csv", header=T)  %>% 
-  select(party_id, family_name_short)
+  dplyr::select(party_id, family_name_short)
 
 ParlGov_Cabinet_yearly = fread("Datasets/ParlGov_Frame.csv", header=T) %>% 
   filter(id_type == "cabinet") %>%
   rename(cabinet_id = id) %>% 
   left_join(ParlGov_Cabinet, by="cabinet_id") %>% 
   filter(cabinet_party == 1) %>% 
-  select(country = country_name, year, party_id, left_right) %>% 
+  dplyr::select(country = country_name, year, party_id, left_right) %>% 
   group_by(country, year) %>%
   summarise(left_right = mean(left_right, na.rm=T))
   
@@ -189,9 +201,9 @@ ParlGov_Family_yearly = fread("Datasets/ParlGov_Frame.csv", header=T) %>%
   rename(cabinet_id = id) %>% 
   left_join(ParlGov_Cabinet, by="cabinet_id") %>% 
   filter(prime_minister == 1) %>% 
-  select(country = country_name, year, party_id, seats) %>% 
+  dplyr::select(country = country_name, year, party_id, seats) %>% 
   left_join(ParlGov_Party, by="party_id") %>% 
-  select(-party_id) %>% 
+  dplyr::select(-party_id) %>% 
   mutate(family_name_short = fct_recode(family_name_short, 
                                         NULL = "none",
                                         "Left" = "com",

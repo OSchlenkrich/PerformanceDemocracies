@@ -44,7 +44,7 @@ median_cluster_1st = median_cluster_1st %>%
                                           "Fec"
             )
          ) %>%
-  select(country, year, mod_cluster_1st, cluster_1st)
+  dplyr::select(country, year, mod_cluster_1st, cluster_1st)
 
 #
 
@@ -70,22 +70,22 @@ median_cluster_2nd = median_cluster_2nd %>%
                                 "fEC",
                                 "Fec"
   )) %>%
-  select(country, year, mod_cluster_2nd, cluster_1st)
+  dplyr::select(country, year, mod_cluster_2nd, cluster_1st)
 
 
 
 dmx_data_complete = dmx_data %>% 
-  select(country, year, classification_context) %>% 
+  dplyr::select(country, year, classification_context) %>% 
   mutate(classification_context = fct_recode(classification_context, 
                                              NULL = "",
                                              NULL = "Autocracy",
                                              NULL = "Hybrid Regime",
   ))
 
+
 dmx_trade_cluster_ext =  dmx_trade_cluster %>% 
-  select(-classification_context) %>% 
+  dplyr::select(-classification_context) %>% 
   full_join(year_frame, by=c("country", "year")) %>%
-  # filter(country %in% OECD_countries) %>% 
   left_join(dmx_data_complete, by=c("country", "year")) %>% 
   left_join(oecd_social_data, by=c("country", "year")) %>% 
   left_join(oecd_poverty_data, by=c("country", "year")) %>%  
@@ -99,10 +99,11 @@ dmx_trade_cluster_ext =  dmx_trade_cluster %>%
   left_join(ParlGov_Family_yearly , by=c("country", "year")) %>% 
   left_join(Trade_union, by=c("country")) %>% 
   left_join(median_cluster_1st, by=c("country", "year")) %>%
-  left_join(dmx_data_context, by=c("country", "year")) %>%
+  left_join(dmx_data_context %>%  dplyr::select(-regions), by=c("country", "year")) %>%
   left_join(median_cluster_2nd, by=c("country", "year")) %>% 
   mutate(mod_cluster_1st = relevel(mod_cluster_1st, ref="fEc"),
          mod_cluster_2nd = relevel(mod_cluster_2nd, ref="fEc"),
+         region = relevel(as.factor(region), ref="Western Europe and North America"),
          year_factor = as.factor(year),
          gdp_capita = log(gdp_capita)) %>% 
   arrange(country, year)
