@@ -14,6 +14,9 @@ library(mclust)
 library(fpc)
 library(zoo)
 library(imputeTS)
+library(scales)
+library(bit64)
+library(psych)
 
 # for correct display of tibbles
 options(crayon.enabled = FALSE)

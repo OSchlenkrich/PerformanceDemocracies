@@ -7,16 +7,32 @@ source("Setup/MergeToFinalDataset.R")
 
 # GINI
 GINI_data = dmx_trade_cluster_ext %>% 
-  select(country, year, year_factor,  gini_vdem, Gini, SOCX, total_index_context, freedom, equality, 
-         classification_context, family_name_short, left_right, log_pop, union_density, 
-         inflation, age65, cso, gdp_export, mod_cluster_1st, mod_cluster_2nd, gdp_capita) %>% 
+  select(country, 
+         year,   
+         Gini = gini_vdem, 
+         mod_cluster_1st,
+         SOCX,  
+         classification_context, 
+         family_name_short, 
+         left_right, 
+         log_pop, 
+         union_density, 
+         inflation, 
+         age65, 
+         cso, 
+         gdp_export, 
+         mod_cluster_2nd, 
+         gdp_capita) %>% 
   group_by(country) %>% 
-  filter(all(is.na(Gini) == T) != T) %>% 
+  #filter(all(is.na(Gini) == T) != T) %>% 
   mutate(year_id = NA) %>% 
-  filter(country != "Turkey") %>% 
+  # filter(country != "Turkey") %>% 
   filter(year >= 1974) %>% 
   arrange(country, year) %>% 
   mutate(year_id = NA) 
+
+
+
 
 GINI_data %>%
   group_by(country, year) %>%
@@ -53,13 +69,20 @@ for (i in 1:length(unique(GINI_data$country))) {
   Gini_final = bind_rows(Gini_final, Gini2_bind)
 }
 
-Gini_final = Gini_final %>% 
+# test = Gini_final %>% 
+#   select(country, Gini) %>% 
+#   group_by(country) %>%
+#   na.omit() %>% 
+#   summarise(n())
+
+
+Gini_final = Gini_final %>%
   group_by(country) %>%
   mutate(Gini_imp = na.interpolation(Gini)) %>% 
   filter(year >= 1985) %>%  # canada is only country with values of gini before 1985
   arrange(year, country)
 
-
+Gini_final = GINI_data
 for (i in 1:length(unique(Gini_final$year))) {
   Gini_final$year_id[Gini_final$year == unique(Gini_final$year)[i]] = i
 }
@@ -72,8 +95,6 @@ Gini_final %>%
   na.omit() %>% 
   ggplot(aes(x=year, y=variable, col=country)) +
   geom_point(size=1.1)
-
-
 
 
 Gini_final %>%
@@ -92,14 +113,14 @@ lag_percentage = function(x1) {
 
 GINI_df_data = Gini_final %>% 
   group_by(country) %>% 
-  mutate(Gini =  Gini *100,
-         Gini_imp =  Gini_imp *100,
+  mutate(Gini =  Gini,
+         #Gini_imp =  Gini_imp  * 100,
          
          Gini_df = (Gini - dplyr::lag(Gini, 1)),
          Gini_df_lag = dplyr::lag(Gini_df, 1),
          
          Gini_lag = dplyr::lag(Gini, 1),
-         Gini_imp_lag = dplyr::lag(Gini_imp, 1),
+         #Gini_imp_lag = dplyr::lag(Gini_imp, 1),
          
          SOCX_lag = dplyr::lag(lag_percentage(SOCX),1),
 
@@ -117,13 +138,14 @@ GINI_df_data = Gini_final %>%
          
          log_pop_lag = dplyr::lag(lag_percentage(log_pop), 1),
          
-         mod_cluster_1st_lag = dplyr::lag(mod_cluster_1st, 1)
   )
 
 GINI_df_data_mean = GINI_df_data %>% 
   group_by(country) %>% 
   summarize(mean_SOCX = mean(SOCX_lag, na.rm=T),
             mean_gdp_capita = mean(gdp_capita_lag, na.rm=T),
+            mean_economy = mean(gdp_capita, na.rm=T),
+            
             mean_age65 = mean(age65_lag, na.rm=T),
             mean_log_pop = mean(log_pop_lag, na.rm=T),
             mean_cso = mean(cso_lag, na.rm=T),
@@ -144,10 +166,9 @@ GINI_df_data_mean = GINI_df_data %>%
 
 
 describe(GINI_df_data_mean)
-GINI_df_data_mean = GINI_df_data_mean %>% 
-  mutate(mod_cluster_1st_lag =fct_recode(mod_cluster_1st_lag, 
+GINI_df_data_mean = GINI_df_data_mean %>%
+  mutate(mod_cluster_1st=fct_recode(mod_cluster_1st,
                                      "Fec" = "FeC",
-                                     "fEc" = "fEC"
                                      )
   )
 GINI_plm_all <- pdata.frame(data.frame(GINI_df_data_mean), index=c("country", "year_id"))
@@ -169,9 +190,6 @@ rBeckTest = plm(dResid ~ lagdResid, demo_resid,
 summary(rBeckTest)
 
 #### Descriptive Statistics
-
-test = GINI_df_data_mean %>% 
-  select(Gini_imp, mod_cluster_1st, country, year)
 
 min(GINI_df_data_mean$year)
 max(GINI_df_data_mean$year)
@@ -196,34 +214,27 @@ GINI_df_data_mean %>%
   group_by(mod_cluster_2nd) %>% 
   summarise(number = n())
 #### Prais-Winsten: 1st Cluster Solution
-giniAR_mod_cluster_1st = panelAR(Gini_imp ~ 
+giniAR_mod_cluster_1st = panelAR(Gini ~ 
                         year_id +
                           gdp_capita_w +
                           mean_gdp_capita +
                           
+                          mean_economy +
                           log_pop_w +
                           mean_log_pop +
                           
                           
                           age65_w + 
                           mean_age65 +
-                          
-                          SOCX_w + 
-                          mean_SOCX +
-                          
+                                    
                           cso_w + 
                           mean_cso +
                           
-                          union_density +
-                          
                           gdp_export_w +
                           mean_gdp_export +
-                          
-                          left_right_w +
-                          mean_left_right + 
                           classification_context +
                           
-                        mod_cluster_1st_lag, 
+                          mod_cluster_1st, 
                       
                       panelVar = "country", timeVar = "year_id", 
                       data.frame(GINI_df_data_mean), 
@@ -233,13 +244,13 @@ giniAR_mod_cluster_1st = panelAR(Gini_imp ~
                       rhotype = "scorr",
                       autoCorr='ar1')
 summary(giniAR_mod_cluster_1st)
-
+plot(giniAR_mod_cluster_1st)
 round(summary(giniAR_mod_cluster_1st)$coefficients, 3)
 giniAR_mod_cluster_1st$panelStructure$rho
 results_to_excel(giniAR_mod_cluster_1st, "PW_1")
 
 
-giniAR_mod_cluster_2nd = panelAR(Gini_imp ~ 
+giniAR_mod_cluster_2nd = panelAR(Gini ~ 
                         year_id +
                           gdp_capita_w +
                           mean_gdp_capita +
@@ -251,19 +262,11 @@ giniAR_mod_cluster_2nd = panelAR(Gini_imp ~
                           age65_w + 
                           mean_age65 +
                           
-                          SOCX_w + 
-                          mean_SOCX +
-                          
                           cso_w + 
                           mean_cso +
                           
-                          union_density +
-                          
                           gdp_export_w +
                           mean_gdp_export +
-                          
-                          left_right_w +
-                          mean_left_right +
                           classification_context +
                           
                    mod_cluster_2nd, 
@@ -293,50 +296,60 @@ test %>%
   geom_point() +
   geom_smooth(method = "loess", size = 1.5,se=F)
 
+qqnorm(giniAR_mod_cluster_1st$residuals)
+qqline(giniAR_mod_cluster_1st$residuals)
+
 ### Random Effects Models
 
-re_mod_cluster_1st <- plm::plm(Gini_imp ~  Gini_imp_lag +
-                            as.numeric(year_id) +
 
-                            gdp_capita_w +
-                            mean_gdp_capita +
-                              
-                            log_pop_w +
-                            mean_log_pop +
-                            
-                            age65_w + 
-                            mean_age65 +
-
-                            SOCX_w + 
-                            mean_SOCX +
-                            
-                            cso_w + 
-                            mean_cso +
-                              
-                            union_density +
-                            
-                            gdp_export_w +
-                            mean_gdp_export +
-                            
-                            left_right_w +
-                            mean_left_right +
-                              
-                              classification_context +  
-                            mod_cluster_1st_lag,
-                          
+re_mod_cluster_1st <- plm::plm(Gini ~  Gini_lag +
+                            as.numeric(year_id)  +
+                            mod_cluster_1st*as.numeric(year_id), 
                           data=GINI_plm_all,
-                          model ="random",
+                          model ="within",
                           random.method = "walhus")
 
 round(coeftest(re_mod_cluster_1st, vcov=vcovBK),3)
 summary(re_mod_cluster_1st)
-ranef(re_mod_cluster_1st)
+fixef(re_mod_cluster_1st)
 results_to_excel(re_mod_cluster_1st, "RE_1")
 
 
+test = glmmTMB(Gini ~  Gini_lag +
+              year_id +  
 
-re_mod_cluster_2nd <- plm::plm(Gini_imp ~  Gini_imp_lag +
+
+                                        gdp_capita_w +
+                                        mean_gdp_capita +
+                                        
+                                        log_pop_w +
+                                        mean_log_pop +
+                                        
+                                        age65_w + 
+                                        mean_age65 +
+                                        
+                                        cso_w + 
+                                        mean_cso +
+                                        
+                                        gdp_export_w +
+                                        mean_gdp_export +
+                                        
+                                        
+                                        classification_context +  
+                                        mod_cluster_1st*year_id + (1+year_id|country),
+                                      
+                                      data=GINI_df_data_mean, REML=F)
+
+summary(test)
+confint(test)
+library(effects)
+plot(effect(term="year_id:mod_cluster_1st", test))
+
+
+
+re_mod_cluster_2nd <- plm::plm(Gini ~  Gini_lag +
                                  as.numeric(year_id) +
+                                 I(as.numeric(year_id)^2) +
                                  
                                  gdp_capita_w +
                                  mean_gdp_capita +
@@ -347,20 +360,12 @@ re_mod_cluster_2nd <- plm::plm(Gini_imp ~  Gini_imp_lag +
                                  
                                  age65_w + 
                                  mean_age65 +
-                                 
-                                 SOCX_w + 
-                                 mean_SOCX +
-                                 
+
                                  cso_w + 
                                  mean_cso +
                                  
-                                 union_density +
-                                 
                                  gdp_export_w +
                                  mean_gdp_export +
-                                 
-                                 left_right_w +
-                                 mean_left_right +
                                  classification_context +
                                  
                                  mod_cluster_2nd,

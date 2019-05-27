@@ -11,21 +11,19 @@ quantile(re_mod_cluster_1st$model$union_density, 0.05)
 # create scenario
 high_scenario = data.frame(variable = names(coef(re_mod_cluster_1st)), row.names = NULL) %>% 
   left_join(all_means_numeric) %>% 
-  mutate(value = if_else(variable=="union_density", 69.925, value),
-         value = if_else(variable=="mod_cluster_1stFec", 0, value),
+  mutate(value = if_else(variable=="mod_cluster_1stFec", 0, value),
          value = if_else(is.na(value)==T,0,value),
          value = if_else(variable=="(Intercept)", 1, value)) 
 
 # create scenario
 low_scenario = data.frame(variable = names(coef(re_mod_cluster_1st)), row.names = NULL) %>% 
   left_join(all_means_numeric) %>% 
-  mutate(value = if_else(variable=="union_density", 15.95833, value),
-         value = if_else(variable=="mod_cluster_1stFec", 0, value),
+  mutate(value = if_else(variable=="mod_cluster_1stFec", 1, value),
          value = if_else(is.na(value)==T,0,value),
          value = if_else(variable=="(Intercept)", 1, value))  
 
 
-gini_mean = mean(re_mod_cluster_1st$model$Gini_imp, na.rm=T)
+gini_mean = mean(re_mod_cluster_1st$model$Gini, na.rm=T)
 Timep = max(as.numeric(GINI_plm_all$year_id))
 library(mvtnorm)
 
@@ -40,7 +38,7 @@ get_timepoints = function(Scenario_type_data, name_scenario) {
   for(i in 2:Timep) {
     
     Scenario_type_data = Scenario_type_data %>% 
-      mutate(value = if_else(variable=="Gini_imp_lag", mean( my_results[i-1,]), value))
+      mutate(value = if_else(variable=="Gini_lag", mean( my_results[i-1,]), value))
     
     my_results[i,] =  coef_mat %*% Scenario_type_data$value
   }

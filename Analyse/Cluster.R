@@ -77,6 +77,7 @@ hc1_color %>% set("labels_cex", 0.001) %>% set("branches_lwd", 2) %>% plot(main 
 hc_classes = stats::cutree(hc1, 4)
 table(hc_classes)
 
+
 # Boxplot
 boxplot_dim(dmx_trade_dimension_unequal_w_outlier, hc_classes, "A: DIANA (4 Clusters)") + 
   geom_vline(xintercept = 1.5) + geom_vline(xintercept = 2.5) + geom_vline(xintercept = 3.5)
@@ -117,14 +118,14 @@ DIANA_med = dmx_trade_dimension_unequal_w_outlier %>%
 
 pam_cluster = pam(correlation_distance, medoids = DIANA_med$row_id, 4)$clustering
 
-
 adjustedRandIndex(hc_classes, pam_cluster)
+adjustedRandIndex(hclust_average_classes, pam_cluster)
 
 boxplot_dim(dmx_trade_dimension_unequal_w_outlier, pam_cluster, "A: PAM (4 Clusters)") + 
   geom_vline(xintercept = 1.5) + geom_vline(xintercept = 2.5) + geom_vline(xintercept = 3.5)
 
 sil_hc1 = silhouette(pam_cluster, correlation_distance)
-plot_silhoutte(sil_hc1, "DIANA")
+plot_silhoutte(sil_hc1, "PAM")
 
 # Robustness ----
 # all Jaccards: > 0.95
@@ -180,7 +181,9 @@ dmx_trade_cluster = bind_rows(dmx_trade_dimension_unequal_w_outlier %>%
 
 # prop.table(table(dmx_trade_cluster$classification_context,  dmx_trade_cluster$cluster_label_1st), 2)
 # Boxplot
-boxplot_dim(dmx_trade_cluster, dmx_trade_cluster$cluster_label_1st, "A: DIANA (5 Clusters)") + 
+
+
+boxplot_dim(dmx_trade_cluster, dmx_trade_cluster$cluster_label_1st, "A: PAM (5 Clusters)") + 
   geom_vline(xintercept = 1.5) + geom_vline(xintercept = 2.5) + geom_vline(xintercept = 3.5) +
   geom_vline(xintercept = 4.5) 
 boxplot_dim(dmx_trade_cluster, dmx_trade_cluster$cluster_label_2nd, "A: HC - Average Linkage (5 Clusters)") + 
@@ -188,11 +191,58 @@ boxplot_dim(dmx_trade_cluster, dmx_trade_cluster$cluster_label_2nd, "A: HC - Ave
   geom_vline(xintercept = 4.5) 
 
 
-# Plotting
+# Plotting: Random Countries
 plot_random_countries_dim(5)
 
 plot_random_countries_dim(c("Germany", "Sweden","United Kingdom", "New Zealand"))
 plot_random_countries_dim(c("United States of America"))
+
+# Plotting: Time Development Cluster
+
+plot_types_N = dmx_trade_cluster %>%
+  select(cluster_label_1st, year) %>%
+  group_by(year) %>%
+  summarise(n_total=n())
+
+complete_data_cluster = data.frame(cluster_label_1st = rep(unique(dmx_trade_cluster$cluster_label_1st), each=length(unique(dmx_trade_cluster$year))),
+                                   year = rep(unique(dmx_trade_cluster$year), length(unique(dmx_trade_cluster$cluster_label_1st))))
+
+plot_types_yearly = dmx_trade_cluster %>%
+  select(cluster_label_1st, year) %>%
+  group_by(year, cluster_label_1st) %>%
+  summarise(n=n()) %>%
+  ungroup() %>%
+  full_join(complete_data_cluster, by=c("year", "cluster_label_1st")) %>%
+  arrange(year, cluster_label_1st) %>%
+  mutate(
+    n = ifelse(is.na(n) == T, 0, n)
+  ) %>%
+  left_join(plot_types_N, by="year") %>%
+  mutate(percent = n/n_total)
+
+
+
+ggplot(plot_types_yearly, aes(x=year, y=n, fill=cluster_label_1st)) + 
+  geom_area(stat="identity", col="black") + 
+  theme_classic() +
+  scale_x_continuous(breaks=seq(1900, 2020, 20)) + 
+  theme(legend.position = "bottom", axis.text.x = element_text(angle=90, size=10), plot.title = element_text(hjust=0.5), plot.subtitle = element_text(hjust=0.5)) + 
+  xlab("") +
+  coord_cartesian(expand=0) + 
+  scale_fill_brewer(name="", type="qual", palette="Paired") + 
+  ggtitle("Temporal Distribution of Subtypes of Democracy", subtitle = "Count") + ylab("Count") 
+
+
+ggplot(plot_types_yearly, aes(x=year, y=percent, fill=cluster_label_1st)) + geom_area(stat="identity", col="black", size=0.8) + theme_classic() +
+  scale_x_continuous(breaks=seq(1900, 2000, 20), limits=c(1900, 2020)) + 
+  theme(legend.position = "bottom", axis.text.y = element_text(size=12), axis.text.x = element_text(angle=90, size=12), plot.title = element_text(hjust=0.5), plot.subtitle = element_text(hjust=0.5)) + xlab("") +
+  coord_cartesian(expand=0) + 
+  scale_fill_brewer(name="", type="qual", palette="Paired") + 
+  ggtitle("Temporal Distribution of Subtypes of Democracy", subtitle = "Percent") + 
+  scale_y_continuous(labels=percent, name="")
+
+
+
 
 # Cleaning
 rm(dmx_trade_dimension_unequal_w_outlier)
@@ -206,4 +256,5 @@ rm(hc_outlier)
 rm(dmx_trade_dimension_same)
 rm(dmx_trade_dimension_unequal)
 rm(DIANA_med)
-
+rm(complete_data_cluster)
+rm(plot_types_N)
