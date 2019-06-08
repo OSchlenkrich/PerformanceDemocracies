@@ -299,7 +299,7 @@ re_mod_cluster_1st <- plm::plm(Gini ~ Gini_lag +
                           model ="random",
                           random.method = "walhus")
 
-round(coeftest(re_mod_cluster_1st, vcov=vcovBK),3)
+round(coeftest(re_mod_cluster_1st, .vcov=vcovBK(re_mod_cluster_1st, cluster="time")),3)
 
 summary(re_mod_cluster_1st)
 ranef(re_mod_cluster_1st)
@@ -525,6 +525,6 @@ re_mod_cluster_1st_small <- plm::plm(Gini ~ Gini_lag +
                                model ="random",
                                random.method = "walhus")
 
-round(coeftest(re_mod_cluster_1st_small, vcov=vcovBK),3)
+round(coeftest(re_mod_cluster_1st_small, .vcov=vcovBK(re_mod_cluster_1st, cluster="time")),3)
 #*summary(re_mod_cluster_1st_small)
 plot(effect("mod_cluster_1st", re_mod_cluster_1st_small))
