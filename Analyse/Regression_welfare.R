@@ -1,0 +1,336 @@
+source("Setup/Packages.R")
+source("Setup/Plotting_Functions.R")
+source("Setup/LoadDatasets.R")
+source("Analyse/Cluster.R")
+source("Setup/Base_Functions.R")
+source("Setup/MergeToFinalDataset.R")
+
+# Welfare
+
+welfare_data = dmx_trade_cluster_ext %>% 
+  dplyr::select(country, 
+                region,
+                year,   
+                welfare, 
+                mod_cluster_1st,
+                classification_context, 
+                family_name_short, 
+                left_right, 
+                log_pop, 
+                union_density, 
+                inflation, 
+                age65, 
+                cso, 
+                gdp_export, 
+                mod_cluster_2nd, 
+                gdp_capita) %>% 
+  group_by(country) %>% 
+  arrange(country, year)
+
+
+
+#### Some Plots
+
+
+welfare_data %>%
+  group_by(mod_cluster_1st, year) %>%
+  summarise(variable = mean(welfare, na.rm=T)) %>%
+  na.omit() %>% 
+  ggplot(aes(x=year, y=variable, col=mod_cluster_1st)) +
+  geom_line(size=1.1)
+
+
+####
+
+lag_df = function(x1) {
+  x1_df = x1 - dplyr::lag(x1, 1)
+  return(x1_df)
+}
+
+
+welfare_data_all = welfare_data %>% 
+  filter(year >= 1980) %>% 
+  group_by(country) %>% 
+  mutate(welfare =  welfare,
+         welfare_lag = dplyr::lag(welfare, 1),
+         
+         gdp_capita_df_lag = dplyr::lag(lag_df(gdp_capita),1),
+         gdp_capita_lag = dplyr::lag(gdp_capita,1),
+         
+         log_pop_lag = dplyr::lag(lag_df(log_pop), 1),
+         
+         age65_lag = dplyr::lag(age65,1), 
+         gdp_export_lag = dplyr::lag(gdp_export,1), 
+         cso_lag = dplyr::lag(cso, 1),
+         
+         classification_lag = dplyr::lag(classification_context, 1),
+         gdp_capita_beck = dplyr::lag(gdp_capita, 1),
+         age65_beck = dplyr::lag(age65, 1),
+         log_pop_beck = dplyr::lag(log_pop, 1),
+         
+  ) %>%
+  mutate(log_pop_lag = scale(log_pop_lag),
+         gdp_capita_lag = scale(gdp_capita_lag)) %>% 
+  dplyr::select(country,
+                region,
+                year,
+                welfare, 
+                welfare_lag, 
+                gdp_capita_lag, 
+                age65_lag, 
+                gdp_export_lag, 
+                cso_lag,
+                log_pop_lag,
+                classification_lag,
+                mod_cluster_1st,
+                gdp_capita,
+                age65,
+                log_pop,
+                gdp_capita_beck,
+                age65_beck,
+                log_pop_beck,
+                gdp_capita_df_lag)  %>%
+  na.omit() %>% 
+  mutate(year_id = NA) 
+
+
+
+countriesManyRows = welfare_data_all %>%  
+  group_by(country) %>% 
+  summarise(nrows = n()) %>% 
+  filter(nrows > 10) %>% 
+  pull(country)
+
+welfare_data_all = welfare_data_all %>% 
+  filter(country %in% countriesManyRows)
+
+dim(welfare_data_all)
+
+ordered_year = unique(welfare_data_all$year)[order(unique(welfare_data_all$year))]
+for (i in 1:length(unique(welfare_data_all$year))) {
+  welfare_data_all$year_id[welfare_data_all$year == ordered_year[i]] = i
+}
+
+
+welfare_data_all$trend = welfare_data_all$year_id - median(welfare_data_all$year_id) 
+
+
+unique(welfare_data_all$country)
+
+welfare_plm_all <- pdata.frame(data.frame(welfare_data_all), index=c("country", "year"))
+
+
+#
+
+
+#### Prais-Winsten: 1st Cluster Solution
+welfareAR_mod_cluster_1st = panelAR(welfare ~ 
+                                   poly(trend,2) +
+                                   
+                                   gdp_capita_lag +
+                                   log_pop_lag +
+                                   age65_lag +
+                                   
+                                   cso_lag + 
+                                   gdp_export_lag +
+                                   classification_lag +
+                                   region +
+                                   mod_cluster_1st, 
+                                 panelVar = "country", timeVar = "year_id", 
+                                 data.frame(welfare_data_all), 
+                                 rho.na.rm=T,
+                                 panelCorrMethod ="pcse", 
+                                 bound.rho=T,
+                                 rhotype = "scorr",
+                                 autoCorr='psar1')
+
+summary(welfareAR_mod_cluster_1st)
+
+
+### Random Effects Models
+
+re_welfare_cluster_1st <- plm::plm(welfare ~ welfare_lag + 
+                                 poly(trend,2) + 
+                                 
+                                 gdp_capita_lag +
+                                 log_pop_lag +
+                                 age65_lag +
+                                 
+                                 cso_lag + 
+                                 
+                                 gdp_export_lag +
+                                 classification_lag +
+                                 region +
+                                 mod_cluster_1st, 
+                               data=welfare_plm_all,
+                               model ="random",
+                               random.method = "walhus")
+summary(re_welfare_cluster_1st)
+round(coeftest(re_welfare_cluster_1st, .vcov=vcovBK(re_welfare_cluster_1st, cluster="time")),3)
+
+library(car)
+data.frame(effect("mod_cluster_1st", re_welfare_cluster_1st)) %>% 
+  mutate(mod_cluster_1st = fct_reorder(mod_cluster_1st,fit)) %>% 
+  ggplot(aes(x=mod_cluster_1st, y=fit)) +
+  geom_point(size=2) +
+  geom_errorbar(aes(ymin=lower, ymax=upper)) +
+  theme_bw() +
+  ylab("Gini-Index") +
+  xlab("") +
+  ggtitle("Democracy Profiles: Means-tested vs. universalistic policy (RE-Model)") +
+  theme(plot.title = element_text(hjust=0.5), axis.text.x = element_text(angle=90))
+
+
+
+# Smaller Dataset OECD
+OECD_countries = c("Belgium","Denmark","Germany","France","Greece",
+                   "Ireland","Iceland","Italy","Canada","Luxembourg",
+                   "Netherlands","Norway","Austria","Portugal","Sweden",
+                   "Switzerland","Spain","United States of America","United Kingdom",
+                   "Japan","Finland","Australia","New Zealand",
+                   "Mexico", "Czech Republic", "South Korea", "Hungary", "Poland",
+                   "Slovakia", "Chile", "Slovenia", "Israel", "Latvia", "Lithuania", "Estonia")
+
+welfare_data_small = welfare_data %>% 
+  filter(year > 1980) %>% 
+  filter(country %in% OECD_countries) %>% 
+  group_by(country) %>% 
+  mutate(welfare =  welfare,
+         welfare_lag = dplyr::lag(welfare, 1),
+         gdp_capita_df_lag = dplyr::lag(lag_df(gdp_capita),1),
+         gdp_capita_lag = dplyr::lag(gdp_capita,1),
+         
+         log_pop_lag = dplyr::lag(lag_df(log_pop), 1),
+         age65_lag = dplyr::lag(age65,1), 
+         
+         gdp_export_lag = dplyr::lag(gdp_export,1), 
+         
+         cso_lag = dplyr::lag(cso, 1),
+         
+         classification_lag = dplyr::lag(classification_context, 1),
+         gdp_capita_beck = dplyr::lag(gdp_capita, 1),
+         age65_beck = dplyr::lag(age65, 1),
+         log_pop_beck = dplyr::lag(log_pop, 1),
+         
+         left_right_lag = dplyr::lag(left_right,1), 
+         family_name_short_lag = dplyr::lag(family_name_short,1), 
+         
+  ) %>%
+  mutate(log_pop_lag = scale(log_pop_lag),
+         age65_lag = scale(age65_lag),
+         gdp_capita_lag = scale(gdp_capita_lag)) %>% 
+  dplyr::select(country,
+                year,
+                welfare, 
+                welfare_lag, 
+                gdp_capita_lag, 
+                age65_lag, 
+                gdp_export_lag, 
+                cso_lag,
+                log_pop_lag,
+                classification_lag,
+                mod_cluster_1st,
+                gdp_capita,
+                age65,
+                log_pop,
+                gdp_capita_beck,
+                age65_beck,
+                log_pop_beck,
+                gdp_capita_df_lag,
+                left_right_lag,
+                family_name_short_lag
+  )  %>% 
+  na.omit()  
+
+
+## Exclude cases with only few gini observations
+
+countriesManyRows = welfare_data_small %>%  
+  group_by(country) %>% 
+  summarise(nrows = n()) %>% 
+  filter(nrows > 5) %>% 
+  pull(country)
+
+welfare_data_small = welfare_data_small %>% 
+  filter(country %in% countriesManyRows) %>% 
+  mutate(year_id = NA)
+
+dim(welfare_data_small)
+
+ordered_year = unique(welfare_data_small$year)[order(unique(welfare_data_small$year))]
+for (i in 1:length(unique(welfare_data_small$year))) {
+  welfare_data_small$year_id[welfare_data_small$year == ordered_year[i]] = i
+}
+
+welfare_data_small$trend = welfare_data_small$year_id - median(welfare_data_small$year_id) 
+
+min(welfare_data_small$year)
+max(welfare_data_small$year)
+
+welfare_plm_small <- pdata.frame(data.frame(welfare_data_small), index=c("country", "year"))
+
+
+
+welfare_plm_small %>% 
+  group_by(mod_cluster_1st) %>% 
+  summarise(number = n())
+
+welfare_plm_small %>% 
+  group_by(mod_cluster_1st, country) %>%
+  slice(1) %>%
+  group_by(mod_cluster_1st) %>% 
+  summarise(number = n())
+
+# not signficant
+welfareAR_mod_cluster_1st_small = panelAR(welfare ~ 
+                                         poly(trend,2) + 
+                                         
+                                         gdp_capita_lag +
+                                         log_pop_lag +
+                                         age65_lag +
+                                         
+                                         cso_lag + 
+                                         
+                                         gdp_export_lag +
+                                         classification_lag +
+                                         left_right_lag +
+                                         family_name_short_lag +
+                                         
+                                         mod_cluster_1st, 
+                                       panelVar = "country", timeVar = "year_id", 
+                                       data.frame(welfare_data_small), 
+                                       rho.na.rm=T,
+                                       panelCorrMethod ="pcse", 
+                                       bound.rho=T,
+                                       rhotype = "scorr",
+                                       autoCorr='psar1')
+
+summary(welfareAR_mod_cluster_1st_small)
+plot(giniAR_mod_cluster_1st_small)
+round(summary(giniAR_mod_cluster_1st_small)$coefficients, 3)
+giniAR_mod_cluster_1st_small$panelStructure$rho
+
+# the more robust model is actually significant
+re_welfare_cluster_1st_small <- plm::plm(welfare ~ welfare_lag + 
+                                       poly(trend,2) + 
+                                       
+                                       gdp_capita_lag +
+                                       log_pop_lag +
+                                       age65_lag +
+                                       
+                                       cso_lag + 
+                                       
+                                       gdp_export_lag +
+                                       classification_lag +
+                                       left_right_lag +
+                                       family_name_short_lag +
+                                       
+                                       mod_cluster_1st, 
+                                     
+                                     data=welfare_plm_small,
+                                     model ="random",
+                                     random.method = "walhus")
+
+round(coeftest(re_welfare_cluster_1st_small, .vcov=vcovBK(re_mod_cluster_1st, cluster="time")),3)
+#*summary(re_mod_cluster_1st_small)
+plot(effect("mod_cluster_1st", re_welfare_cluster_1st_small))

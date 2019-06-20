@@ -36,7 +36,7 @@ transformed parameters {
 model {
   
   mu_lvl1_scaled ~ std_normal();
-  Lcorr ~ lkj_corr_cholesky(1);
+  Lcorr ~ lkj_corr_cholesky(2);
   for (t in 1:T) {
     y[t] ~ multi_normal_cholesky(mu[t], diag_pre_multiply(sigma, Lcorr));
   }

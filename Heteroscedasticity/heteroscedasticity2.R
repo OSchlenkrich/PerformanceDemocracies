@@ -7,7 +7,7 @@ library(mvtnorm)
 
 
 G = 10
-N = 100
+N = 15
 gmean = rnorm(1, 0,0)
 int_r = array(NA, G)
 sigma_r = array(NA, G)
@@ -20,8 +20,8 @@ y_df = data.frame()
 sigma_r = runif(G,3,4)
 
 
-A <- matrix(runif(G^2,0,0.2), ncol=G) 
-diag(A) = runif(G, 1,1)
+A <- matrix(rnorm(G^2,0,0.01), ncol=G) 
+diag(A) = runif(G, 1,2)
 cov_matrix <- t(A) %*% A
 
 
@@ -30,7 +30,7 @@ int_r = gmean + rnorm(G,0,2)
 means = array(NA, dim = c(N,G))
 
 for (g in 1:G) {
-  means[,g] = -9 + 0.1 * time
+  means[,g] = int_r[g] + 0.1 * time
 }
 
 final_data = array(NA, dim = c(N,G))
@@ -43,6 +43,7 @@ time_index = rep(1:N, G)
 y_df = data.frame(final_data) %>% 
   gather("G","y") %>% 
   mutate(time = time_index,
+         time0 = time_index-1,
          time_index = time_index)
 
 # y_df %>%
@@ -52,7 +53,7 @@ y_df = data.frame(final_data) %>%
 
 library(plm)
 library(lmtest)
-plm_1 = plm(y ~ time, index = c("G", "time_index"), y_df, model="random")
+plm_1 = plm(y ~ time0, index = c("G", "time_index"), y_df, model="random")
 summary(plm_1)
 # coeftest(plm_1, vcov.=function(x) vcovHC(plm_1, cluster="group"))
 coeftest(plm_1, vcov.=function(x) vcovBK(plm_1, cluster="time"))
@@ -88,7 +89,7 @@ cov_matrix - E_hat
 
 library(lme4)
 library(lmerTest)
-m1 = lmer(y ~ time + x + (1 + time|G), y_df)
+m1 = lmer(y ~ time0 + (1 |G), y_df)
 
 summary(m1)
 m1@frame
@@ -146,7 +147,12 @@ M = stan(file = 'Heteroscedasticity/Heteroscedasticity2.stan',
 print(M, "beta")
 print(M, "Omega")
 print(M, "sigma")
+print(M, "mu_lvl1")
+print(M, "mu_lvl2")
+print(M, "sigma_lvl2")
+print(M, "Sigma")
 
+shinystan::launch_shinystan(M)
 
 m1_bay = brm(bf(y ~ time + (1|G)), 
              family = "gaussian", 
@@ -170,4 +176,5 @@ sigmas <- exp(posterior_samples(m3_bay, "b_sigma_"))
 
 ggplot(stack(sigmas), aes(values)) +
   geom_density(aes(fill = ind))
+
 
