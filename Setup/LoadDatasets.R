@@ -221,3 +221,8 @@ ParlGov_Family_yearly = fread("Datasets/ParlGov_Frame.csv", header=T) %>%
   arrange(-seats) %>% 
   slice(1)
   
+# Populism
+
+populism_dataset = fread("Datasets/Populism.csv", encoding = "UTF-8")
+
+

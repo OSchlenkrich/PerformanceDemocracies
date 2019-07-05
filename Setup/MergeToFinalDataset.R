@@ -100,15 +100,14 @@ dmx_trade_cluster_ext =  dmx_trade_cluster %>%
   left_join(Trade_union, by=c("country")) %>% 
   left_join(median_cluster_1st, by=c("country", "year")) %>%
   left_join(dmx_data_context %>%  dplyr::select(-regions), by=c("country", "year")) %>%
-  left_join(median_cluster_2nd, by=c("country", "year")) %>% 
-  mutate(mod_cluster_1st = relevel(mod_cluster_1st, ref="fEc"),
-         mod_cluster_2nd = relevel(mod_cluster_2nd, ref="fEc"),
+  left_join(median_cluster_2nd, by=c("country", "year")) %>%
+  left_join(populism_dataset, by=c("country", "year")) %>% 
+  mutate(mod_cluster_1st = relevel(mod_cluster_1st, ref="FeC"),
+         mod_cluster_2nd = relevel(mod_cluster_2nd, ref="FeC"),
          region = relevel(as.factor(region), ref="Western Europe and North America"),
          year_factor = as.factor(year),
          gdp_capita = log(gdp_capita)) %>% 
   arrange(country, year)
-
-
 
 
 

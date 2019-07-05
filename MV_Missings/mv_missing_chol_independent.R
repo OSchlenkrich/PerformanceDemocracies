@@ -66,7 +66,7 @@ ident_nas = (GINI_ident_nas + GINI_lag_ident_nas + cso_lag_wide_ident_nas + age6
 gini_length_obs = apply(ident_nas, 1, sum)
 
 # predictor
-
+# remove intercept
 lag_GINI_pred <- stats::model.matrix(~ 1 +Gini_lag +  cso_lag + age65_lag + mod_cluster_1st, 
                                      data = GINI_df_data_all %>% 
                                       ungroup() %>% 

@@ -301,6 +301,25 @@ re_mod_cluster_1st <- plm::plm(Gini ~ Gini_lag +
 
 round(coeftest(re_mod_cluster_1st, .vcov=vcovBK(re_mod_cluster_1st, cluster="time")),3)
 
+# m1 = lmer(Gini ~ Gini_lag + 
+#        poly(trend,1) + 
+#        
+#        gdp_capita_lag +
+#        log_pop_lag +
+#        age65_lag +
+#        
+#        cso_lag + 
+#        
+#        gdp_export_lag +
+#        classification_lag +
+#        region +
+#        mod_cluster_1st +
+#        (1 + poly(trend,1)|country),
+#      GINI_df_data_all
+#      )
+# summary(m1)
+
+
 summary(re_mod_cluster_1st)
 ranef(re_mod_cluster_1st)
 results_to_excel(re_mod_cluster_1st, "RE_1", PCSE=T)
@@ -528,3 +547,24 @@ re_mod_cluster_1st_small <- plm::plm(Gini ~ Gini_lag +
 round(coeftest(re_mod_cluster_1st_small, .vcov=vcovBK(re_mod_cluster_1st, cluster="time")),3)
 #*summary(re_mod_cluster_1st_small)
 plot(effect("mod_cluster_1st", re_mod_cluster_1st_small))
+
+
+# m2 = lmer(Gini ~ Gini_lag + 
+#             poly(trend,1) + 
+#             
+#             gdp_capita_lag +
+#             log_pop_lag +
+#             age65_lag +
+#             
+#             cso_lag + 
+#             
+#             gdp_export_lag +
+#             classification_lag +
+#             left_right_lag +
+#             family_name_short_lag +
+#             
+#             mod_cluster_1st +
+#        (1 + poly(trend,1)|country),
+#        GINI_df_data_small
+#      )
+# summary(m2)

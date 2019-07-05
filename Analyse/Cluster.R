@@ -87,11 +87,23 @@ sil_hc1 = silhouette(hc_classes, correlation_distance)
 plot_silhoutte(sil_hc1, "DIANA")
 
 
+# Six Clusters
+hc_classes_6 = stats::cutree(hc1, 6)
+table(hc_classes_6)
+
+
+# Boxplot
+boxplot_dim(dmx_trade_dimension_unequal_w_outlier, hc_classes_6, "A: DIANA (5 Clusters)") + 
+  geom_vline(xintercept = 1.5) + geom_vline(xintercept = 2.5) + geom_vline(xintercept = 3.5)
+
+# Silhouette
+sil_hc16 = silhouette(hc_classes_6, correlation_distance)
+plot_silhoutte(sil_hc16, "DIANA")
 
 ## Validation ----
 
 hclust_average = hclust(correlation_distance, "average")
-hclust_average_classes = stats::cutree(hclust_average, 4)
+hclust_average_classes = stats::cutree(hclust_average, 6)
 adjustedRandIndex(hc_classes, hclust_average_classes)
 
 boxplot_dim(dmx_trade_dimension_unequal_w_outlier, hclust_average_classes, "A: HClust - average linkage (4 Clusters)") + 
@@ -134,6 +146,15 @@ plot_silhoutte(sil_hc1, "PAM")
 
 
 # Create Dataset
+
+# fanny_clusters = fanny(correlation_distance, 4)
+# 
+# test = dmx_trade_dimension_unequal_w_outlier %>% 
+#   mutate(cluster_1st = pam_cluster,
+#          cluster_2nd = hclust_average_classes) %>% 
+#   bind_cols(data.frame(fanny_clusters$membership))
+
+
 dmx_trade_cluster = bind_rows(dmx_trade_dimension_unequal_w_outlier %>% 
                                 mutate(cluster_1st = pam_cluster,
                                        cluster_2nd = hclust_average_classes) %>% 
@@ -173,8 +194,7 @@ dmx_trade_cluster = bind_rows(dmx_trade_dimension_unequal_w_outlier %>%
                                      "fEC",
                                      "FEC"
          )
-  )
-
+  ) 
 
 
 
