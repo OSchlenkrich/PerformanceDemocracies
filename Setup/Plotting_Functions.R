@@ -85,15 +85,18 @@ plot_random_countries_dim_improved = function(complete_data_dimensions, No_count
   
   plotted_country = complete_data_dimensions %>%
     filter(country %in% selected_countries) %>%
+    mutate(country = fct_relevel(country, No_countries)) %>% 
     melt(id.vars=c("country", "year"), measure.vars="cluster_label_1st") %>%
     mutate(y=1)
+  
+  levels(plotted_country$country) <- gsub(" ", "\n", levels(plotted_country$country))
   
   p1 = ggplot(plotted_country, aes(x=year,  y=y, fill=value)) + geom_bar(width=1, stat="identity") + 
     facet_wrap(country~. , nrow=length(selected_countries), strip.position="left") + 
     theme_bw() +
     scale_y_continuous(breaks=c(0,1)) +
     scale_x_continuous(limits=c(1900, 2020), breaks=seq(1900, 2020, 20)) + 
-    theme(axis.text.x = element_text(angle=90)) + xlab("") + 
+    theme(axis.text.x = element_text(angle=90, size=10), strip.text = element_text(size=12, face="bold")) + xlab("") + 
     ylab("") +
     scale_fill_brewer(name="Cluster", type="qual", palette="Accent")
   return(p1)
