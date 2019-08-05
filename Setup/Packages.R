@@ -19,6 +19,7 @@ library(bit64)
 library(psych)
 library(effects)
 library(corrplot)
+library(rworldmap)
 
 # for correct display of tibbles
 options(crayon.enabled = FALSE)

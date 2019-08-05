@@ -1,4 +1,5 @@
 source("Setup/Packages.R")
+source("Setup/Base_Functions.R")
 source("Setup/Plotting_Functions.R")
 source("Setup/LoadDatasets.R")
 
@@ -166,13 +167,15 @@ boxplot_dim(dmx_trade_dimension_unequal_w_outlier, pam_cluster, "A: PAM (4 Clust
   geom_vline(xintercept = 1.5) + geom_vline(xintercept = 2.5) + geom_vline(xintercept = 3.5)
 
 sil_hc1 = silhouette(pam_cluster, correlation_distance)
-plot_silhoutte(sil_hc1, "PAM")
+plot_silhoutte(sil_hc1, "PAM", c("fEC", "fEc", "FeC", "Fec"))
+
+
 
 # Robustness ----
 # all Jaccards: > 0.95
-robust_cluster = clusterboot(correlation_distance, B=100, bootmethod=c("boot", "subset"),
-                             clustermethod=interface_diana, k=4, seed=1234)
-print(robust_cluster)
+# robust_cluster = clusterboot(correlation_distance, B=100, bootmethod=c("boot", "subset"),
+#                              clustermethod=interface_diana, k=4, seed=1234)
+# print(robust_cluster)
 
 
 # Create Dataset
@@ -225,6 +228,7 @@ dmx_trade_cluster = bind_rows(dmx_trade_dimension_unequal_w_outlier %>%
                                      "FEC"
          )
   ) 
+
 
 
 
@@ -297,12 +301,14 @@ dmx_trade_cluster %>%
   facet_wrap(classification_context ~ .)
 
 
+### Visualization of Democracy Profiles
 
 # Plotting: Random Countries
-plot_random_countries_dim(5)
+# plot_random_countries_dim_improved(dmx_trade_cluster, 5)
+# plot_random_countries_dim_improved(dmx_trade_cluster, c("Germany", "Sweden","United Kingdom", "New Zealand"))
+# plot_random_countries_dim_improved(dmx_trade_cluster, c("United States of America", "Switzerland", "Venezuela"))
 
-plot_random_countries_dim(c("Germany", "Sweden","United Kingdom", "New Zealand"))
-plot_random_countries_dim(c("United States of America", "Switzerland", "Venezuela"))
+plot_random_countries_dim_improved(dmx_trade_cluster, c("United Kingdom", "Netherlands", "United States of America", "Germany", "Denmark"))
 
 # Plotting: Time Development Cluster
 
@@ -337,7 +343,7 @@ ggplot(plot_types_yearly, aes(x=year, y=n, fill=cluster_label_1st)) +
   xlab("") +
   coord_cartesian(expand=0) + 
   scale_fill_brewer(name="", type="qual", palette="Paired") + 
-  ggtitle("Temporal Distribution of Subtypes of Democracy", subtitle = "Count") + ylab("Count") 
+  ggtitle("Temporal Distribution of Democracy Profiles", subtitle = "Count") + ylab("Count") 
 
 
 ggplot(plot_types_yearly, aes(x=year, y=percent, fill=cluster_label_1st)) + geom_area(stat="identity", col="black", size=0.8) + theme_classic() +
@@ -345,11 +351,16 @@ ggplot(plot_types_yearly, aes(x=year, y=percent, fill=cluster_label_1st)) + geom
   theme(legend.position = "bottom", axis.text.y = element_text(size=12), axis.text.x = element_text(angle=90, size=12), plot.title = element_text(hjust=0.5), plot.subtitle = element_text(hjust=0.5)) + xlab("") +
   coord_cartesian(expand=0) + 
   scale_fill_brewer(name="", type="qual", palette="Paired") + 
-  ggtitle("Temporal Distribution of Subtypes of Democracy", subtitle = "Percent") + 
+  ggtitle("TTemporal Distribution of Democracy Profiles", subtitle = "Percent") + 
   scale_y_continuous(labels=percent, name="")
 
 
+# Plotting World Map
 
+create_world_map(dmx_trade_cluster, "cluster_label_1st", "1945-2017", 
+                 "Spatial Distribution of Democracy Profiles \n", mode=T)
+create_world_map(dmx_trade_cluster, "cluster_label_1st", "2017", 
+                 "Spatial Distribution of Democracy Profiles \n", mode=F)
 
 # Cleaning
 rm(dmx_trade_dimension_unequal_w_outlier)
