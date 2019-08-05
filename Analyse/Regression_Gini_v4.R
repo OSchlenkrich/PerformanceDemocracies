@@ -1,9 +1,9 @@
 source("Setup/Packages.R")
 source("Setup/Plotting_Functions.R")
 source("Setup/LoadDatasets.R")
-source("Analyse/Cluster.R")
+source("Analyse/Cluster_v2.R")
 source("Setup/Base_Functions.R")
-source("Setup/MergeToFinalDataset.R")
+source("Setup/MergeToFinalDataset_v2.R")
 
 # GINI
 GINI_data = dmx_trade_cluster_ext %>% 
@@ -21,7 +21,6 @@ GINI_data = dmx_trade_cluster_ext %>%
          age65, 
          cso, 
          gdp_export, 
-         mod_cluster_2nd, 
          gdp_capita) %>% 
   group_by(country) %>% 
   arrange(country, year)
@@ -131,7 +130,7 @@ unique(GINI_df_data_all$country)
 
 GINI_plm_all <- pdata.frame(data.frame(GINI_df_data_all), index=c("country", "year"))
 
-
+table(GINI_df_data_all$mod_cluster_1st, GINI_df_data_all$country)
 
 #### Beck's "Test" for Unit Root
 BeckTest = plm(gdp_capita ~ gdp_capita_beck, GINI_plm_all,

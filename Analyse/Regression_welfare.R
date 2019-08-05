@@ -22,7 +22,6 @@ welfare_data = dmx_trade_cluster_ext %>%
                 age65, 
                 cso, 
                 gdp_export, 
-                mod_cluster_2nd, 
                 gdp_capita) %>% 
   group_by(country) %>% 
   arrange(country, year)

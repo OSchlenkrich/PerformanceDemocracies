@@ -21,7 +21,8 @@ dmx_data_context = dmx_data %>%
 # VDEM ----
 
 V_dem = fread("C:/RTest/V-Dem-CY+Others-v8.csv") %>% 
-  dplyr::select(country = country_name, year, cso = v2csstruc_1, 
+  dplyr::select(country = country_name, year, cso = v2csstruc_1,
+                COWcode,
          educ_equal = v2peedueq, 
          wgi_rq = e_wbgi_rqe,
          gini_vdem = e_peginiwi,

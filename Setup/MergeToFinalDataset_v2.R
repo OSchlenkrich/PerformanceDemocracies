@@ -32,46 +32,25 @@ median_cluster_1st$mod_cluster_1st = as.factor(median_cluster_1st$mod_cluster_1s
 
 
 median_cluster_1st = median_cluster_1st %>%
-  mutate(mod_cluster_1st = fct_recode(mod_cluster_1st,
-                                         "fEC" = "1", # egalitarian + control
-                                         "fEc" = "2", # egalitarian
-                                         "FeC" = "3", # liberal + control
-                                         "Fec" = "4", # liberal
-                                         "FEC" = "5", # balanced
-            ),
-            mod_cluster_1st = fct_relevel(mod_cluster_1st,
-                                          "fEC",
-                                          "Fec"
-            )
+  mutate(mod_cluster_1st = fct_recode(mod_cluster_1st, 
+                                        "fEc" = "1", # egalitarian + control
+                                        "Fec" = "2", # egalitarian 
+                                        "fEC" = "3", # liberal + control
+                                        "FeC" = "4", # liberal
+                                        "FEc" = "5", # balanced
+                                        "FEC" = "6", # balanced
+         ),
+         mod_cluster_1st = fct_relevel(mod_cluster_1st,
+                                         "Fec",
+                                         "fEc",
+                                         "FeC",
+                                         "FEc",
+                                         "fEC",
+                                         "FEC")
          ) %>%
   dplyr::select(country, year, mod_cluster_1st, cluster_1st)
 
 #
-
-median_cluster_2nd = dmx_trade_cluster %>%
-  full_join(year_frame, by=c("country", "year")) %>%
-  arrange(country, year) %>%
-  filter(year >= 1940) %>%
-  group_by(country) %>%
-  mutate(mod_cluster_2nd = rollapply(cluster_2nd,10, FUN = function(x) getmode(x),
-                                     fill=NA, align="right", partial=T))
-
-median_cluster_2nd$mod_cluster_2nd = as.factor(median_cluster_2nd$mod_cluster_2nd)
-
-median_cluster_2nd = median_cluster_2nd %>%
-  mutate(mod_cluster_2nd = fct_recode(mod_cluster_2nd,
-                                      "fEC" = "1", # egalitarian + control
-                                      "fEc" = "2", # egalitarian
-                                      "FeC" = "3", # liberal + control
-                                      "Fec" = "4", # liberal
-                                      "FEC" = "5", # balanced
-  ),
-  mod_cluster_2nd = fct_relevel(mod_cluster_2nd,
-                                "fEC",
-                                "Fec"
-  )) %>%
-  dplyr::select(country, year, mod_cluster_2nd, cluster_1st)
-
 
 
 dmx_data_complete = dmx_data %>% 
@@ -81,7 +60,6 @@ dmx_data_complete = dmx_data %>%
                                              NULL = "Autocracy",
                                              NULL = "Hybrid Regime",
   ))
-
 
 dmx_trade_cluster_ext =  dmx_trade_cluster %>% 
   dplyr::select(-classification_context) %>% 
@@ -100,9 +78,8 @@ dmx_trade_cluster_ext =  dmx_trade_cluster %>%
   left_join(Trade_union, by=c("country")) %>% 
   left_join(median_cluster_1st, by=c("country", "year")) %>%
   left_join(dmx_data_context %>%  dplyr::select(-regions), by=c("country", "year")) %>%
-  left_join(median_cluster_2nd, by=c("country", "year")) %>%
   left_join(populism_dataset, by=c("country", "year")) %>% 
-  mutate(mod_cluster_1st = relevel(mod_cluster_1st, ref="FeC"),
+  mutate(mod_cluster_1st = relevel(mod_cluster_1st, ref="fEc"),
          region = relevel(as.factor(region), ref="Western Europe and North America"),
          year_factor = as.factor(year),
          gdp_capita = log(gdp_capita)) %>% 

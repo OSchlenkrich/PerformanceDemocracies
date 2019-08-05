@@ -6,6 +6,32 @@ source("Setup/LoadDatasets.R")
 # Without NAs: 2906
 
 # Cluster Analysis
+
+# Included Countries:
+
+dmx_data_trade %>% 
+  select(country) %>% 
+  n_distinct()
+
+dmx_data_trade %>% 
+  select(country, year) %>% 
+  group_by(country) %>% 
+  summarise(No = n()) %>% 
+  summarise(mean = mean(No),
+            min = min(No),
+            max = max(No))
+
+
+year_country = dmx_data_trade %>% 
+  select(country, year) %>% 
+  group_by(country) %>% 
+  summarise(No = n()) %>% 
+  pull(No) 
+string_countries = paste(unique(enc2utf8(dmx_data_trade$country)), " (", year_country, ")", sep="")
+write.csv(paste(string_countries, collapse = ", "), "Results/countries_cluster.csv", row.names = F, fileEncoding = "UTF-8")
+
+
+
 # Extract Same Level
 dmx_trade_dimension_prep = dmx_data_trade %>%
   rowwise() %>%
@@ -20,6 +46,8 @@ dmx_trade_dimension_prep = dmx_data_trade %>%
 dmx_trade_dimension_prep$class = apply(dmx_trade_dimension_prep %>% 
                                          dplyr::select(freedom, equality, control), 1, 
                                        FUN=function(x) length(which(x >= 0 & x < 0.05 | x <= 0 & x > -0.05)))
+
+table(dmx_trade_dimension_prep$class)
 
 dmx_trade_dimension_prep = dmx_trade_dimension_prep %>%
   mutate(class = if_else(class==3, 1, 0))
@@ -36,6 +64,8 @@ dmx_trade_dimension_unequal = dmx_data_trade %>%
 
 dim(dmx_trade_dimension_same)
 dim(dmx_trade_dimension_unequal)
+
+
 
 ###
 
@@ -103,7 +133,7 @@ plot_silhoutte(sil_hc16, "DIANA")
 ## Validation ----
 
 hclust_average = hclust(correlation_distance, "average")
-hclust_average_classes = stats::cutree(hclust_average, 6)
+hclust_average_classes = stats::cutree(hclust_average, 4)
 adjustedRandIndex(hc_classes, hclust_average_classes)
 
 boxplot_dim(dmx_trade_dimension_unequal_w_outlier, hclust_average_classes, "A: HClust - average linkage (4 Clusters)") + 
@@ -140,9 +170,9 @@ plot_silhoutte(sil_hc1, "PAM")
 
 # Robustness ----
 # all Jaccards: > 0.95
-# robust_cluster = clusterboot(correlation_distance, B=100, bootmethod=c("boot"), 
-#                              clustermethod=interface_diana, k=4, seed=1234)
-# print(robust_cluster)
+robust_cluster = clusterboot(correlation_distance, B=100, bootmethod=c("boot", "subset"),
+                             clustermethod=interface_diana, k=4, seed=1234)
+print(robust_cluster)
 
 
 # Create Dataset
@@ -202,19 +232,77 @@ dmx_trade_cluster = bind_rows(dmx_trade_dimension_unequal_w_outlier %>%
 # Boxplot
 
 
-boxplot_dim(dmx_trade_cluster, dmx_trade_cluster$cluster_label_1st, "A: PAM (5 Clusters)") + 
+boxplot_dim(dmx_trade_cluster, dmx_trade_cluster$cluster_label_1st, "5 Clusters") + 
   geom_vline(xintercept = 1.5) + geom_vline(xintercept = 2.5) + geom_vline(xintercept = 3.5) +
   geom_vline(xintercept = 4.5) 
-boxplot_dim(dmx_trade_cluster, dmx_trade_cluster$cluster_label_2nd, "A: HC - Average Linkage (5 Clusters)") + 
+boxplot_dim(dmx_trade_cluster %>%  filter(cluster_label_2nd != "FEC"), dmx_trade_cluster %>%  filter(cluster_label_2nd != "FEC") %>% pull(cluster_label_2nd), "HC - Average Linkage (4 Clusters)") + 
+  geom_vline(xintercept = 1.5) + geom_vline(xintercept = 2.5) + geom_vline(xintercept = 3.5)
+
+
+# Basic information about clusters:
+countries_cluster = dmx_trade_cluster %>% 
+  select(cluster_label_1st, country) %>% 
+  group_by(cluster_label_1st) %>% 
+  distinct(country) %>% 
+  summarise(No = n())
+
+
+cluster_year = dmx_trade_cluster %>% 
+  select(cluster_label_1st, country, year) %>% 
+  group_by(cluster_label_1st, country) %>% 
+  summarise(No = n()) %>% 
+  summarise(mean = round(mean(No), 0),
+            min = min(No),
+            max = max(No))
+
+string_clusters = paste(countries_cluster$cluster_label_1st,
+                         ": ",
+                         countries_cluster$No, 
+                         " countries",
+                         " (average years: ", cluster_year$mean,
+                         ")", sep="")
+
+
+write.csv(paste(string_clusters, collapse = "; "), "Results/cluster_info.csv", row.names = F, fileEncoding = "UTF-8")
+
+string_clusters_year = dmx_trade_cluster %>% 
+  select(cluster_label_1st, country) %>% 
+  group_by(cluster_label_1st) %>% 
+  distinct(country) %>% 
+  arrange(cluster_label_1st) %>% 
+  left_join(dmx_trade_cluster %>% 
+              select(cluster_label_1st, country) %>% 
+              group_by(cluster_label_1st, country) %>%
+              summarise(No = n()), 
+            by=c("cluster_label_1st", "country")) %>% 
+  mutate(string = paste(country, " (", No, ")", sep=""))
+write.csv(paste(string_clusters_year$string, collapse = ", "), "Results/cluster_country_year.csv", row.names = F, fileEncoding = "UTF-8")
+
+# Split by Classification
+
+dmx_trade_cluster %>%
+  mutate(cluster = as.factor(cluster_label_1st)) %>%
+  dplyr::select(freedom, equality, control, cluster, classification_context) %>%
+  melt(id.vars=c("classification_context", "cluster")) %>% 
+  ggplot(aes(x=cluster, y=value, fill=variable)) + geom_boxplot()  + theme_bw() +
+  ylim(0.25,1) + 
+  stat_summary(fun.data = stat_box_count, geom = "text", hjust = 0.5, vjust = 0.9) +
+  ylab("") + 
+  xlab("Cluster")  + 
+  scale_fill_discrete(name = "Dimensions", labels=c("Freedom", "Equality", "Control")) +
+  ggtitle(paste("Boxplot ", "PAM (5 Clusters)", sep="")) + 
+  theme(plot.title = element_text(hjust=0.5))  + 
   geom_vline(xintercept = 1.5) + geom_vline(xintercept = 2.5) + geom_vline(xintercept = 3.5) +
-  geom_vline(xintercept = 4.5) 
+  geom_vline(xintercept = 4.5) +
+  facet_wrap(classification_context ~ .)
+
 
 
 # Plotting: Random Countries
 plot_random_countries_dim(5)
 
 plot_random_countries_dim(c("Germany", "Sweden","United Kingdom", "New Zealand"))
-plot_random_countries_dim(c("United States of America"))
+plot_random_countries_dim(c("United States of America", "Switzerland", "Venezuela"))
 
 # Plotting: Time Development Cluster
 
@@ -277,3 +365,5 @@ rm(dmx_trade_dimension_unequal)
 rm(DIANA_med)
 rm(complete_data_cluster)
 rm(plot_types_N)
+rm(string_countries)
+rm(year_country)

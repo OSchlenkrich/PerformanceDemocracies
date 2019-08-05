@@ -63,7 +63,7 @@ plot_random_countries_dim = function(No_countries) {
   plotted_country = dmx_trade_cluster %>%
     filter(country %in% selected_countries)
   
-  p1 = ggplot(plotted_country, aes(x=year, y=cluster_label)) + geom_point(size=4) + facet_wrap(country~.) + theme_bw() +
+  p1 = ggplot(plotted_country, aes(x=year, y=cluster_label_1st)) + geom_point(size=4) + facet_wrap(country~.) + theme_bw() +
     scale_x_continuous(limits=c(1900, 2020), breaks=seq(1900, 2020, 20)) + theme(axis.text.x = element_text(angle=90)) + xlab("") + ylab("")
   return(p1)
 }
