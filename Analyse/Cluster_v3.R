@@ -158,7 +158,8 @@ DIANA_med = dmx_trade_dimension_unequal_w_outlier %>%
   slice(1)
 
 
-pam_cluster = pam(correlation_distance, medoids = DIANA_med$row_id, 4)$clustering
+pam_cluster = fanny(correlation_distance, 4, diss=T, iniMem.p = unmap(hc_classes))$clustering
+fanny_every = fanny(correlation_distance, 4, diss=T, iniMem.p = unmap(hc_classes))
 
 adjustedRandIndex(hc_classes, pam_cluster)
 adjustedRandIndex(hclust_average_classes, pam_cluster)
@@ -191,6 +192,7 @@ plot_silhoutte(sil_hc1, "PAM", c("fEC", "fEc", "FeC", "Fec"))
 dmx_trade_cluster = bind_rows(dmx_trade_dimension_unequal_w_outlier %>% 
                                 mutate(cluster_1st = pam_cluster,
                                        cluster_2nd = hclust_average_classes) %>% 
+                                bind_cols(data.frame(fanny_every$membership)) %>% 
                                 dplyr::select(-outlier), 
                               dmx_trade_dimension_same %>% 
                                 mutate(cluster_1st = max(pam_cluster) + 1,
