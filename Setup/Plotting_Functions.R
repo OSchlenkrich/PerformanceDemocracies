@@ -26,13 +26,24 @@ boxplot_dim = function(dim_data, clustering, algorithm) {
     theme(plot.title = element_text(hjust=0.5), axis.text.x = element_text(size=12, face="bold"))
 }
 
+silhoutte_obj = sil_hc1
+method = "FANNY"
+labels_plot = c("fEC", "fEc", "FeC", "Fec")
 
 plot_silhoutte = function(silhoutte_obj, method, labels_plot = NULL) {
   plot_sil = data.frame(cluster = as.factor(silhoutte_obj[,1]), sil_width = silhoutte_obj[,3]) %>%
     arrange(cluster, sil_width) %>%
-    mutate(rowNr = row(.)[,1])
-  
-  plot_sil_labels = plot_sil %>%
+    mutate(rowNr = row(.)[,1])  %>% 
+    ungroup() %>% 
+    mutate(cluster = fct_recode(cluster, 
+                                "fEC" = "1",
+                                "fEc" = "2",
+                                "FeC" = "3",
+                                "Fec" = "4"),
+           cluster = fct_relevel(cluster, "Fec", "fEc", "FeC", "fEC")
+    )
+
+    plot_sil_labels = plot_sil %>%
     group_by(cluster) %>%
     summarise_all(funs(median, mean)) %>%
     group_by(cluster) %>%
@@ -43,7 +54,7 @@ plot_silhoutte = function(silhoutte_obj, method, labels_plot = NULL) {
   }
   
   ggplot(plot_sil, aes(x=rowNr, y=sil_width, fill=cluster)) + geom_bar(stat="identity", position="dodge", width=1) +
-    scale_fill_discrete(name="Cluster:", labels = labels_plot) + 
+    scale_fill_brewer(name="Cluster:", type="qual", palette="Paired") + 
     scale_y_continuous(limits = c(-1,1), breaks=seq(-1,1,0.25)) +
     geom_hline(aes(yintercept=mean(sil_width)), color="red", linetype=8, size= 1) +
     geom_hline(yintercept=0, color="black", size= 1) + 

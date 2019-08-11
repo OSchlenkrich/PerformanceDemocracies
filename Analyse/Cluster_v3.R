@@ -164,11 +164,11 @@ fanny_every = fanny(correlation_distance, 4, diss=T, iniMem.p = unmap(hc_classes
 adjustedRandIndex(hc_classes, pam_cluster)
 adjustedRandIndex(hclust_average_classes, pam_cluster)
 
-boxplot_dim(dmx_trade_dimension_unequal_w_outlier, pam_cluster, "A: PAM (4 Clusters)") + 
+boxplot_dim(dmx_trade_dimension_unequal_w_outlier, pam_cluster, "A: FANNY (4 Clusters)") + 
   geom_vline(xintercept = 1.5) + geom_vline(xintercept = 2.5) + geom_vline(xintercept = 3.5)
 
 sil_hc1 = silhouette(pam_cluster, correlation_distance)
-plot_silhoutte(sil_hc1, "PAM", c("fEC", "fEc", "FeC", "Fec"))
+plot_silhoutte(sil_hc1, "FANNY", c("fEC", "fEc", "FeC", "Fec"))
 
 
 
