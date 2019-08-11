@@ -26,9 +26,6 @@ boxplot_dim = function(dim_data, clustering, algorithm) {
     theme(plot.title = element_text(hjust=0.5), axis.text.x = element_text(size=12, face="bold"))
 }
 
-silhoutte_obj = sil_hc1
-method = "FANNY"
-labels_plot = c("fEC", "fEc", "FeC", "Fec")
 
 plot_silhoutte = function(silhoutte_obj, method, labels_plot = NULL) {
   plot_sil = data.frame(cluster = as.factor(silhoutte_obj[,1]), sil_width = silhoutte_obj[,3]) %>%
