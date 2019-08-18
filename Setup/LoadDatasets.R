@@ -19,9 +19,8 @@ dmx_data_context = dmx_data %>%
   dplyr::select_at(vars(country, year, regions, matches("total_index_context"))) 
 
 # VDEM ----
-
 V_dem = fread("C:/RTest/V-Dem-CY+Others-v8.csv") %>% 
-  dplyr::select(country = country_name, year, cso = v2csstruc_1,
+  dplyr::select(country = country_name, country_text_id, year, cso = v2csstruc_1,
                 COWcode,
          educ_equal = v2peedueq, 
          wgi_rq = e_wbgi_rqe,

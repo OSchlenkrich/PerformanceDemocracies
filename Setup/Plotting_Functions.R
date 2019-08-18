@@ -164,3 +164,31 @@ create_world_map= function(dataset, selected_var, selected_year, label, mode=F) 
   # # label the countries
   # text(x=country_coord$X1,y=country_coord$X2,labels=row.names(country_coord), cex = 0.6)
 }
+
+# Plots all NAs from a dataset
+NA_plot = function(data, name_data, var_selection = NULL) {
+  data = data %>% 
+    select_if(is.numeric) %>% 
+    select(-year)
+  
+  if (is.null(var_selection) == F ){
+    data = data %>% 
+      select_at(vars(matches(var_selection)))
+  }
+  
+  na_col = sapply(data, function(x) sum(is.na(x)))
+  na_col_plot = na_col %>%
+    melt() %>%
+    mutate("variable" = rownames(.),
+           variable= fct_reorder(variable, value, .desc = T)) 
+  
+  NA_plot = ggplot(na_col_plot, aes(x=variable, y=value)) + 
+    geom_bar(stat="identity") + 
+    theme_bw() + 
+    ggtitle(paste(name_data, "- Missings for each Variable")) +
+    theme(axis.text.x = element_text(angle=90), plot.title = element_text(hjust = 0.5))
+  
+  return(NA_plot)
+}
+
+

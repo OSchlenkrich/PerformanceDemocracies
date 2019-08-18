@@ -1,5 +1,11 @@
 # Base Functions
 
+# Percentile Function
+ntile_fun <- function(x){
+  ntile(x, n=10)
+}
+
+
 # Function for Mode
 getmode <- function(v) {
   uniqv <- na.omit(unique(v))

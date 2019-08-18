@@ -229,7 +229,9 @@ dmx_trade_cluster = bind_rows(dmx_trade_dimension_unequal_w_outlier %>%
                                      "fEC",
                                      "FEC"
          )
-  ) 
+  ) %>% 
+  left_join(V_dem %>% select(country, year, country_text_id), by=c("country", "year")) %>%
+  select(country, country_text_id, everything())
 
 
 
