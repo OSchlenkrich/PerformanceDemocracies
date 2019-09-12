@@ -1,9 +1,88 @@
 # Base Functions
 
-# Percentile Function
-ntile_fun <- function(x){
-  ntile(x, n=10)
+# SGI
+IQR_min_fun = function(x) {
+  iqrange = IQR(x, na.rm=T)
+  minimum = quantile(x, 0.25, na.rm=T) - 1.5*iqrange
+  
+  minimum_0 = ifelse(minimum < 0, 0, minimum)
+  return(minimum_0)
 }
+
+IQR_max_fun = function(x) {
+  iqrange = IQR(x, na.rm=T)
+  maximum = quantile(x, 0.75, na.rm=T) + 1.5*iqrange
+  return(maximum)
+}
+
+SGI_fun = function(x) {
+  minimum = IQR_min_fun(x)
+  maximum = IQR_max_fun(x)
+  scale = maximum - minimum
+  
+  y = ifelse(x > maximum, 10,
+             ifelse(x < minimum, 1, 1 + ((x - minimum)/scale)*9))
+  
+  return(y)
+}
+
+log10_fun = function(x) {
+  log(x)
+}
+# reverse
+
+reverse_sgi_fun = function(x) {
+  x = 11-x
+}
+
+
+# EPI
+
+EPI_fun = function(x) {
+  best = quantile(x, 0.95, na.rm=T)
+  minimum = min(x, na.rm=T)
+  x = if_else(x >= best, 100, 
+              if_else(x <= minimum, 0, ((x - minimum)/(best-minimum)) * 100))
+  return(x)
+}
+
+
+
+# Trimming
+trim = function(x,prop=.05,minimum=F) {
+  max_trimmed_value = which(x < quantile(x,prob=(1-prop), na.rm=T))
+  max_end = max(x[max_trimmed_value], na.rm=T)
+
+  
+  totrim_max = which(x >= quantile(x,prob=(1-prop), na.rm=T))
+
+  if (minimum == T) {
+    min_trimmed_value = which(x > quantile(x,prob=prop, na.rm=T))
+    min_end = min(x[min_trimmed_value], na.rm=T)
+
+    
+    totrim_min = which(x <= quantile(x,prob=prop, na.rm=T))
+    x[totrim_min] = min_end
+  } 
+  x[totrim_max] = max_end
+  
+  return(x)
+}
+
+# interpolation
+
+na_interpol = function(x) {
+  if (length(na.omit(x)) >= 2) {
+    y = na_interpolation(x,  option = "linear", maxgap = 5)
+    return(y)
+  } else {
+    return(x) 
+  }
+}
+
+# Percentage Missings
+pMiss <- function(x){sum(is.na(x))/length(x)*100}
+pMiss_Abs <- function(x){sum(is.na(x))}
 
 
 # Function for Mode

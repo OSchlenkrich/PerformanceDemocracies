@@ -24,7 +24,7 @@ Economy_IQR_NA %>%
   ggplot(aes(x=year, y=value, fill=variable)) +
   geom_bar(stat="identity", width=1) +
   facet_wrap(variable~.) +
-  scale_y_continuous(breaks=seq(0,100, 10))  +
+  scale_y_continuous(breaks=seq(0,100, 10), limit=c(0,100))  +
   scale_x_continuous(breaks=seq(1950,2020, 10)) +
   theme_bw()  +
   theme(axis.text.x = element_text(angle=90), legend.position = "bottom") +
@@ -38,7 +38,7 @@ Economy_IQR_NA %>%
   ggplot(aes(x=year, y=value, fill=variable)) +
   geom_bar(stat="identity", width=1) +
   facet_wrap(variable~.) +
-  scale_y_continuous(breaks=seq(0,100, 10))  +
+  scale_y_continuous(breaks=seq(0,100, 10), limit=c(0,100))  +
   scale_x_continuous(breaks=seq(1950,2020, 10)) +
   theme_bw() +
   theme(axis.text.x = element_text(angle=90), legend.position = "bottom") +
