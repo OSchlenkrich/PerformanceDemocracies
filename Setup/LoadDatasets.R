@@ -43,6 +43,13 @@ V_dem = fread("C:/RTest/V-Dem-CY+Others-v8.csv", encoding = "UTF-8") %>%
 # OECD ----
 
 
+oecd_gdp_capita_data = fread("unzip -p Datasets/oecd_gdp_capita_constant.zip") %>% 
+  filter(Subject=="GDP per head of population",
+         Measure=="USD, constant prices, 2010 PPPs")
+
+names(oecd_gdp_capita_data)
+table(oecd_gdp_capita_data$Subject )
+
 oecd_social_data = fread("unzip -p Datasets/OECD_Social_Protection.zip") %>% 
   filter(Measure == "In percentage of Gross Domestic Product",
          Source == "Public",

@@ -20,6 +20,10 @@ library(psych)
 library(effects)
 library(corrplot)
 library(rworldmap)
+library(missMDA)
+library(describedata)
+library(tidyr)
+library(rcompanion)
 
 # for correct display of tibbles
 options(crayon.enabled = FALSE)

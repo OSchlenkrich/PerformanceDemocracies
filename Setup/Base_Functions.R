@@ -35,12 +35,30 @@ reverse_sgi_fun = function(x) {
   x = 11-x
 }
 
+na_interpol2 = function(x,maxgap) {
+  if (length(na.omit(x)) >= 2) {
+    y = na_interpolation(x,  option = "linear", maxgap = maxgap)
+    return(y)
+  } else {
+    return(x) 
+  }
+}
+
+# Quantile 25 and 75
+fun_quantile25 = function(x, na.rm=T) {
+  quantile(x, 0.25, na.rm=T)
+}
+fun_quantile75 = function(x, na.rm=T) {
+  quantile(x, 0.75, na.rm=T)
+}
+
 
 # EPI
 
 EPI_fun = function(x) {
-  best = quantile(x, 0.95, na.rm=T)
-  minimum = min(x, na.rm=T)
+  best = quantile(x, 0.975, na.rm=T)
+  minimum = quantile(x, 0.025, na.rm=T)
+  
   x = if_else(x >= best, 100, 
               if_else(x <= minimum, 0, ((x - minimum)/(best-minimum)) * 100))
   return(x)
@@ -63,17 +81,45 @@ trim = function(x,prop=.05,minimum=F) {
     
     totrim_min = which(x <= quantile(x,prob=prop, na.rm=T))
     x[totrim_min] = min_end
+    x[totrim_min] = NA
+    
   } 
   x[totrim_max] = max_end
+  x[totrim_max] = NA
   
   return(x)
 }
 
-# interpolation
+# Inverse
 
+inverser = function(x) {
+  x = x *-1
+  return(x)
+}
+
+
+
+
+# interpolation
+x = c(1,2,4,5,6)
 na_interpol = function(x) {
   if (length(na.omit(x)) >= 2) {
+
+    pointer = length(x)
+    flag = F
+    while (flag == F) {
+      if (is.na(x[pointer] == T)) {
+        pointer = pointer - 1
+      } else {
+        flag = T
+      }
+    }
+    
     y = na_interpolation(x,  option = "linear", maxgap = 5)
+    if (pointer < length(x)) {
+      y[(pointer+1):length(x)] = NA
+    } 
+    
     return(y)
   } else {
     return(x) 

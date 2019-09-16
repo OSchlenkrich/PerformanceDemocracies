@@ -131,12 +131,46 @@ set0_fun = function(x) {
   x = x - min(x, na.rm=T) + 0.001
 }
 
+library(describedata)
+
+gladder(Economy_Perfomance_IP$GDP_capita_oecd)
+gladder(Economy_Perfomance_IP$GNI_capita_oecd)
+gladder(Economy_Perfomance_IP$Inflation_oecd)
+gladder(Economy_Perfomance_IP$Unemployment_oecd+0.001)
+gladder(Economy_Perfomance_IP$Unemployment_wdi+0.001)
+
+hist(sqrt(Economy_Perfomance_IP$Unemployment_oecd))
+
+sqrt_fun = function(x) {
+  sqrt(x)
+}
+
+install.packages("rcompanion")
+library(rcompanion)
+
+ladder_fun = function(x) {
+  constant = min(x, na.rm=T)
+  constant = sqrt(constant^2)
+  y = transformTukey(x+constant)
+  return(y)
+}
+
+
+
 Economy_Perfomance_IP_norm = Economy_Perfomance_IP %>% 
   select_at(vars(ends_with("oecd"), ends_with("wdi"))) %>%
-  mutate_at(vars(matches("inflation")), ~set0_fun(.)) %>% 
-  mutate_at(vars(matches("capita"), matches("inflation")), ~log10_fun(.)) %>% 
-  mutate_at(vars(matches("inflation"), matches("interest"), matches("unemployment")), ~trim(., 0.05, minimum = T)) %>% 
+  mutate_at(vars(matches("inflation"), matches("unemployment")), ~set0_fun(.)) %>% 
+  mutate_at(vars(matches("inflation")), ~trim(., 0.01, minimum = T))  %>% 
+  mutate_at(vars(matches("capita"), matches("inflation"), matches("Unemployment_oecd")), ~log10_fun(.)) %>% 
+  mutate_at(vars(matches("Unemployment_oecd")), ~sqrt_fun(.)) %>%
   mutate_all(scale)
+
+Economy_Perfomance_IP_norm = Economy_Perfomance_IP %>% 
+  select_at(vars(ends_with("oecd"), ends_with("wdi"))) %>%
+  mutate_at(vars(matches("inflation")), ~trim(., 0.05, minimum = T))  %>% 
+  mutate_all(ladder_fun) %>% 
+  mutate_all(scale)
+
 
 Economy_Perfomance_IP_norm %>% 
   select_at(vars(ends_with("oecd"))) %>% 
@@ -156,58 +190,134 @@ Economy_Perfomance_IP_norm %>%
 
 #### Factor Analysis
 
-fa_data_oecd_thin = Economy_Perfomance_IP_norm %>% 
-  select_at(vars(ends_with("oecd")))  %>% 
-  select(-Unemployment_oecd)
+fa_data_economy_oecd_frame = Economy_Perfomance_IP_norm %>% 
+  bind_cols(Economy_Perfomance %>%  select(country, country_text_id, year)) %>% 
+  select_at(vars(country_text_id, year, ends_with("oecd")))  %>%
+  filter(is.na(GDP_capita_oecd) == F) 
 
-fa.parallel(fa_data_oecd_thin, fm="ml")
-fa_oecd_thin = pca(fa_data_oecd_thin, 1, rotate="varimax")
-fa.diagram(fa_oecd_thin, cut=0)
-biplot.psych(fa_oecd_thin)
 
-fa_data_oecd_thick = Economy_Perfomance_IP_norm %>% 
+fa_data_economy_oecd_thin_frame = fa_data_economy_oecd_frame %>% 
+  select(-Unemployment_oecd) %>% 
+  mutate(non_na_count = rowSums(is.na(fa_data_economy_oecd_frame %>%  select_at(vars(ends_with("oecd"))))==F)) %>% 
+  filter(non_na_count >= 2)
+
+
+fa_data_economy_oecd_thin = fa_data_economy_oecd_thin_frame %>% 
+  select_at(vars(ends_with("oecd")))
+
+
+
+fa.parallel(fa_data_economy_oecd_thin, fm="ml", n.iter=100)
+fa_oecd_eco_thin = fa(fa_data_economy_oecd_thin, 1, rotate="varimax", missing=F, fm="ml")
+fa.diagram(fa_oecd_eco_thin, cut=0)
+biplot.psych(fa_oecd_eco_thin)
+
+i_eco_thin = imputePCA(data.frame(fa_data_economy_oecd_thin),ncp=1)
+fa_oecd_eco_thin_i = fa(i_eco_thin$completeObs, 1, rotate="varimax", missing=F, fm="ml")
+fa.diagram(fa_oecd_eco_thin_i, cut=0)
+
+
+
+fa_data_economy_oecd_thick_frame = fa_data_economy_oecd_frame %>% 
+  mutate(non_na_count = rowSums(is.na(fa_data_economy_oecd_frame %>%  select_at(vars(ends_with("oecd"))))==F)) %>%
+  filter(is.na(Unemployment_oecd) == F) %>% 
+  filter(non_na_count >= 2)
+
+
+fa_data_economy_oecd_thick = fa_data_economy_oecd_thick_frame %>% 
   select_at(vars(ends_with("oecd")))  
 
-fa.parallel(fa_data_oecd_thick, fm="ml")
-fa_oecd_thick = pca(fa_data_oecd_thick, 2, rotate="varimax")
-fa.diagram(fa_oecd_thick, cut=0)
-biplot.psych(fa_oecd_thick)
+fa.parallel(fa_data_economy_oecd_thick, fm="ml", n.iter=100)
+fa_oecd_eco_thick = fa(fa_data_economy_oecd_thick, 1, rotate="varimax", missing=F, fm="ml")
+fa.diagram(fa_oecd_eco_thick, cut=0)
+biplot.psych(fa_oecd_eco_thick)
 
-###
+i_eco_thick = imputePCA(data.frame(fa_data_economy_oecd_thick),ncp=1)
+fa_oecd_eco_thick_i = fa(i_eco_thick$completeObs, 1, rotate="varimax", missing=F, fm="ml")
+fa.diagram(fa_oecd_eco_thick_i, cut=0)
 
 
-fa_data_wdi_thin = Economy_Perfomance_IP_norm %>% 
-  select_at(vars(ends_with("wdi")))  %>% 
-  select(-Unemployment_wdi)
 
-fa.parallel(fa_data_wdi_thin, fm="ml")
-fa_wdi_thin = pca(fa_data_wdi_thin, 1, rotate="varimax")
+fa_data_economy_oecd_thin_frame_scores = fa_data_economy_oecd_thin_frame %>% 
+  bind_cols(data.frame(fa_oecd_eco_thin_i$scores) %>%  rename(economy_thin_index_oecd = ML1)) %>% 
+  select_at(vars(country_text_id, year, matches("index")))
+
+fa_data_economy_oecd_thick_frame_scores = fa_data_economy_oecd_thick_frame %>% 
+  bind_cols(data.frame(fa_oecd_eco_thick_i$scores) %>%  rename(economy_1_thick_index_oecd = ML1)) %>% 
+  select_at(vars(country_text_id, year, matches("index")))
+
+
+
+
+#### WDI ####
+
+fa_data_economy_wdi_frame = Economy_Perfomance_IP_norm %>% 
+  bind_cols(Economy_Perfomance %>%  select(country, country_text_id, year)) %>% 
+  select_at(vars(country_text_id, year, ends_with("wdi")))  %>%
+  filter(is.na(GDP_capita_wdi) == F) 
+
+
+fa_data_wdi_thin_frame = fa_data_economy_wdi_frame %>% 
+  select(-Unemployment_wdi) %>% 
+  mutate(non_na_count = rowSums(is.na(fa_data_economy_wdi_frame %>%  select_at(vars(ends_with("wdi"))))==F)) %>% 
+  filter(non_na_count >= 2)
+
+fa_data_economy_wdi_thin = fa_data_wdi_thin_frame %>% 
+  select_at(vars(ends_with("wdi")))
+
+
+fa.parallel(fa_data_economy_wdi_thin, fm="ml", n.iter=100)
+fa_wdi_thin = fa(fa_data_economy_wdi_thin, 1, rotate="varimax", fm="ml")
 fa.diagram(fa_wdi_thin, cut=0)
 biplot.psych(fa_wdi_thin)
 
-fa_data_wdi_thick = Economy_Perfomance_IP_norm %>% 
-  select_at(vars(ends_with("wdi")))  
+i_eco_wdi_thin = imputePCA(data.frame(fa_data_economy_wdi_thin),ncp=1)
+fa_wdi_eco_thin_i = fa(i_eco_wdi_thin$completeObs, 1, rotate="varimax", fm="ml")
+fa.diagram(fa_wdi_eco_thin_i, cut=0)
 
-fa.parallel(fa_data_wdi_thick, fm="ml")
-fa_wdi_thick = pca(fa_data_wdi_thick, 2, rotate="varimax")
+
+
+fa_data_wdi_thick_frame = fa_data_economy_wdi_frame %>% 
+  filter(year > 1990) %>% 
+  filter(is.na(Unemployment_wdi) == F)
+
+fa_data_wdi_thick = fa_data_wdi_thick_frame %>% 
+  select_at(vars(ends_with("wdi")))
+
+
+fa.parallel(fa_data_wdi_thick, fm="ml", n.iter=100)
+fa_wdi_thick = fa(fa_data_wdi_thick, 1, rotate="varimax", fm="ml")
 fa.diagram(fa_wdi_thick, cut=0)
 biplot.psych(fa_wdi_thick)
 
+i_eco_wdi_thick = imputePCA(data.frame(fa_data_wdi_thick),ncp=1)
+fa_wdi_eco_thick_i = fa(i_eco_wdi_thick$completeObs, 1, rotate="varimax", fm="ml")
+fa.diagram(fa_wdi_eco_thick_i, cut=0)
 
-#### Combining
-inverser = function(x) {
-  x = x *-1
-  return(x)
-}
+
+
+
+fa_data_economy_wdi_thin_frame_scores = fa_data_wdi_thin_frame %>% 
+  bind_cols(data.frame(fa_wdi_eco_thin_i$scores) %>%  rename(economy_thin_index_wdi = ML1))%>% 
+  select_at(vars(country_text_id, year, matches("index")))
+
+fa_data_economy_wdi_thick_frame_scores = fa_data_wdi_thick_frame %>% 
+  bind_cols(data.frame(fa_wdi_eco_thick_i$scores) %>%  rename(economy_1_thick_index_wdi = ML1)) %>% 
+  select_at(vars(country_text_id, year, matches("index")))
+
+
+
+
+
+#### Combining ####
 
 Economy_Perfomance_final = Economy_Perfomance %>% 
-  bind_cols(economy_thin_index_oecd = fa_oecd_thin$scores) %>%
-  bind_cols(data.frame(fa_oecd_thick$scores) %>%  rename(economy_1_thick_index_oecd = RC1, economy_2_thick_index_oecd = RC2)) %>% 
-  bind_cols(economy_thin_index_wdi = fa_wdi_thin$scores) %>% 
-  bind_cols(data.frame(fa_wdi_thick$scores) %>%  rename(economy_1_thick_index_wdi = RC1, economy_2_thick_index_wdi = RC2)) %>%
-  mutate_at(vars(matches("2_thick")), ~inverser(.)) %>% 
+  left_join(fa_data_economy_wdi_thin_frame_scores, by=c("country_text_id", "year")) %>% 
+  left_join(fa_data_economy_oecd_thin_frame_scores, by=c("country_text_id", "year")) %>%  
+  left_join(fa_data_economy_wdi_thick_frame_scores, by=c("country_text_id", "year")) %>%  
+  left_join(fa_data_economy_oecd_thick_frame_scores, by=c("country_text_id", "year")) %>% 
+  #mutate_at(vars(matches("2_thick")), ~inverser(.)) %>% 
   mutate_at(vars(matches("index")), ~EPI_fun(.))
-
 
 
 Economy_Perfomance_final %>% 
@@ -218,8 +328,22 @@ Economy_Perfomance_final %>%
   facet_wrap(variable~., scales = "free") 
 
 
+Economy_Perfomance_final %>% 
+  select_at(vars(year, matches("index"))) %>% 
+  group_by(year) %>% 
+  summarise_all(funs(mean, Q1 = fun_quantile25, Q3=fun_quantile75), na.rm=T) %>% 
+  melt(id.vars=c("year")) %>% 
+  mutate(source = if_else(grepl("oecd", variable), "oecd", "wdi")) %>%
+  mutate(concept = if_else(grepl("1_thick", variable), "thick_1", if_else(grepl("2_thick", variable), "thick_2", "thin"))) %>% 
+  tidyr::unite("comb", source, concept) %>% 
+  ggplot(aes(x=year, y=value, col=variable)) +
+  geom_line(size=1) +
+  geom_point() +
+  facet_wrap(comb ~ .) +
+  ylim(0,100)
 
-samples = c("AUS","AUT", "DEU", "USA", "LBR", "GBR")
+
+samples = c("CZE", "DEU")
 
 Economy_Perfomance_final %>% 
   filter(country_text_id %in% samples) %>% 
@@ -234,7 +358,7 @@ Economy_Perfomance_final %>%
 ###
 
 modes_cluster = Economy_Perfomance_final %>% 
-  filter(year <= 1990) %>% 
+  filter(year < 1990) %>% 
   group_by(country_text_id) %>% 
   summarise(cluster_label_1st_mode = getmode(cluster_label_1st))
 

@@ -347,11 +347,13 @@ Environment_IQR = QoC_data %>%
          water_oecd = oecd_water_t1a,
          waste_oecd = oecd_waste_t1b,
          population = oecd_evopop_t1,
+         GDP_capita_oecd = oecd_sizegdp_t1,
+         
          greenhouse_wdi = wdi_co2
 
   ) %>% 
   mutate(population = population) %>% 
-  mutate_at(vars(ends_with("oecd")), funs(per_captita = per_capita_maker(., population)))  %>% 
+  mutate_at(vars(ends_with("oecd")), funs(per_captita = per_capita_maker(., GDP_capita_oecd*population)))  %>% 
   filter(country_text_id %in% unique(dmx_trade_cluster$country_text_id)) %>% 
   left_join(dmx_trade_cluster, by=c("country_text_id", "year"))  %>%
   select(country, country_text_id, everything())  %>% 
@@ -392,10 +394,10 @@ Environment_IQR %>%
 
 
 
-fa.parallel(Environment_IQR %>%  select_at(vars(ends_with("_oecd"))) %>% na.omit(), fm="ml", plot=T, sim=T, n.iter=100, quant=0.95)
+fa.parallel(Environment_IQR %>%  select_at(vars(ends_with("oecd_per_captita"))) %>% na.omit(), fm="ml", plot=T, sim=T, n.iter=100, quant=0.95)
 
 
-fa_solution = pca(Environment_IQR %>%  select_at(vars(ends_with("_oecd"))) %>% na.omit(), 1)
+fa_solution = pca(Environment_IQR %>%  select_at(vars(ends_with("_oecd"))) %>% na.omit(), 2)
 fa_solution
 fa.diagram(fa_solution, cut=.1)
 biplot.psych(fa_solution)
@@ -438,8 +440,8 @@ integration = QoC_data %>%
   select(country, country_text_id, everything())  %>% 
   dplyr::arrange(country_text_id, year) %>%
   group_by(country_text_id) %>% 
-  mutate_at(vars(ends_with("lis")), .funs = list(~na_interpol2(., 8))) %>% 
-  mutate_at(vars(ends_with("wdi")), .funs = list(~na_interpol2(., 8))) %>% 
+  mutate_at(vars(ends_with("lis")), .funs = list(~na_interpol2(., 5))) %>% 
+  mutate_at(vars(ends_with("wdi")), .funs = list(~na_interpol2(., 5))) %>% 
   ungroup()
 
 
