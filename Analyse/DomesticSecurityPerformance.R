@@ -16,6 +16,15 @@ cty_identifier = V_dem %>%
 
 
 # Getting the Data 
+
+library(readstata13)
+protest_data = read.table("Datasets/mmALL_020619_v15.tab", sep="\t", header=T)
+
+test = protest_data %>% 
+  group_by(country, year) %>% 
+  summarise(sum(protesterviolence, na.rm=T), sum(protest, na.rm=T))
+
+
 UNODC_burglary = fread("Datasets/UNODC_burglary.csv") %>% 
   rename(burg_count = Count, 
          burg_rate = Rate,
@@ -236,7 +245,6 @@ domestic_security =  QoC_data %>%
   slice(1) %>% 
   filter(country_text_id %in% unique(dmx_trade_cluster$country_text_id)) %>% 
   left_join(dmx_trade_cluster, by=c("country_text_id", "year"))  %>%
-  left_join(MEPV, by=c("country", "year"))  %>%
   left_join(OECD_gov, by=c("country_text_id", "year")) %>% 
   left_join(UNODC_data, by=c("country_text_id", "year")) %>%
   left_join(QoC_data %>% select(country_text_id, year, 
@@ -460,28 +468,104 @@ domestic_security_IP_norm %>%
 
 
 
+#### MI
 
-#### Factor Analysis
 
 fa_data_ds_frame = domestic_security_IP_norm %>% 
   bind_cols(domestic_security %>%  select(country, country_text_id, year)) %>% 
   select(-burg_rate_unodc, -rob_rate_unodc) %>% 
   mutate(non_na_count = rowSums(is.na(domestic_security_IP_norm %>%  select(-internalwar_ucdp))==F)) %>% 
-  filter(non_na_count >= 4, year >= 1990) %>% 
+  filter(non_na_count >= 5, year >= 1990) %>% 
   select_at(vars(country, country_text_id, year, 
+                 ends_with("_unodc"), 
+                 ends_with("oecd"))) 
+
+
+fa_data_ds_mice = fa_data_ds_frame %>% 
+  select_at(vars(country_text_id,
+                 year,
                  ends_with("_unodc"), 
                  ends_with("oecd"), 
                  ends_with("bin_ucdp"), 
-                 ends_with("WGI"))) 
+                 ends_with("WGI"))) %>% 
+  #left_join(fa_data_economy_oecd_frame, by=c("country_text_id", "year")) %>% 
+  mutate(id = group_indices(., country_text_id)) %>% 
+  select(-country_text_id) %>% 
+  mutate(year = year - 1990,
+         year1 = poly(year,2)[,1],
+         year2 = poly(year,2)[,2]
+  ) %>% 
+  select(-year) %>% 
+  rename_all(funs(sub("_oecd_int_oecd_per_capita", "", .))) %>% 
+  as.matrix()
 
 
 
-fa_data_ds = fa_data_ds_frame %>% 
-  select_at(vars(ends_with("_unodc"), 
-                 ends_with("oecd"), 
-                 ends_with("bin_ucdp"), 
-                 ends_with("WGI"))) 
+pdf(file="Plots/m_pattern_sec.pdf",width=20,height=8)
+md.pattern(fa_data_ds_mice, rotate.names = T)
+dev.off()
 
+pred_matrix = make.predictorMatrix(fa_data_ds_mice)
+pred_matrix["year1",] = 2
+pred_matrix["year2",] = 2
+pred_matrix[,"id"] = -2
+
+
+nr_immputations = 10
+fa_data_sec_frame_mice_result = mice(fa_data_ds_mice, pred=pred_matrix, meth="2l.pmm",
+                                      m = nr_immputations, maxit = 15)
+head(fa_data_sec_frame_mice_result$loggedEvents, 2)
+
+densityplot(fa_data_sec_frame_mice_result)
+plot(fa_data_sec_frame_mice_result)
+
+
+
+
+fa_data_ds_frame %>%
+  data.frame() %>% 
+  mutate(.imp = "observed",
+         .id = 1)  %>% 
+  bind_rows(complete(fa_data_sec_frame_mice_result, "long") %>% 
+              mutate(.imp = as.factor(.imp))) %>% 
+  select(-".id", -"id", -year1, -year2) %>% 
+  filter(.imp == "observed" | .imp  %in% sample(nr_immputations,3)) %>% 
+  select(-country, -country_text_id, -year) %>% 
+  melt(id.vars=".imp") %>% 
+  ggplot(aes(x=variable, y=value, fill=as.factor(.imp))) +
+  geom_boxplot() +
+  coord_flip()
+
+
+####
+
+fa.parallel(complete(fa_data_sec_frame_mice_result,4)[,1:3], fm="mle", n.iter=100, quant=0.95)
+vss(complete(fa_data_oecd_frame_mice_result,4)[,1:3], fm="mle", rotate="none")
+fa_oecd_env = fa(complete(fa_data_sec_frame_mice_result,4)[,1:3], 1, rotate="promax", missing=F, fm="mle")
+fa.diagram(fa_oecd_env, cut=0)
+
+####
+
+
+ds_scores = fa_data_ds_frame %>% 
+  select(country, country_text_id, year) %>% 
+  bind_cols(produce_fa_scores(fa_data_sec_frame_mice_result, nr_immputations, 1))
+
+samples = c("USA")
+
+
+ds_scores %>% 
+  select(-country) %>%
+  filter(country_text_id %in% samples) %>% 
+  melt(id.vars=c("country_text_id", "year")) %>% 
+  group_by(country_text_id, year) %>% 
+  summarise(mean_score = mean(value, na.rm=T)) %>% 
+  ggplot(aes(x=year, y=mean_score, col=country_text_id)) +
+  geom_line(size=1)
+
+
+
+# Factor Analysis
 
 fa.parallel(fa_data_ds, fm="ml", n.iter=100 )
 fa_conf_ds = fa(fa_data_ds, 2, rotate="varimax", missing=F, fm="ml")
@@ -495,7 +579,7 @@ fa.diagram(res.pca_ds, cut=0)
 
 
 fa_data_ds_scores = fa_data_ds_frame %>% 
-  bind_cols(data.frame(res.pca_ds$scores) %>%  select(domestic_1_index = ML2,
+  bind_cols(data.frame(fa_conf_ds$scores) %>%  select(domestic_1_index = ML2,
                                                       domestic_2_index = ML1)) %>% 
   select_at(vars(country_text_id, year, matches("index")))
 
@@ -506,7 +590,7 @@ fa_data_ds_scores = fa_data_ds_frame %>%
 
 DomesticSecurity_Perfomance_final = domestic_security %>% 
   left_join(fa_data_ds_scores, by=c("country_text_id", "year")) %>% 
-  mutate_at(vars(matches("1_index")), ~inverser(.)) %>% 
+  mutate_at(vars(matches("index")), ~inverser(.)) %>% 
   mutate_at(vars(matches("index")), ~EPI_fun(.))
 
 
@@ -533,7 +617,7 @@ DomesticSecurity_Perfomance_final %>%
   ylim(0,100)
 
 
-samples = c("AUS", "USA", "FIN")
+samples = c("AUS", "USA", "FIN", "DEU")
 
 DomesticSecurity_Perfomance_final %>% 
   filter(country_text_id %in% samples) %>% 

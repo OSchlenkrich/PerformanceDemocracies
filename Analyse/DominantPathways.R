@@ -23,7 +23,7 @@ Pathways = dmx_trade_cluster %>%
 table(Pathways$Paths)
 
 
-test = dmx_trade_cluster %>% 
+test_nyears = dmx_trade_cluster %>% 
   filter(year > 1945) %>% 
   arrange(year) %>%
   select(country, year, cluster_label_1st) %>% 
@@ -34,9 +34,31 @@ test = dmx_trade_cluster %>%
   group_by(country) %>% 
   mutate(change_test = marking(change)) %>% 
   group_by(country, change_test) %>% 
-  slice(1) %>% 
+  summarise(n_years = n())
+  
+test = dmx_trade_cluster %>% 
+  filter(year > 1945) %>% 
+  arrange(country, year) %>%
+  select(country, year, cluster_label_1st) %>% 
   group_by(country) %>% 
-  summarize(Paths = paste(cluster_label_1st, collapse = "->"))
+  mutate(cluster_label_1st_lag = dplyr::lag(cluster_label_1st, 1),
+         change = if_else(cluster_label_1st == cluster_label_1st_lag, 1, 0)) %>% 
+  group_by(country) %>% 
+  mutate(change_test = marking(change)) %>% 
+  group_by(country, change_test) %>% 
+  slice(1) %>% 
+  left_join(test_nyears, by=c("country", "change_test")) %>% 
+  filter(n_years >= 5) %>% 
+  group_by(country) %>% 
+  mutate(cluster_label_1st_lag = dplyr::lag(cluster_label_1st, 1),
+         change = if_else(cluster_label_1st == cluster_label_1st_lag, 1, 0)) %>% 
+  group_by(country) %>% 
+  mutate(change_test = marking(change))  %>% 
+  group_by(country, change_test, cluster_label_1st) %>% 
+  summarise(n_years = sum(n_years)) %>% 
+  group_by(country) %>% 
+  summarize(Paths = paste(cluster_label_1st, collapse = "->"),
+            PathsYears = paste(cluster_label_1st, "(", n_years, ")", collapse = "->"))
 
 table(test$Paths)
 

@@ -10,9 +10,11 @@ QoC_data = fread("C:/RTest/qog_std_ts_jan19.csv", encoding = "UTF-8") %>%
 Economy_Perfomance = QoC_data %>% 
   select(country_text_id, year,
          GDP_capita_oecd = oecd_sizegdp_t1,
+         GDP_grwoth_oecd = oecd_evogdp_t1,
          GNI_capita_oecd = oecd_natinccap_t1,
          Inflation_oecd = oecd_cpi_t1a,
-         #Interest_oecd = oecd_ltintrst_t1,
+         Interest_oecd = oecd_ltintrst_t1,
+         Balance_oecd = oecd_bop_t1,
          Unemployment_oecd = oecd_unemplrt_t1c,
 
          GDP_capita_wdi = wdi_gdpcapcur,
@@ -145,15 +147,6 @@ sqrt_fun = function(x) {
   sqrt(x)
 }
 
-install.packages("rcompanion")
-library(rcompanion)
-
-ladder_fun = function(x) {
-  constant = min(x, na.rm=T)
-  constant = sqrt(constant^2)
-  y = transformTukey(x+constant)
-  return(y)
-}
 
 
 
@@ -167,7 +160,8 @@ Economy_Perfomance_IP_norm = Economy_Perfomance_IP %>%
 
 Economy_Perfomance_IP_norm = Economy_Perfomance_IP %>% 
   select_at(vars(ends_with("oecd"), ends_with("wdi"))) %>%
-  mutate_at(vars(matches("inflation")), ~trim(., 0.05, minimum = T))  %>% 
+  #mutate_at(vars(matches("inflation")), ~inverser(.))  %>%  
+  mutate_at(vars(matches("inflation")), ~trim(., 0.05, minimum = T))  %>%
   mutate_all(ladder_fun) %>% 
   mutate_all(scale)
 
@@ -195,9 +189,14 @@ fa_data_economy_oecd_frame = Economy_Perfomance_IP_norm %>%
   select_at(vars(country_text_id, year, ends_with("oecd")))  %>%
   filter(is.na(GDP_capita_oecd) == F) 
 
+### KOM-Test
+KMO(fa_data_economy_oecd_frame %>% select(-country_text_id, -year, -GNI_capita_oecd)) 
+cor(fa_data_economy_oecd_frame %>% select(-country_text_id, -year), use="pairwise")
+
+
 
 fa_data_economy_oecd_thin_frame = fa_data_economy_oecd_frame %>% 
-  select(-Unemployment_oecd) %>% 
+  select(-Unemployment_oecd, -GDP_grwoth_oecd, -GNI_capita_oecd) %>% 
   mutate(non_na_count = rowSums(is.na(fa_data_economy_oecd_frame %>%  select_at(vars(ends_with("oecd"))))==F)) %>% 
   filter(non_na_count >= 2)
 
@@ -207,8 +206,11 @@ fa_data_economy_oecd_thin = fa_data_economy_oecd_thin_frame %>%
 
 
 
-fa.parallel(fa_data_economy_oecd_thin, fm="ml", n.iter=100)
-fa_oecd_eco_thin = fa(fa_data_economy_oecd_thin, 1, rotate="varimax", missing=F, fm="ml")
+
+
+fa.parallel(fa_data_economy_oecd_thin, fm="ml", n.iter=100, quant=0.95)
+
+fa_oecd_eco_thin = fa(fa_data_economy_oecd_thin, 1, rotate="varimax", missing=F, fm="mle")
 fa.diagram(fa_oecd_eco_thin, cut=0)
 biplot.psych(fa_oecd_eco_thin)
 
@@ -343,7 +345,7 @@ Economy_Perfomance_final %>%
   ylim(0,100)
 
 
-samples = c("CZE", "DEU")
+samples = c("CZE", "DEU", "GRC", "USA")
 
 Economy_Perfomance_final %>% 
   filter(country_text_id %in% samples) %>% 

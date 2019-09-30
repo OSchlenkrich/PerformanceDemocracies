@@ -35,6 +35,91 @@ reverse_sgi_fun = function(x) {
   x = 11-x
 }
 
+
+x = c(10,0.1,1,2,1,4,10)
+
+  
+
+x = Environment_Performance_IP$co2_oecd_int_oecd_per_capita
+min(x, na.rm=T)
+max(x, na.rm=T)
+
+min(x_aligned, na.rm=T)
+max(x_aligned, na.rm=T)
+
+
+ladder_fun = function(x) {
+  library(rcompanion)
+  
+  print(paste("ratio: ", max(x, na.rm=T)/min(x, na.rm=T)))
+  print(paste(">5: ", (max(x, na.rm=T)/min(x, na.rm=T)) > 5 ))
+  print(paste(round(min(x, na.rm=T),3)," ", round(max(x, na.rm=T),3)))
+  
+  minimum = min(x, na.rm=T)
+  constant = abs(minimum) 
+  
+  if (minimum >= 0) {
+    x_aligned = x - constant + 1
+  } else {
+    x_aligned = x + constant + 1
+  }
+  
+  y = transformTukey(x_aligned, plotit=F, start=-2, end=2)
+  return(y)
+}
+
+
+
+folded_ladder_fun = function(x, plotting = F) {
+  
+  f_fun <- function(x, lambda) (x^lambda - (1-x)^lambda)
+  
+  print(paste("ratio: ", max(x, na.rm=T)/min(x, na.rm=T)))
+  print(paste("0:", max(x, na.rm=T) == 0, min(x, na.rm=T) == 0))
+  print(paste("1:", max(x, na.rm=T) == 1, min(x, na.rm=T) == 1))
+  print(paste(round(min(x, na.rm=T),3)," ", round(max(x, na.rm=T),3)))
+
+  nr_iterations = 1/0.025 + 1
+  
+  my_results_frame = data.frame(matrix(NA, nr_iterations, 3)) %>% 
+    rename(lambda = X1, shapiro.w = X2, shapiro.p.value = X3)
+  
+  # special: lambda=0 is logit
+  results = log(x) - log(1-x)
+  sh_test_W = shapiro.test(results)
+  
+  my_results_frame[1,] = c(0, sh_test_W$statistic, round(sh_test_W$p.value, 3))
+  
+  lambda = 0.025
+
+  for (i in 2:nr_iterations) {
+    results = f_fun(x, lambda)
+    sh_test_W = shapiro.test(results)
+    my_results_frame[i,] = c(lambda, sh_test_W$statistic, round(sh_test_W$p.value, 3))
+    lambda = lambda + 0.025
+  }
+  
+  best_lambda = my_results_frame %>% 
+    top_n(n=1, wt=shapiro.w) %>% 
+    mutate(shapiro.w = round(shapiro.w, 3))
+  
+  print(best_lambda)
+  
+  if (best_lambda$lambda == 0) {
+    y = log(x) - log(1-x)
+  } else {
+    y = f_fun(x, best_lambda$lambda)
+  }
+  
+  if (plotting == T) {
+    qqnorm(y)
+    qqline(y)
+  }
+  
+  return(y)
+}
+
+
 na_interpol2 = function(x,maxgap) {
   if (length(na.omit(x)) >= 2) {
     y = na_interpolation(x,  option = "linear", maxgap = maxgap)

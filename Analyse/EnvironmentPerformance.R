@@ -9,7 +9,8 @@ QoC_data = fread("C:/RTest/qog_std_ts_jan19.csv", encoding = "UTF-8") %>%
 
 
 per_capita_maker = function(x, pop) {
-  x/pop
+  # no values which are exactly 0
+  (x+(1/2))/(pop+1)
 }
 
 
@@ -121,6 +122,7 @@ gladder(Environment_Performance_IP$waste_oecd_per_capita)
 
 
 
+
 Environment_Performance_IP %>% 
   select_at(vars(ends_with("oecd_per_capita"),ends_with("wdi_per_capita"))) %>% 
   summarise_all(list(min=min, mean=mean, max=max), na.rm=T) %>% 
@@ -148,7 +150,8 @@ Environment_Performance_IP %>%
 
 Environment_Performance_IP_norm = Environment_Performance_IP %>% 
   select_at(vars(ends_with("oecd_per_capita"), ends_with("wdi_per_capita"))) %>%
-  mutate_all(ladder_fun) %>% 
+  #mutate_all(ladder_fun) %>% 
+  mutate_all(funs(folded_ladder_fun(., plotting =T))) %>% 
   #mutate_all(~trim(., 0.01, minimum = T)) %>%
   mutate_all(scale)
 
@@ -168,21 +171,127 @@ Environment_Performance_IP_norm %>%
   facet_wrap(variable~., scales = "free")
 
 
-#### Factor Analysis
+Environment_Performance_IP_norm  %>% 
+  bind_cols(Environment_Performance %>%  select(country, country_text_id, year)) %>% 
+  filter(year>=1990) %>% 
+  select(greenhouse_oecd_int_oecd_per_capita, greenhouse_wdi_per_capita) %>% 
+  mutate_all(is.na) %>% 
+  table()
+
+
+
+#### Factor Analysis: MI
 
 fa_data_oecd_frame = Environment_Performance_IP_norm %>% 
   bind_cols(Environment_Performance %>%  select(country, country_text_id, year)) %>% 
   mutate(non_na_count = rowSums(is.na(Environment_Performance_IP_norm %>%  select(-greenhouse_wdi_per_capita))==F)) %>% 
-  filter(non_na_count >= 3, year>=1990) %>% 
-  select_at(vars(country, country_text_id, year, ends_with("oecd_per_capita"))) 
+  filter(non_na_count >= 1, year>=1990) %>% 
+  select_at(vars(country, country_text_id, year, ends_with("oecd_per_capita"), ends_with("wdi_per_capita"))) 
 
 
-fa_data_oecd = fa_data_oecd_frame %>% 
-  select_at(vars(ends_with("oecd_per_capita"))) 
+### KOM-Test
+KMO(fa_data_oecd_frame %>% 
+      select_at(vars(ends_with("oecd_per_capita"), ends_with("wdi_per_capita"))) ) 
+cor(fa_data_oecd_frame %>% 
+      select_at(vars(ends_with("oecd_per_capita"), ends_with("wdi_per_capita"))) , use="pairwise")
 
 
-fa.parallel(fa_data_oecd, fm="ml", n.iter=100 )
-fa_oecd_env = fa(fa_data_oecd, 1, rotate="varimax", missing=F, fm="ml")
+
+
+fa_data_oecd_frame_mice = fa_data_oecd_frame %>% 
+  mutate(id = group_indices(., country_text_id)) %>% 
+  select(-country, -country_text_id) %>% 
+  # mutate(year = year - 1990,
+  #        year1 = poly(year,2)[,1],
+  #        year2 = poly(year,2)[,2]
+  # ) %>% 
+  select(-year) %>% 
+  rename_all(funs(sub("_oecd_int_oecd_per_capita", "", .))) %>% 
+  as.matrix()
+
+pdf(file="m_pattern_env.pdf",width=20,height=8)
+md.pattern(fa_data_oecd_frame_mice, rotate.names = T)
+dev.off()
+
+pred_matrix = make.predictorMatrix(fa_data_oecd_frame_mice)
+pred_matrix["year1",] = 2
+pred_matrix["year2",] = 2
+pred_matrix[,"id"] = -2
+
+
+nr_immputations = 10
+fa_data_oecd_frame_mice_result = mice(fa_data_oecd_frame_mice, pred=pred_matrix, meth="2l.pmm",
+     m = nr_immputations, maxit = 15)
+head(fa_data_oecd_frame_mice_result$loggedEvents, 2)
+
+
+
+densityplot(fa_data_oecd_frame_mice_result)
+plot(fa_data_oecd_frame_mice_result)
+
+
+
+fa_data_oecd_frame_mice %>%
+  data.frame() %>% 
+  mutate(.imp = "observed",
+         .id = 1)  %>% 
+  bind_rows(complete(fa_data_oecd_frame_mice_result, "long")%>% 
+              mutate(.imp = as.factor(.imp))) %>% 
+  select(-".id", -"id", -year1, -year2) %>% 
+  filter(.imp == "observed" | .imp  %in% sample(nr_immputations,3)) %>% 
+  melt(id.vars=".imp") %>% 
+  ggplot(aes(x=variable, y=value, fill=as.factor(.imp))) +
+  geom_boxplot() +
+  coord_flip()
+
+
+fa.parallel(complete(fa_data_oecd_frame_mice_result,5)[,1:7], fm="mle", n.iter=100, quant=0.95)
+vss(complete(fa_data_oecd_frame_mice_result,5)[,1:7], fm="mle", rotate="none")
+fa_oecd_env = fa(complete(fa_data_oecd_frame_mice_result,5)[,1:7], 3, rotate="promax", missing=F, fm="mle")
+fa.diagram(fa_oecd_env, cut=0)
+
+
+produce_fa_scores = function(mice_data, nr_immputations, nr_factors) {
+  scores_data = data.frame(matrix(NA, dim(complete(mice_data, 1))[1], nr_immputations)) %>% 
+    rename_all(funs(sub("X", "imp_", .)))
+  
+  for (i in 1:nr_immputations) {
+    stack_data = complete(mice_data, i)
+
+    fa_stack = fa(stack_data[,1:6], nr_factors, rotate="promax", missing=F, fm="mle")
+    scores_data[,i] = as.numeric(fa_stack$scores)
+  }
+  return(scores_data)
+}
+
+
+env_scores = fa_data_oecd_frame %>% 
+  select(country, country_text_id, year) %>% 
+  bind_cols(produce_fa_scores(fa_data_oecd_frame_mice_result, 10, 1))
+
+samples = c("CAN","DEU", "USA", "SWE", "IND", "FIN", "DNK")
+
+
+env_scores %>% 
+  select(-country) %>%
+  filter(country_text_id %in% samples) %>% 
+  melt(id.vars=c("country_text_id", "year")) %>% 
+  group_by(country_text_id, year) %>% 
+  summarise(mean_score = mean(value, na.rm=T)) %>% 
+  ggplot(aes(x=year, y=mean_score, col=country_text_id)) +
+  geom_line(size=1)
+  
+### KOM-Test
+KMO(fa_data_oecd) 
+cor(fa_data_oecd, use="pairwise")
+
+
+
+fa.parallel(fa_data_oecd, fm="mle", n.iter=100, quant=0.95)
+vss(fa_data_oecd, fm="mle", rotate="none")
+
+
+fa_oecd_env = fa(fa_data_oecd, 1, rotate="oblimin", missing=F, fm="mle")
 fa.diagram(fa_oecd_env, cut=0)
 biplot.psych(fa_oecd_env)
 
@@ -195,16 +304,25 @@ fa.diagram(res.pca, cut=0)
 
 
 #### Combining
+
+env_scores_mean = env_scores %>% 
+  select(-country) %>%
+  melt(id.vars=c("country_text_id", "year")) %>% 
+  group_by(country_text_id, year) %>% 
+  summarise(environment_index = mean(value, na.rm=T)) %>% 
+  ungroup() %>% 
+  select(environment_index)
+
 Environment_Performance_final = Environment_Performance %>% 
-  left_join(bind_cols(fa_data_oecd_frame, environmental_1_index_oecd = res.pca$scores)%>% 
+  left_join(bind_cols(fa_data_oecd_frame, env_scores_mean) %>% 
               select_at(vars(country_text_id, year, matches("index")))
             , by=c("country_text_id", "year")) %>% 
-  bind_cols(environmental_1_index_wdi = Environment_Performance_IP_norm$greenhouse_wdi_per_capita) %>% 
-  mutate_at(vars(matches("environmental_1")), ~inverser(.)) %>% 
+  mutate_at(vars(matches("environment_index")), ~inverser(.)) %>% 
   mutate_at(vars(matches("index")), ~EPI_fun(.))
 
 
-samples = c("CAN","IND")
+samples = c("CAN","IND", "DEU", "USA")
+
 
 Environment_Performance_final %>% 
   filter(country_text_id %in% samples) %>% 

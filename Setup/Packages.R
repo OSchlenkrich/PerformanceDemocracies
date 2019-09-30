@@ -24,6 +24,8 @@ library(missMDA)
 library(describedata)
 library(tidyr)
 library(rcompanion)
+library(mice)
+library(miceadds)
 
 # for correct display of tibbles
 options(crayon.enabled = FALSE)
