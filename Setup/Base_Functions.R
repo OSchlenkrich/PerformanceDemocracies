@@ -36,18 +36,6 @@ reverse_sgi_fun = function(x) {
 }
 
 
-x = c(10,0.1,1,2,1,4,10)
-
-  
-
-x = Environment_Performance_IP$co2_oecd_int_oecd_per_capita
-min(x, na.rm=T)
-max(x, na.rm=T)
-
-min(x_aligned, na.rm=T)
-max(x_aligned, na.rm=T)
-
-
 ladder_fun = function(x) {
   library(rcompanion)
   
@@ -63,11 +51,10 @@ ladder_fun = function(x) {
   } else {
     x_aligned = x + constant + 1
   }
-  
-  y = transformTukey(x_aligned, plotit=F, start=-2, end=2)
+
+  y = rcompanion::transformTukey(x_aligned, plotit=T, start=-2, end=2)
   return(y)
 }
-
 
 
 folded_ladder_fun = function(x, plotting = F) {
@@ -86,7 +73,8 @@ folded_ladder_fun = function(x, plotting = F) {
   
   # special: lambda=0 is logit
   results = log(x) - log(1-x)
-  sh_test_W = shapiro.test(results)
+  sh_test_W = stats::shapiro.test(results)
+  #sh_test_W = ad.test(results)
   
   my_results_frame[1,] = c(0, sh_test_W$statistic, round(sh_test_W$p.value, 3))
   
@@ -95,6 +83,8 @@ folded_ladder_fun = function(x, plotting = F) {
   for (i in 2:nr_iterations) {
     results = f_fun(x, lambda)
     sh_test_W = shapiro.test(results)
+    #sh_test_W = ad.test(results)
+    
     my_results_frame[i,] = c(lambda, sh_test_W$statistic, round(sh_test_W$p.value, 3))
     lambda = lambda + 0.025
   }

@@ -14,6 +14,12 @@ per_capita_maker = function(x, pop) {
 }
 
 
+dmx_trade_cluster_framed = dmx_trade_cluster %>% 
+  filter(year >= 1950) %>% 
+  group_by(country) %>% 
+  tidyr::complete(country, year = min(year):max(year), fill = list(NA))
+
+
 
 Environment_Performance = QoC_data %>% 
   select(country_text_id, year, 
@@ -34,10 +40,12 @@ Environment_Performance = QoC_data %>%
   mutate_at(vars(ends_with("oecd")), funs(int_oecd_per_capita = per_capita_maker(., GDP_capita_wdi*population_wdi)))  %>%
   mutate(greenhouse_wdi_per_capita = (greenhouse_wdi_per_capita*population_wdi)/(GDP_capita_wdi*population_wdi),
          test = GDP_capita*population) %>% 
-  filter(country_text_id %in% unique(dmx_trade_cluster$country_text_id)) %>% 
-  left_join(dmx_trade_cluster, by=c("country_text_id", "year"))  %>%
+  filter(country_text_id %in% unique(dmx_trade_cluster_framed$country_text_id)) %>% 
+  left_join(dmx_trade_cluster_framed, by=c("country_text_id", "year"))  %>%
   select(country, country_text_id, everything())  %>% 
-  filter(year > 1950, is.na(cluster_label_1st) == F) %>% 
+  group_by(country_text_id) %>% 
+  mutate(country = unique(na.omit(country))) %>% 
+  filter(year >= 1950) %>% 
   dplyr::arrange(country_text_id, year)  
 
 ##### NA-Plots ####
@@ -111,15 +119,8 @@ Environment_Performance_IP %>%
   ggtitle("Missings in Democracy Profile Sample - OECD (After Linear Interpolation)")
 
 
+
 ######
-
-gladder(Environment_Performance_IP$greenhouse_oecd_per_capita)
-gladder(Environment_Performance_IP$sulphur_oecd_per_capita)
-gladder(Environment_Performance_IP$nitrogen_oecd_per_capita)
-gladder(Environment_Performance_IP$co2_oecd_per_capita)
-gladder(Environment_Performance_IP$water_oecd_per_capita)
-gladder(Environment_Performance_IP$waste_oecd_per_capita)
-
 
 
 
@@ -171,64 +172,70 @@ Environment_Performance_IP_norm %>%
   facet_wrap(variable~., scales = "free")
 
 
-Environment_Performance_IP_norm  %>% 
-  bind_cols(Environment_Performance %>%  select(country, country_text_id, year)) %>% 
-  filter(year>=1990) %>% 
-  select(greenhouse_oecd_int_oecd_per_capita, greenhouse_wdi_per_capita) %>% 
-  mutate_all(is.na) %>% 
-  table()
-
-
+### NA Frame
+# Data range: 1990 - 2016
+NA_frame_env_oecd = Environment_Performance_IP_norm %>% 
+  select(-greenhouse_wdi_per_capita) %>% 
+  mutate(non_na_perc = rowSums(is.na(.)==F)/dim(.)[2]) %>% 
+  bind_cols(Environment_Performance %>%  select(country, country_text_id, year)) %>%
+  filter(year>=1990, year <= 2016) %>% 
+  group_by(country_text_id) %>% 
+  tidyr::complete(country_text_id, year = min(year):max(year), fill = list(NA)) %>% 
+  ungroup() %>% 
+  select(country_text_id, year, non_na_perc)
+  
+dim(fa_data_oecd_frame)
 
 #### Factor Analysis: MI
 
 fa_data_oecd_frame = Environment_Performance_IP_norm %>% 
   bind_cols(Environment_Performance %>%  select(country, country_text_id, year)) %>% 
-  mutate(non_na_count = rowSums(is.na(Environment_Performance_IP_norm %>%  select(-greenhouse_wdi_per_capita))==F)) %>% 
-  filter(non_na_count >= 1, year>=1990) %>% 
-  select_at(vars(country, country_text_id, year, ends_with("oecd_per_capita"), ends_with("wdi_per_capita"))) 
-
+  select_at(vars(country, country_text_id, year, ends_with("oecd_per_capita"))) %>% 
+  right_join(NA_frame_env_oecd, by=c("country_text_id", "year"))
+  
 
 ### KOM-Test
 KMO(fa_data_oecd_frame %>% 
-      select_at(vars(ends_with("oecd_per_capita"), ends_with("wdi_per_capita"))) ) 
+      select_at(vars(ends_with("oecd_per_capita"))) ) 
 cor(fa_data_oecd_frame %>% 
       select_at(vars(ends_with("oecd_per_capita"), ends_with("wdi_per_capita"))) , use="pairwise")
 
 
 
+# MICE
 
 fa_data_oecd_frame_mice = fa_data_oecd_frame %>% 
   mutate(id = group_indices(., country_text_id)) %>% 
+  left_join(aux_vars_env, by=c("country", "year")) %>% 
   select(-country, -country_text_id) %>% 
-  # mutate(year = year - 1990,
-  #        year1 = poly(year,2)[,1],
-  #        year2 = poly(year,2)[,2]
-  # ) %>% 
-  select(-year) %>% 
+  # mutate(year = year - min(year),
+  #        year1 = poly(year,1)[,1]
+  # ) %>%
+  # select(-year) %>% 
   rename_all(funs(sub("_oecd_int_oecd_per_capita", "", .))) %>% 
-  as.matrix()
+  select(-co2) 
 
-pdf(file="m_pattern_env.pdf",width=20,height=8)
+
+
+pdf(file="Plots/m_pattern_env.pdf",width=20,height=8)
 md.pattern(fa_data_oecd_frame_mice, rotate.names = T)
 dev.off()
 
 pred_matrix = make.predictorMatrix(fa_data_oecd_frame_mice)
-pred_matrix["year1",] = 2
-pred_matrix["year2",] = 2
+
+
 pred_matrix[,"id"] = -2
 
 
-nr_immputations = 10
+nr_immputations = 2
 fa_data_oecd_frame_mice_result = mice(fa_data_oecd_frame_mice, pred=pred_matrix, meth="2l.pmm",
-     m = nr_immputations, maxit = 15)
+     m = nr_immputations, maxit = 10)
 head(fa_data_oecd_frame_mice_result$loggedEvents, 2)
 
 
 
 densityplot(fa_data_oecd_frame_mice_result)
 plot(fa_data_oecd_frame_mice_result)
-
 
 
 fa_data_oecd_frame_mice %>%
@@ -244,21 +251,21 @@ fa_data_oecd_frame_mice %>%
   geom_boxplot() +
   coord_flip()
 
-
-fa.parallel(complete(fa_data_oecd_frame_mice_result,5)[,1:7], fm="mle", n.iter=100, quant=0.95)
-vss(complete(fa_data_oecd_frame_mice_result,5)[,1:7], fm="mle", rotate="none")
-fa_oecd_env = fa(complete(fa_data_oecd_frame_mice_result,5)[,1:7], 3, rotate="promax", missing=F, fm="mle")
+fa.parallel(my_imputet_data[[3]][,1:5], fm="mle", n.iter=100, quant=0.95)
+vss(my_imputet_data[[3]][,1:5], fm="mle", rotate="none")
+fa_oecd_env = fa(my_imputet_data[[3]][,1:5], 1, rotate="promax", missing=F, fm="mle")
 fa.diagram(fa_oecd_env, cut=0)
 
 
+
 produce_fa_scores = function(mice_data, nr_immputations, nr_factors) {
-  scores_data = data.frame(matrix(NA, dim(complete(mice_data, 1))[1], nr_immputations)) %>% 
+  scores_data = data.frame(matrix(NA, dim(my_imputet_data[[1]])[1], nr_immputations)) %>% 
     rename_all(funs(sub("X", "imp_", .)))
   
   for (i in 1:nr_immputations) {
-    stack_data = complete(mice_data, i)
+    stack_data = my_imputet_data[[i]][,1:5]
 
-    fa_stack = fa(stack_data[,1:6], nr_factors, rotate="promax", missing=F, fm="mle")
+    fa_stack = fa(stack_data, nr_factors, rotate="promax", missing=F, fm="mle")
     scores_data[,i] = as.numeric(fa_stack$scores)
   }
   return(scores_data)
