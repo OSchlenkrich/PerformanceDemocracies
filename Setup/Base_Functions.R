@@ -66,6 +66,12 @@ folded_ladder_fun = function(x, plotting = F) {
   print(paste("1:", max(x, na.rm=T) == 1, min(x, na.rm=T) == 1))
   print(paste(round(min(x, na.rm=T),3)," ", round(max(x, na.rm=T),3)))
 
+  
+  # no 0 and 1 are allowed
+  if (min(x, na.rm=T) == 0 | max(x, na.rm=T) == 1) {
+    x = 0.005 + 0.99 * x
+  }
+
   nr_iterations = 1/0.025 + 1
   
   my_results_frame = data.frame(matrix(NA, nr_iterations, 3)) %>% 

@@ -25,7 +25,8 @@ V_dem = fread("C:/RTest/V-Dem-CY+Others-v8.csv", encoding = "UTF-8") %>%
          educ_equal = v2peedueq, 
          wgi_rq = e_wbgi_rqe,
          gini_vdem = e_peginiwi,
-         welfare = v2dlunivl,
+         v2dlunivl,
+         v2pehealth,
          WGI_RQ = e_wbgi_rqe,
          region = e_regionpol) %>%
   mutate(region = as.factor(region),
