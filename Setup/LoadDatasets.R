@@ -1,7 +1,7 @@
 # Load Datasets
 
 # Democracy Matrix ----
-dmx_data = fread("unzip -p Datasets/DemocracyMatrix_v1_1.zip")
+dmx_data = fread("unzip -p Datasets/DemocracyMatrix_v1_1.zip", encoding = "UTF-8")
 
 dmx_data_trade = dmx_data %>% 
   dplyr::select_at(vars(country, year, regions, classification_context, matches("dim_index_trade_off"))) %>% 

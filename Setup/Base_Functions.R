@@ -1,5 +1,68 @@
 # Base Functions
 
+# Missing Data Pattern Plot
+
+missd_pattern = function(data) {
+ col_NR = data %>% 
+  dim()
+ 
+ x_annotate = col_NR[2] + 0.6
+ 
+ cols_n = data %>% 
+  mutate_all(is.na) %>% 
+  mutate_all(funs(if_else(. == T, 1,0))) %>%
+  summarise_all(sum) %>% 
+  melt()
+
+
+ rows_n = data %>% 
+   mutate_all(is.na) %>% 
+   mutate_all(funs(if_else(. == T, 1,0))) %>%
+   unite("sum_n", sep="_") %>% 
+   group_by(sum_n) %>% 
+   summarise(rows_n=n())
+ 
+ rows_n_frame = data %>% 
+   mutate_all(is.na) %>% 
+   mutate_all(funs(if_else(. == T, 1,0))) %>%
+   distinct() %>%
+   unite("sum_n", sep="_", remove=T) %>%
+   mutate(id = 1:dim(.)[1]) %>% 
+   left_join(rows_n, by="sum_n") %>%
+   separate(sum_n, into=paste("C_Miss",c(1:col_NR[2]), sep="_"), sep="_", convert=T) %>% 
+   mutate(missing_vars = rowSums(select(., starts_with("C_Miss"))),
+          id = as.factor(id),
+          id = fct_reorder(id, -missing_vars)) %>% 
+   dplyr::select(id, rows_n, missing_vars) %>% 
+   arrange(id)
+ 
+ miss_plot = data %>% 
+   mutate_all(is.na) %>%
+   distinct() %>% 
+   mutate_all(funs(if_else(. == T, "missing","observed"))) %>%
+   mutate(id = 1:dim(.)[1]) %>% 
+   mutate(id = as.factor(id)) %>% 
+   left_join(rows_n_frame, by="id") %>% 
+   mutate(id = fct_reorder(id, -missing_vars)) %>% 
+   dplyr::select(-missing_vars) %>% 
+   melt(id.vars=c("rows_n", "id")) %>% 
+   mutate(variable = as.factor(variable),
+          variable = fct_reorder(variable, value)) %>% 
+   ggplot(aes(x = variable,
+              y = id,
+              fill = value)) +
+   geom_tile(color="black") +
+   scale_x_discrete(position = "top", name=NULL, expand = c(0.05,0.5)) +
+   scale_y_discrete(expand = c(0.1,0), labels = rows_n_frame$rows_n) +
+   ylab("No. of Missings") +
+   theme_bw() +
+   theme(axis.text.x = element_text(angle=90), legend.position = "right") +
+   annotate("text", x = cols_n$variable, label= cols_n$value, y=0.2) +
+   annotate("text", x = x_annotate, label= rows_n_frame$missing_vars, y=rows_n_frame$id) 
+ 
+ return(miss_plot)
+}
+
 # SGI
 IQR_min_fun = function(x) {
   iqrange = IQR(x, na.rm=T)
@@ -57,6 +120,7 @@ ladder_fun = function(x) {
 }
 
 
+
 folded_ladder_fun = function(x, plotting = F) {
   
   f_fun <- function(x, lambda) (x^lambda - (1-x)^lambda)
@@ -75,7 +139,7 @@ folded_ladder_fun = function(x, plotting = F) {
   nr_iterations = 1/0.025 + 1
   
   my_results_frame = data.frame(matrix(NA, nr_iterations, 3)) %>% 
-    rename(lambda = X1, shapiro.w = X2, shapiro.p.value = X3)
+    dplyr::rename(lambda = X1, shapiro.w = X2, shapiro.p.value = X3)
   
   # special: lambda=0 is logit
   results = log(x) - log(1-x)

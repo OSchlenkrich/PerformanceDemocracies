@@ -35,40 +35,46 @@ fa_data_soc_frame_mice_inv = fa_data_soc_frame_mice %>%
 dim(fa_data_soc_frame_mice_inv)
 
 KMO(fa_data_soc_frame_mice_inv %>% 
-      select_at(vars(ends_with("soc"), -gini_wdi_num_soc))) 
+      select_at(vars(ends_with("soc"), -gini_wdi_num_soc, -Pension_t_GI_num_soc))) 
 
-cor(fa_data_soc_frame_mice_inv %>% 
-      select_at(vars(ends_with("soc"))) , use="pairwise")
+corrplot(cor(fa_data_soc_frame_mice_inv %>% 
+      select_at(vars(ends_with("soc"))) , use="pairwise"))
+
+
+
+fa_dataset = fa_data_soc_frame_mice_inv %>% 
+  select_at(vars(ends_with("soc"), -gini_wdi_num_soc, -Pension_t_GI_num_soc))
 
 ### Factor Analysis
 par(mfrow=c(1,1))
-fa.parallel(fa_data_soc_frame_mice_inv%>% 
-              select_at(vars(ends_with("soc"), -gini_wdi_num_soc, -Pension_t_GI_num_soc)), fm="mle", n.iter=100, quant=0.95, fa="fa",
+fa.parallel(fa_dataset, fm="mle", n.iter=5000, quant=0.95, fa="fa",
             use="pairwise.complete.obs",
             main="Parallel Analysis Scree Plots for Social Performance")
 
-vss(fa_data_soc_frame_mice_inv%>% 
-      select_at(vars(ends_with("soc"), -gini_wdi_num_soc, -Pension_t_GI_num_soc)), fm="mle", rotate="none")$map %>% 
+vss(fa_dataset, fm="mle", rotate="none")$map %>% 
   round(.,3)
 
 
 # no simple structure
-fa_oecd_2_ds = fa(fa_data_soc_frame_mice_inv%>% 
-                    select_at(vars(ends_with("soc"), -gini_wdi_num_soc, -Pension_t_GI_num_soc)), 2, rotate="promax", missing=F, fm="mle")
-fa.diagram(fa_oecd_2_ds, cut=0)
-fa_oecd_2_ds
-fa_oecd_2_ds$loadings
+fa_oecd_3_soc = fa(fa_dataset, 3, rotate="promax", missing=F, fm="mle")
+fa.diagram(fa_oecd_3_soc, cut=0)
+fa_oecd_3_soc
+fa_oecd_3_soc$loadings
+
+fa_oecd_2_soc = fa(fa_dataset, 2, rotate="promax", missing=F, fm="mle")
+fa.diagram(fa_oecd_2_soc, cut=0)
+fa_oecd_2_soc
+fa_oecd_2_soc$loadings
 
 
-fa_oecd_ds = fa(fa_data_soc_frame_mice_inv %>% 
-                  select_at(vars(ends_with("soc"), -gini_wdi_num_soc, -Pension_t_GI_num_soc)), 1, rotate="promax", missing=F, fm="mle")
-fa.diagram(fa_oecd_ds, cut=0, main= "Factor Solution for Domestic Securirty Performance")
-fa_oecd_ds
+fa_oecd_soc = fa(fa_dataset, 1, rotate="promax", missing=F, fm="mle")
+fa.diagram(fa_oecd_soc, cut=0, main= "Factor Solution for Social Performance")
+fa_oecd_soc
 
 
 # Cronbachs Alpha
-alpha(fa_data_soc_frame_mice_inv%>% 
-        select_at(vars(ends_with("soc"), -gini_wdi_num_soc, -Pension_t_GI_num_soc)), check.keys=TRUE)
+alpha(fa_dataset, check.keys=TRUE, n.iter=10)
+
 
 # Two Factor Solution
 # alpha(fa_data_ds_frame_mice_inv %>% 

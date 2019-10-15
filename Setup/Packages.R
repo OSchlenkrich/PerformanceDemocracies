@@ -1,5 +1,5 @@
 # Packages
-
+library(paran)
 library(dplyr)
 library(data.table)
 library(cluster)
@@ -26,6 +26,9 @@ library(tidyr)
 library(rcompanion)
 library(mice)
 library(miceadds)
+library(Amelia)
+library(haven)
+library(umx)
 
 # for correct display of tibbles
 options(crayon.enabled = FALSE)

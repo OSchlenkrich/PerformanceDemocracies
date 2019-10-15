@@ -1,60 +1,106 @@
-# Environment Imputation
+# Confidence Imputation
 
 source("Setup/AuxiliaryVariables.R")
-source("Analyse/Social/soc_variables.R")
+source("Analyse/Confidence/conf_variables.R")
 
 
-fa_data_soc_frame_mice = fa_data_soc_frame %>% 
-  rename_all(funs(sub("_GI", "_GI_num_soc", .))) %>% 
-  rename_all(funs(sub("_lis", "_lis_num_soc", .))) %>% 
-  rename_all(funs(sub("_wdi", "_wdi_num_soc", .))) %>%
-  rename_all(funs(sub("_vdem", "_vdem_num_soc", .))) %>%
+fa_data_conf_frame_mice = fa_data_conf_frame %>% 
+
   # include auxiliary and analyse variables
-  left_join(aux_vars %>%  select_at(vars(country_text_id, year, 
-                                         ends_with("gen_num_aux"), 
-                                         ends_with("soc_num_aux"))
-  ), by=c("country_text_id", "year")) %>%
-  left_join(aux_vars_dmx_env, by=c("country_text_id", "year")) %>%
-  left_join(analyse_vars, by=c("country_text_id", "year")) %>%
+  left_join(aux_vars %>%  select_at(vars(country_text_id, year_study = year, 
+                                         ends_with("gen_num_aux"))
+  ), by=c("country_text_id", "year_study")) %>%
+  left_join(aux_vars_dmx_env %>%  select(country_text_id, year_study = year, classification_context), 
+            by=c("country_text_id", "year_study")) %>%
+  # left_join(analyse_vars %>%  dplyr::rename(year_study = year), by=c("country_text_id", "year_study")) %>%
   # scale variables
-  mutate_at(vars(ends_with("_soc"), ends_with("num_aux")), scale) %>% 
+  mutate_at(vars(matches("num")), scale) %>% 
   # leads and lags for better predicition
-  group_by(country_text_id) %>% 
-  mutate_at(vars(ends_with("_soc")), funs(
-    "lag"= dplyr::lag(.,1),
-    "lead"= dplyr::lead(.,1))
-  ) %>%
   ungroup()  %>%
   # at least one of target variables not missing
   filter(non_na_perc > 0) %>% 
   filter(classification_context == "Deficient Democracy" |  classification_context == "Working Democracy") %>% 
-  select(-non_na_perc, -country, -classification_context) %>% 
-  dplyr::arrange(country_text_id, year) %>% 
+  select(-non_na_perc, -country, -classification_context, -survey) %>% 
+  dplyr::arrange(country_text_id, year_study) %>% 
   # analyse time range: 1970 - 2016
-  filter(year>=1970, year <= 2017) %>% 
-  mutate(year_0 = year - min(year))
+  filter(year_study >= 1970, year_study <= 2017)  %>%
+  # id is for mice which cannot handle characters
+  mutate(id = group_indices(., country_text_id))
 
+# remove missings from 2nd level variables
+fa_data_conf_frame_w2nd_mice = fa_data_conf_frame_mice %>% 
+  filter(is.na(GDP_capita_wdi_gen_num_aux) == F, is.na(educ_equal_vdem_gen_num_aux) == F)
 
-mice_data = as.data.frame(fa_data_soc_frame_mice) %>% 
-  select(-year)
+mice_data = as.data.frame(fa_data_conf_frame_w2nd_mice) %>% 
+  select(-country_text_id,  -year_study) 
+  # dplyr::sample_frac(0.1)
 mice_data[] <- lapply(mice_data, function(x) { attributes(x) <- NULL; x })
+
 
 
 # corrplot
 library(corrplot)
-corrplot(cor(fa_data_soc_frame_mice %>% 
+corrplot(cor(fa_data_conf_frame_mice %>% 
                select_if(is.numeric) %>% 
-               select_at(vars(-year, -year_0, -ends_with("lag"),-ends_with("lead"))), use="pairwise"))
+               select_at(vars(-id, -year_study)), use="pairwise", method="spearman"))
+
+
 
 
 # Missing Data Pattern
-
-missd_pattern(fa_data_soc_frame_mice %>%  
-                select_at(vars(ends_with("_soc"))))            
+# see conf_variables.R
 
 
 # Imputation
 # includes: FE, Polynomial
+library(mi)
+mdf_conf = missing_data.frame(mice_data)
+mdf_conf = mi::change(mdf_conf, y = "id" , what = "type", to = "group")
+
+show(mdf_conf)
+
+options(mc.cores = 5)
+imputations_conf = mi(mdf_conf, n.iter = 1, n.chains = 5, max.minutes = 20)
+
+round(mipply(imputations_conf, mean, to.matrix = TRUE), 3)
+Rhats(imputations_conf)
+
+# Diagnostics
+plot(imputations_conf)
+
+
+
+
+pred_matrix = make.predictorMatrix(mice_data)
+pred_matrix[, "id"] = -2
+pred_matrix
+
+meth_matrix = make.method(mice_data, defaultMethod = "2l.pmm")
+
+#meth_matrix[c("GDP_capita_wdi_gen_num_aux", "educ_equal_vdem_gen_num_aux")] = ""
+meth_matrix
+
+mice_data_umx = as.data.frame(fa_data_conf_frame_w2nd_mice) %>% 
+  select_at(vars(matches("conf"), -conf_press_ord_aux_ivs)) 
+
+library(umx)
+umxEFA(mice_data_umx, 1, scores = "Regression", minManifests = 2)
+
+
+imp <- parlmice(nhanes,
+                maxit=1,
+                n.core = 1)
+
+imp <- mice(mice_data, 
+            method = meth_matrix, 
+            predictorMatrix = pred_matrix, 
+            n.imp.core = 1,
+            maxit=1)
+
+
+mice::complete(imp, 1)
+
+densityplot(imp)
 
 nr_imputations = 10
 nr_cores = 10
