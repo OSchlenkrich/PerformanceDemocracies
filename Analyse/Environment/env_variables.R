@@ -1,11 +1,4 @@
-# Economic Performance
-source("Analyse/Cluster_v3.R")
-
-
-QoC_data = fread("C:/RTest/qog_std_ts_jan19.csv", encoding = "UTF-8") %>% 
-  rename(country = cname,
-         country_text_id = ccodealp)
-
+# Environment Performance
 
 
 per_capita_maker = function(x, pop) {
@@ -36,16 +29,23 @@ Environment_Performance = QoC_data %>%
   ungroup() %>% 
   
   mutate_at(vars(ends_with("oecd")), funs(int_oecd_per_capita = per_capita_maker(., GDP_capita_wdi*population_wdi)))  %>%
-  mutate(greenhouse_wdi_per_capita = (greenhouse_wdi_per_capita*population_wdi)/(GDP_capita_wdi*population_wdi),
-         test = GDP_capita*population) %>% 
+  mutate(greenhouse_wdi_per_capita = (greenhouse_wdi_per_capita*population_wdi)/(GDP_capita_wdi*population_wdi)) %>% 
+  
+  #Senegal as negative number
+  mutate(greenhouse_wdi_per_capita = abs(greenhouse_wdi_per_capita)) %>% 
+  
   filter(country_text_id %in% unique(dmx_trade_cluster$country_text_id)) %>% 
-  left_join(dmx_trade_cluster, by=c("country_text_id", "year"))  %>%
-  select(country, country_text_id, everything())  %>% 
-  group_by(country_text_id) %>% 
-  mutate(country = unique(na.omit(country)),
-         regions = unique(na.omit(regions))) %>%
+ 
+  left_join(dmx_trade_cluster %>%  select(-country, -regions), by=c("country_text_id", "year"))  %>%
+  
+  # add country and regions
+  left_join(V_dem %>%  select(country, country_text_id) %>%  distinct(), by=c("country_text_id"))  %>%
+  left_join(dmx_data %>%  select(country, regions) %>%  distinct(), by=c("country"))  %>%
+  
+  select(country, country_text_id, regions, year, everything())  %>% 
   ungroup() %>% 
   dplyr::arrange(country_text_id, year)  
+
 
 ##### NA-Plots ####
 
@@ -148,7 +148,7 @@ Environment_Performance_IP %>%
 ####
 
 
-Environment_Performance_IP_norm = Environment_Performance_IP %>% 
+Environment_Performance_IP_norm = Environment_Performance_IP  %>% 
   select_at(vars(ends_with("oecd_per_capita"), ends_with("wdi_per_capita"))) %>%
   mutate_all(funs(folded_ladder_fun(., plotting =T))) %>% 
   mutate_all(scale)
