@@ -12,7 +12,12 @@ dmx_data_trade = dmx_data %>%
   na.omit()
 
 
-##
+## QoC Dataset
+QoC_data = fread("C:/RTest/qog_std_ts_jan19.csv", encoding = "UTF-8") %>% 
+  rename(country = cname,
+         country_text_id = ccodealp)
+
+###
 
 
 dmx_data_context = dmx_data %>% 

@@ -1,4 +1,4 @@
-# Environment Imputation
+# Social Imputation
 
 source("Setup/AuxiliaryVariables.R")
 source("Analyse/Social/soc_variables.R")
@@ -74,6 +74,7 @@ a.out_soc <- amelia(mice_data,
 
 a.out_soc
 
+if (Plot_Impu == T) {
 # convergence
 par(mfrow=c(1,1))
 disperse(a.out_soc, dims = 1, m = 5)
@@ -101,6 +102,7 @@ Amelia::overimpute(a.out_soc, var = "poverty8020_lis_num_soc", main= "Observed v
 Amelia::overimpute(a.out_soc, var = "v2dlunivl_vdem_num_soc", main= "Observed vs. Imputed Values of Means-tested v. universalistic policy")
 Amelia::overimpute(a.out_soc, var = "gini_wdi_num_soc", main= "Observed vs. Imputed Values of Gini Coefficient (WDI)")
 
+par(mfrow=c(1,1))
 
 tscsPlot(a.out_soc, cs = "AUS",
          var = "gini_wdi_num_soc")
@@ -113,6 +115,7 @@ tscsPlot(a.out_soc, cs = c("ZAF"),
 tscsPlot(a.out_soc, cs = "DEU",
          var = "water_oecd_num_env")
 
+}
 
 ## Combine Imputation into Long Format
 imputed_soc = mapply(cbind, a.out_soc$imputations, ".imp" = 1:nr_imputations, SIMPLIFY = FALSE) %>% 

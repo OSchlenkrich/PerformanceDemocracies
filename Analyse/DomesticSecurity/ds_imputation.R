@@ -1,7 +1,7 @@
-# Environment Imputation
+# Domestic Security Imputation
 
 source("Setup/AuxiliaryVariables.R")
-source("Analyse/Environment/env_variables.R")
+source("Analyse/DomesticSecurity/ds_variables.R")
 
 
 fa_data_ds_frame_mice = fa_data_ds_frame %>% 
@@ -67,6 +67,7 @@ a.out_ds <- amelia(mice_data,
 
 a.out_ds
 
+if (Plot_Impu == T) {
 # convergence
 par(mfrow=c(1,1))
 disperse(a.out_ds, dims = 1, m = 5)
@@ -99,6 +100,7 @@ tscsPlot(a.out_ds, cs = c("ZAF"),
          var = "waste_oecd_num_env")
 tscsPlot(a.out_ds, cs = "DEU",
          var = "water_oecd_num_env")
+}
 
 
 ## Combine Imputation into Long Format

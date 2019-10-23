@@ -1,6 +1,6 @@
-# Social Performance Descirptive Analyse of Factor Scores
+# Confidence Descirptive Analyse of Factor Scores
 
-source("Analyse/Environment/soc_FA.R")
+source("Analyse/Confidence/conf_FA.R")
 
 
 samples = c("CAN","DEU", "USA", "SWE", "IND", "FIN", "DNK")
@@ -130,3 +130,6 @@ confidence_final_agg %>%
   geom_line(size=1) +
   geom_point() +
   facet_wrap(variable ~ .) 
+
+
+print("End of Confidence Script")

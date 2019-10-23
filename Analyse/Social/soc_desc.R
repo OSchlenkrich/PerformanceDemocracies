@@ -1,6 +1,6 @@
 # Social Performance Descirptive Analyse of Factor Scores
 
-source("Analyse/Environment/soc_FA.R")
+source("Analyse/Social/soc_FA.R")
 
 
 samples = c("CAN","DEU", "USA", "SWE", "IND", "FIN", "DNK")
@@ -28,7 +28,7 @@ soc_scores_mean = soc_scores %>%
 #### 
 
 
-integration_final = Integration_Performance %>%
+social_final = Integration_Performance %>%
   select(country, country_text_id, regions, year, classification_context, cluster_label_1st) %>% 
   left_join(soc_scores_mean, by=c("country_text_id", "year")) %>% 
   ungroup() %>% 
@@ -38,7 +38,7 @@ integration_final = Integration_Performance %>%
 
 samples = c("GBR","NZL", "SWE", "USA", "DEU", "FRA")
 
-integration_final %>% 
+social_final %>% 
   filter(country_text_id %in% samples) %>% 
   select_at(vars(country_text_id, year, matches("index"))) %>% 
   melt(id.vars=c("country_text_id", "year")) %>% 
@@ -51,7 +51,7 @@ integration_final %>%
 
 
 
-integration_final %>% 
+social_final %>% 
   select_at(vars(matches("index"))) %>% 
   melt() %>% 
   ggplot(aes(x=value)) + 
@@ -61,7 +61,7 @@ integration_final %>%
 
 
 
-integration_final %>% 
+social_final %>% 
   select_at(vars(year, matches("index"))) %>% 
   group_by(year) %>% 
   summarise_all(funs(mean, min = fun_quantile25, max=fun_quantile75), na.rm=T) %>% 
@@ -76,7 +76,7 @@ integration_final %>%
 
 samples = c("LUX", "IND", "SWE", "FRA", "DNK", "EST", "USA")
 
-integration_final %>% 
+social_final %>% 
   filter(country_text_id %in% samples) %>% 
   select_at(vars(country_text_id, year, matches("index"))) %>% 
   melt(id.vars=c("country_text_id", "year")) %>% 
@@ -91,7 +91,7 @@ integration_final %>%
 
 ###
 
-modes_cluster = integration_final %>% 
+modes_cluster = social_final %>% 
   filter(year < 1990) %>% 
   group_by(country_text_id) %>% 
   summarise(cluster_label_1st_mode = getmode(cluster_label_1st))
@@ -100,7 +100,7 @@ modes_cluster %>%
   group_by(cluster_label_1st_mode) %>% 
   summarise(n())
 
-integration_final %>% 
+social_final %>% 
   left_join(modes_cluster, by="country_text_id") %>% 
   group_by(cluster_label_1st_mode, year) %>% 
   select_at(vars(cluster_label_1st_mode, year, matches("index"))) %>% 
@@ -115,7 +115,7 @@ integration_final %>%
 
 
 
-integration_final %>% 
+social_final %>% 
   left_join(modes_cluster, by="country_text_id") %>% 
   group_by(cluster_label_1st, year) %>% 
   select_at(vars(cluster_label_1st, year, matches("index"))) %>% 

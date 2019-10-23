@@ -1,6 +1,6 @@
-# Domestic Security Factor Analysis
+# Social Factor Analysis
 
-source("Analyse/Environment/soc_imputation.R")
+source("Analyse/Social/soc_imputation.R")
 
 
 produce_fa_scores = function(mice_data, nr_imputations, nr_factors, variable_ending) {
@@ -47,9 +47,8 @@ fa_dataset = fa_data_soc_frame_mice_inv %>%
 
 ### Factor Analysis
 par(mfrow=c(1,1))
-fa.parallel(fa_dataset, fm="mle", n.iter=5000, quant=0.95, fa="fa",
-            use="pairwise.complete.obs",
-            main="Parallel Analysis Scree Plots for Social Performance")
+paran(na.omit(fa_dataset), iterations=0, graph=T, cfa=T, centile=95)
+
 
 vss(fa_dataset, fm="mle", rotate="none")$map %>% 
   round(.,3)

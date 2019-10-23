@@ -200,9 +200,9 @@ fun_quantile75 = function(x, na.rm=T) {
 
 # EPI
 
-EPI_fun = function(x) {
-  best = quantile(x, 0.975, na.rm=T)
-  minimum = quantile(x, 0.025, na.rm=T)
+EPI_fun = function(x, lower = 0.025, upper=0.975) {
+  best = quantile(x, upper, na.rm=T)
+  minimum = quantile(x, lower, na.rm=T)
   
   x = if_else(x >= best, 100, 
               if_else(x <= minimum, 0, ((x - minimum)/(best-minimum)) * 100))
@@ -246,8 +246,7 @@ inverser = function(x) {
 
 
 # interpolation
-x = c(1,2,4,5,6)
-na_interpol = function(x) {
+na_interpol = function(x, max_gap = 5) {
   if (length(na.omit(x)) >= 2) {
 
     pointer = length(x)
@@ -260,7 +259,7 @@ na_interpol = function(x) {
       }
     }
     
-    y = na_interpolation(x,  option = "linear", maxgap = 5)
+    y = na_interpolation(x,  option = "linear", maxgap = max_gap)
     if (pointer < length(x)) {
       y[(pointer+1):length(x)] = NA
     } 

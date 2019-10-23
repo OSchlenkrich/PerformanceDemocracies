@@ -10,7 +10,9 @@ aux_vars_qoc = QoC_data %>%
          psocial_exp_oecd_pr_soc_num_aux = oecd_socexpnd_t1a,
          poverty_ds_num_aux = lis_pr9010,
          
-         gini_pr_ds_num_aux =  wdi_gini
+         gini_pr_ds_num_aux =  wdi_gini,
+         
+         life_expectancy_eco_num_aux = wdi_lifexp
          ) %>%
   mutate(
     Renewable_wdi_pr_env_num_aux = Renewable_wdi_pr_env_num_aux/100,
@@ -24,7 +26,7 @@ aux_vars_qoc = QoC_data %>%
          ) %>% 
   filter(country_text_id %in% unique(dmx_trade_cluster$country_text_id)) %>% 
   filter_if(is.double, any_vars(!is.na(.))) %>%
-  mutate_at(vars("GDP_capita_wdi_gen_num_aux", "poverty_ds_num_aux"), funs(ladder_fun)) %>% 
+  mutate_at(vars("GDP_capita_wdi_gen_num_aux", "poverty_ds_num_aux", "life_expectancy_eco_num_aux"), funs(ladder_fun)) %>% 
   mutate_at(vars(matches("_pr_")), funs(folded_ladder_fun))  %>% 
   dplyr::arrange(country_text_id, year)
 

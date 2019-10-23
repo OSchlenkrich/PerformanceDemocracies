@@ -1,6 +1,6 @@
 # Domestic Security Factor Analysis
 
-source("Analyse/Environment/ds_imputation.R")
+source("Analyse/DomesticSecurity/ds_imputation.R")
 
 
 produce_fa_scores = function(mice_data, nr_imputations, nr_factors, variable_ending) {

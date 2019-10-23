@@ -1,13 +1,5 @@
 # Latent Pattern Maintenance Performance
-source("Analyse/Cluster_v3.R")
-
-
-QoC_data = fread("C:/RTest/qog_std_ts_jan19.csv", encoding = "UTF-8") %>% 
-  rename(country = cname,
-         country_text_id = ccodealp)
-
-
-#### Political Culture ####
+#### Confidence ####
 
 IVS_ctry_id = read.csv("C:/RTest/IVS/ctry_id.csv", header=T, encoding = "UTF-8") %>% 
   rename(S003 = V2) %>% 

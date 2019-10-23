@@ -1,6 +1,6 @@
-# Environment Descirptive Analyse of Factor Scores
+# Domestic Security Descirptive Analyse of Factor Scores
 
-source("Analyse/Environment/ds_FA.R")
+source("Analyse/DomesticSecurity/ds_FA.R")
 
 
 samples = c("CAN","DEU", "USA", "SWE", "IND", "FIN", "DNK")
@@ -132,3 +132,6 @@ domestic_security_final %>%
   geom_line(size=1) +
   geom_point() +
   facet_wrap(variable ~ .) 
+
+
+print("End of Domestic Security Script")

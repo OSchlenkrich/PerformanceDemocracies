@@ -1,12 +1,4 @@
-# IntegrationPerformance
-source("Analyse/Cluster_v3.R")
-
-
-
-QoC_data = fread("C:/RTest/qog_std_ts_jan19.csv", encoding = "UTF-8") %>% 
-  rename(country = cname,
-         country_text_id = ccodealp)
-
+# Social Performance
 
 Integration_Performance = QoC_data %>% 
   select(country_text_id, year,
@@ -30,10 +22,10 @@ Integration_Performance = QoC_data %>%
          
          gini_wdi = wdi_gini
   )  %>% 
+  filter_if(is.double, any_vars(!is.na(.))) %>% 
   mutate(gini_wdi = gini_wdi/100) %>% 
   left_join(V_dem %>%  select( country_text_id, year, v2dlunivl_vdem = v2dlunivl), by=c("country_text_id", "year"))  %>%
   # Sample
-  filter_if(is.double, any_vars(!is.na(.))) %>% 
   filter(year > 1950) %>% 
   filter(country_text_id %in% unique(dmx_trade_cluster$country_text_id)) %>% 
   group_by(country_text_id) %>% 

@@ -1,6 +1,6 @@
-# Domestic Security Factor Analysis
+# Confidence Factor Analysis
 
-source("Analyse/Environment/conf_variables_v2.R")
+source("Analyse/Confidence/conf_variables_v2.R")
 
 
 

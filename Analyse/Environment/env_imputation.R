@@ -4,10 +4,14 @@ source("Setup/AuxiliaryVariables.R")
 source("Analyse/Environment/env_variables.R")
 
 
+
 fa_data_oecd_frame_mice = fa_data_oecd_frame %>% 
   rename_all(funs(sub("_oecd_int_oecd_per_capita", "_oecd_num_env", .))) %>% 
   # include auxiliary and analyse variables
-  left_join(aux_vars_qoc_env, by=c("country_text_id", "year")) %>%
+  left_join(aux_vars %>%  select_at(vars(country_text_id, year, 
+                                         ends_with("gen_num_aux"), 
+                                         matches("_env_"))
+  ), by=c("country_text_id", "year")) %>%
   left_join(aux_vars_dmx_env, by=c("country_text_id", "year")) %>%
   left_join(analyse_vars, by=c("country_text_id", "year")) %>%
   # scale variables
@@ -36,7 +40,6 @@ mice_data[] <- lapply(mice_data, function(x) { attributes(x) <- NULL; x })
 
 
 # corrplot
-library(corrplot)
 corrplot(cor(fa_data_oecd_frame_mice %>% 
                select_if(is.numeric) %>% 
                select_at(vars(-ends_with("lag"),-ends_with("lead"))), use="pairwise"))
@@ -63,6 +66,7 @@ a.out <- amelia(mice_data,
 
 a.out
 
+if (Plot_Impu == T) {
 # convergence
 par(mfrow=c(1,1))
 disperse(a.out, dims = 1, m = 5)
@@ -86,6 +90,7 @@ Amelia::overimpute(a.out, var = "waste_oecd_num_env", main= "Observed vs. Impute
 Amelia::overimpute(a.out, var = "water_oecd_num_env", main= "Observed vs. Imputed Values of Water abstractions")
 
 
+par(mfrow=c(1,1))
 
 tscsPlot(a.out, cs = "AUS",
          var = "water_oecd_num_env")
@@ -98,6 +103,7 @@ tscsPlot(a.out, cs = c("ZAF"),
 tscsPlot(a.out, cs = "DEU",
          var = "water_oecd_num_env")
 
+}
 
 ## Combine Imputation into Long Format
 imputed_env = mapply(cbind, a.out$imputations, ".imp" = 1:nr_imputations, SIMPLIFY = FALSE) %>% 

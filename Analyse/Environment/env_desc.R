@@ -131,3 +131,6 @@ Environment_Performance_final %>%
   geom_line(size=1) +
   geom_point() +
   facet_wrap(variable ~ .) 
+
+
+print("End Environment Performance Script")
