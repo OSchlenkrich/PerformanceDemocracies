@@ -55,6 +55,7 @@ AR_dmx = V_dem %>%
 
 
 ##### NA-Plots ####
+dim(AR_dmx)
 
 AR_dmx %>% 
   filter(year >= 1950) %>% 
@@ -110,6 +111,13 @@ AR_dmx %>%
   geom_histogram()  +
   facet_wrap(variable~., scales = "free")
 
+AR_dmx %>% 
+  select_at(vars(starts_with("arate"))) %>% 
+  melt() %>% 
+  ggplot(aes(x=value)) + 
+  geom_histogram()  +
+  facet_wrap(variable~., scales = "free")
+
 
 # Transformation Variables ####
 
@@ -135,6 +143,12 @@ AR_dmx_norm %>%
   geom_histogram()  +
   facet_wrap(variable~., scales = "free")
 
+AR_dmx_norm %>% 
+  select_at(vars(starts_with("arate"))) %>% 
+  melt() %>% 
+  ggplot(aes(x=value)) + 
+  geom_histogram()  +
+  facet_wrap(variable~., scales = "free")
 
 # Index
 

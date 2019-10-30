@@ -10,14 +10,6 @@ cty_identifier = V_dem %>%
 
 # Getting the Data 
 
-library(readstata13)
-protest_data = read.table("Datasets/mmALL_020619_v15.tab", sep="\t", header=T)
-
-test = protest_data %>% 
-  group_by(country, year) %>% 
-  summarise(sum(protesterviolence, na.rm=T), sum(protest, na.rm=T))
-
-
 UNODC_burglary = fread("Datasets/UNODC_burglary.csv") %>% 
   rename(burg_count = Count, 
          burg_rate = Rate,

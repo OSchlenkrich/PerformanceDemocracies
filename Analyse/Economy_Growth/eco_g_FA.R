@@ -50,7 +50,7 @@ produce_fa_scores_eco = function(mice_data, nr_imputations, nr_factors, variable
 ### Inverse Scores
 
 fa_data_oecd_frame_mice_inv = fa_data_oecd_frame_mice %>% 
-  mutate_at(vars("Inflation_oecd_num_eco", "Interest_oecd_num_eco"), inverser)
+  mutate_at(vars("GDP_growth_oecd_num_eco", "Inflation_oecd_num_eco", "Interest_oecd_num_eco"), inverser)
 
 
 
@@ -63,7 +63,6 @@ KMO(fa_data_oecd_frame_mice_inv %>%
       select_at(vars(ends_with("eco"), -"Unemployment_pr_oecd_num_eco", -"Invest_oecd_num_eco"))) 
 corrplot(cor(fa_data_oecd_frame_mice_inv %>% 
       select_at(vars(ends_with("eco"))) , use="pairwise"))
-
 
 ### Factor Analysis
 
@@ -94,7 +93,7 @@ alpha(fa_eco_data)
 
 ## Calculate Factor Scores
 imputed_eco_inv = imputed_eco  %>% 
-  mutate_at(vars("Inflation_oecd_num_eco", "Interest_oecd_num_eco"), inverser) 
+  mutate_at(vars("GDP_growth_oecd_num_eco", "Inflation_oecd_num_eco", "Interest_oecd_num_eco"), inverser) 
 
 # Testplot
 

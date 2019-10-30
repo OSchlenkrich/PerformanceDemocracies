@@ -3,7 +3,7 @@ source("Setup/Base_Functions.R")
 source("Setup/Plotting_Functions.R")
 source("Setup/LoadDatasets.R")
 
-source("Analyse/Cluster_v3.R")
+# source("Analyse/Cluster_v3.R")
 
 
 # Create All Datasets
@@ -53,6 +53,8 @@ confidence_individual = fread(file="Datasets/performance_data/confidence_individ
 performance_all = fread(file="Datasets/performance_data/performance_all.csv", encoding = "UTF-8") %>% 
   mutate(conf_index  = na_interpol(conf_index, 10)) 
 # NA Plot
+dim(performance_all)
+
 
 performance_all %>% 
   filter(year >= 1950) %>% 
@@ -63,15 +65,64 @@ performance_all %>%
   ggplot(aes(x=year, y=value, fill=variable)) +
   geom_bar(stat="identity", width=1) +
   facet_wrap(variable~.) +
-  scale_y_continuous(breaks=seq(0,100, 10), limit=c(0,100))  +
-  scale_x_continuous(breaks=seq(1950,2020, 10)) +
+  scale_y_continuous(breaks=seq(0,100, 10), limit=c(0,100), name=NULL)  +
+  scale_x_continuous(breaks=seq(1950,2020, 10), name=NULL) +
   theme_bw()  +
-  theme(axis.text.x = element_text(angle=90), legend.position = "bottom") +
-  ggtitle("Performance Areas - CCP")
+  theme(axis.text.x = element_text(angle=90), legend.position = "none") +
+  ggtitle("Percentage of NA-Values For Each Performance Areas")
 
 
 
 ## MAKE PLOTS ####
+
+test = performance_all %>% 
+  select_at(vars(year, matches("index"))) %>% 
+  group_by(year) %>% 
+  summarise_all(funs(mean), na.rm=T) %>% 
+  melt(id.vars=c("year"), value.name="mean") %>% 
+  bind_cols(performance_all %>% 
+              select_at(vars(year, matches("index"))) %>% 
+              group_by(year) %>% 
+              summarise_all(funs(fun_quantile25), na.rm=T) %>% 
+              melt(id.vars=c("year")) %>% 
+              select(lower25 = value)) %>% 
+  bind_cols(performance_all %>% 
+              select_at(vars(year, matches("index"))) %>% 
+              group_by(year) %>% 
+              summarise_all(funs(fun_quantile75), na.rm=T) %>% 
+              melt(id.vars=c("year")) %>% 
+              select(upper75 = value)) %>% 
+  na.omit()
+# OVERALL TREND
+performance_all %>% 
+  select_at(vars(year, matches("index"))) %>% 
+  group_by(year) %>% 
+  summarise_all(funs(mean), na.rm=T) %>% 
+  melt(id.vars=c("year"), value.name="mean") %>% 
+  bind_cols(performance_all %>% 
+              select_at(vars(year, matches("index"))) %>% 
+              group_by(year) %>% 
+              summarise_all(funs(fun_quantile25), na.rm=T) %>% 
+              melt(id.vars=c("year")) %>% 
+              select(lower25 = value)) %>% 
+  bind_cols(performance_all %>% 
+              select_at(vars(year, matches("index"))) %>% 
+              group_by(year) %>% 
+              summarise_all(funs(fun_quantile75), na.rm=T) %>% 
+              melt(id.vars=c("year")) %>% 
+              select(upper75 = value)) %>% 
+  ggplot(aes(x=year, y=mean, col=variable)) +
+  geom_line(size=1) +
+  geom_line(aes(y=lower25), size=1) +
+  geom_line(aes(y=upper75), size=1) +
+  facet_wrap(variable ~ .) +
+  ylim(0,100) +
+  theme_bw() +
+  theme(legend.position = "none")
+
+
+
+# SINGLE COUNTRIES
 samples = c("GBR","NZL", "SWE", "USA", "DEU", "FRA")
 
 samples = sample(unique(performance_all$country_text_id), 4)
@@ -114,12 +165,12 @@ performance_all %>%
   
   
 ###
-samples = sample(unique(performance_all$country_text_id), 4)
-#samples = c("GBR","NZL", "SWE", "USA", "DEU", "FRA")
-samples = c("CZE","POL")
+samples = sample(unique(performance_all$country_text_id), 14)
+samples = c("GBR","NZL", "SWE", "USA", "DEU", "FRA")
+# samples = c("CZE","POL")
 
-lower = 2005
-upper = 2015
+lower = 2007
+upper = 2017
 performance_all %>% 
   filter(country_text_id %in% samples, year >= lower, year <= upper) %>% 
   select_at(vars(country, year, matches("index"))) %>% 
@@ -155,20 +206,24 @@ performance_all %>%
   scale_fill_gradient(low = "#e84434", high = "#34e851", limits=c(0,100)) +
   xlab("") +
   ylab("") +
-  ggtitle("Mean Value") +
+  ggtitle(paste("Mean Value:", lower, "-", upper)) +
   geom_hline(yintercept = c(1.5, 4.5,6.5), size=1.5)
 
 
 # Cluster Analysis ####
 performance_all_na = performance_all  %>% 
   select(-environment_wdi_index, -GA_lutz_index) %>% 
+  filter(year >= 2000) %>% 
+  filter(year <= 2010) %>% 
+  group_by(country) %>% 
+  summarise_if(is.numeric, mean, na.rm=T) %>% 
   na.omit()
 
 
 cluster_performance = hclust(dist(performance_all_na %>% 
-                                   select_at(vars(ends_with("index"))), method="euclidean")^2)
+                                   select_at(vars(ends_with("index"))), method="euclidean"))
 plot(cluster_performance)
-performance_all_na$class = cutree(cluster_performance, 5)
+performance_all_na$class = cutree(cluster_performance, 4)
 
 library(factoextra)
 fviz_nbclust(performance_all_na %>% 
@@ -179,7 +234,7 @@ fviz_nbclust(performance_all_na %>%
 
 
 pam_solution = pam(performance_all_na %>% 
-                     select_at(vars(ends_with("index"))), 4)
+                     select_at(vars(ends_with("index"))), 2)
 
 performance_all_na[pam_solution$id.med,]
 
@@ -257,7 +312,7 @@ longdemocracies = dmx_performance %>%
   group_by(country) %>% 
   na.omit() %>% 
   summarise(nr = n()) %>% 
-  filter(nr > 40) %>% 
+  filter(nr > 20) %>% 
   pull(country)
 
 modes_cluster = dmx_performance %>% 
@@ -269,14 +324,15 @@ modes_cluster %>%
   group_by(cluster_label_1st_mode) %>% 
   summarise(n())
 
-lower = 2005
-upper = 2015
+lower = 2007
+upper = 2017
 dmx_performance %>% 
   left_join(modes_cluster, by="country_text_id")  %>% 
   filter(year >= lower, year <= upper) %>% 
   select_at(vars(cluster_label_1st_mode, matches("index"))) %>% 
   group_by(cluster_label_1st_mode) %>% 
   summarise_all(mean, na.rm=T) %>% 
+  na.omit() %>% 
   melt(id.vars=c("cluster_label_1st_mode")) %>% 
   mutate(variable = fct_relevel(variable, 
                                 "conf_index" , 
@@ -339,3 +395,16 @@ dmx_performance %>%
   facet_wrap(variable ~ .) 
 
 
+#### Compare to Centripetalism ####
+
+
+centripetalism = fread("centripetalism_frame.csv", encoding="UTF-8")
+
+modes_cluster_cent = dmx_performance %>% 
+  group_by(country) %>% 
+  summarise(cluster_label_1st_mode = getmode(cluster_label_1st)) %>% 
+  left_join(centripetalism, by="country")
+
+modes_cluster_cent %>% 
+  ggplot(aes(x=cluster_label_1st_mode, y=cent)) +
+  geom_boxplot()
