@@ -115,3 +115,7 @@ env_scores %>%
   geom_line(size=1) +
   theme_bw()
 
+
+write.csv(env_scores, file="Datasets/performance_data/ImputetDatasets/env_scores.csv", row.names = F, fileEncoding ="UTF-8")
+write.csv(imputed_env_inv, file="Datasets/performance_data/ImputetDatasets/imputed_env.csv", row.names = F, fileEncoding ="UTF-8")
+

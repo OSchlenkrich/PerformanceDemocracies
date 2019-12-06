@@ -1,6 +1,6 @@
 # Economic Performance
 if (clustersetup == T) {
-source("Analyse/Cluster_v3.R")
+  source("Analyse/Cluster/Cluster_v4.R")
 }
 
 
@@ -190,7 +190,10 @@ fa_data_oecd_frame = Economy_Perfomance_IP_norm %>%
   bind_cols(Economy_Perfomance %>%  select(country, country_text_id, year)) %>% 
   select_at(vars(country, country_text_id, year, ends_with("oecd"), ends_with("wdi"))) %>% 
   right_join(NA_frame_oecd, by=c("country_text_id", "year"))
-  
 
+# WDI  
+fa_data_wdi_frame = Economy_Perfomance_IP_norm %>% 
+  bind_cols(Economy_Perfomance %>%  select(country, country_text_id, year)) %>% 
+  select_at(vars(country_text_id, year, eco_wdi_index = GDP_capita_wdi)) 
 
 

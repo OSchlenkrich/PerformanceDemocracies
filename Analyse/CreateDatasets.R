@@ -3,408 +3,78 @@ source("Setup/Base_Functions.R")
 source("Setup/Plotting_Functions.R")
 source("Setup/LoadDatasets.R")
 
-# source("Analyse/Cluster_v3.R")
-
-
-# Create All Datasets
 clustersetup = F
 setup = T
 Plot_Impu = F
 
-source("Analyse/Economy/eco_desc.R")
-source("Analyse/Environment/env_desc.R")
-source("Analyse/GoalA/AR_variables.R")
-source("Analyse/Social/soc_desc.R")
-source("Analyse/DomesticSecurity/ds_desc.R")
-source("Analyse/Confidence/conf_desc.R")
+
+
+#### Create All Datasets ########
+# source("Analyse/Cluster/Cluster_v4.R")
+# 
+# source("Analyse/Economy/eco_desc.R")
+# source("Analyse/Environment/env_desc.R")
+# source("Analyse/GoalA/AR_variables.R")
+# source("Analyse/Social/soc_desc.R")
+# source("Analyse/DomesticSecurity/ds_desc.R")
+# source("Analyse/Confidence/conf_desc.R")
 
 
 # Combine all Datasets ####
 
-performance_all = V_dem %>% 
-  select(country, country_text_id, year) %>%  
-  filter(year >= 1950) %>% 
-  filter(country_text_id %in% unique(dmx_trade_cluster$country_text_id)) %>% 
-  left_join(Economy_Performance_final %>% 
-              select(country_text_id, year, eco_oecd_index), by=c("country_text_id", "year")) %>%  
-  left_join(Environment_Performance_final %>% 
-              select(country_text_id, year, environment_oecd_index, environment_wdi_index), by=c("country_text_id", "year")) %>% 
-  left_join(AR_final %>% 
-              select(country_text_id, year,  GA_ccp_index, GA_lutz_index), by=c("country_text_id", "year")) %>% 
-  left_join(social_final %>% 
-              select(country_text_id, year, soc_index), by=c("country_text_id", "year")) %>% 
-  left_join(domestic_security_final %>% 
-              select(country_text_id, year,  ds_life_index, ds_order_index), by=c("country_text_id", "year")) %>% 
-  left_join(confidence_final_agg %>% 
-              select(country_text_id, year,  conf_index), by=c("country_text_id", "year"))  
-
+# performance_all = V_dem %>% 
+#   select(country, country_text_id, year) %>%  
+#   filter(year >= 1950) %>% 
+#   filter(country_text_id %in% unique(dmx_trade_cluster$country_text_id)) %>% 
+#   left_join(Economy_Performance_final %>% 
+#               select(country_text_id, year, eco_oecd_index, eco_wdi_index), by=c("country_text_id", "year")) %>%  
+#   left_join(Environment_Performance_final %>% 
+#               select(country_text_id, year, environment_oecd_index, environment_wdi_index), by=c("country_text_id", "year")) %>% 
+#   left_join(AR_final %>% 
+#               select(country_text_id, year,  GA_ccp_index, GA_lutz_index), by=c("country_text_id", "year")) %>% 
+#   left_join(social_final %>% 
+#               select(country_text_id, year, soc_index), by=c("country_text_id", "year")) %>% 
+#   left_join(domestic_security_final %>% 
+#               select(country_text_id, year,  ds_life_index, ds_order_index), by=c("country_text_id", "year")) %>% 
+#   left_join(confidence_final_agg %>% 
+#               select(country_text_id, year,  conf_index), by=c("country_text_id", "year"))  
 
 
 
 # Write Datasets
-# fwrite(confidence_final, file="Datasets/performance_data/confidence_individual.csv")
-# fwrite(performance_all, file="Datasets/performance_data/performance_all.csv")
-# fwrite(dmx_trade_cluster, file="Datasets/performance_data/dmx_trade_cluster.csv")
+
+# write.csv(confidence_final, file="Datasets/performance_data/confidence_individual.csv", row.names = F, fileEncoding ="UTF-8")
+# write.csv(performance_all, file="Datasets/performance_data/performance_all.csv", row.names = F, fileEncoding ="UTF-8")
+# write.csv(dmx_trade_cluster, file="Datasets/performance_data/dmx_trade_cluster_v3.csv", row.names = F, fileEncoding ="UTF-8")
 
 
-####
-dmx_trade_cluster = fread(file="Datasets/performance_data/dmx_trade_cluster.csv", encoding = "UTF-8")
+#### LOAD DATASETS #######
+dmx_trade_cluster = fread(file="Datasets/performance_data/dmx_trade_cluster_v3.csv", encoding = "UTF-8") %>% 
+  mutate(cluster_label_1st = relevel(as.factor(cluster_label_1st), ref="FeC")) %>% 
+  arrange(country, year)
+
+VoC_Welfare_types = read.csv("Datasets/VoC_welfare.csv", sep=";", quote="") %>% 
+  rename(country = X.Country,
+         VoC_HS = Varieties.of.capitalism.,
+         country_text_id = Country.code,
+         welfare_E = Three.worlds,
+         VoC_Kitschelt = Types.of.capitalism
+  ) %>% 
+  mutate(country = gsub("\"", "", country),
+         VoC_HS = gsub("\"", "", VoC_HS),
+         welfare_E = fct_recode(welfare_E, NULL = "NC/C"),
+         VoC_Kitschelt = fct_recode(VoC_Kitschelt, NULL = "NC/C"),
+         VoC_HS = fct_recode(VoC_HS, NULL = "NC/C")
+  ) %>%
+  select(-country) %>% 
+  left_join(V_dem %>%  select(country, country_text_id) %>%  distinct(), by=c("country_text_id")) %>% 
+  select(country, everything()) %>% 
+  arrange(welfare_E, country)
+
+
 confidence_individual = fread(file="Datasets/performance_data/confidence_individual.csv", encoding = "UTF-8")
 performance_all = fread(file="Datasets/performance_data/performance_all.csv", encoding = "UTF-8") %>% 
   mutate(conf_index  = na_interpol(conf_index, 10)) 
-# NA Plot
-dim(performance_all)
-
-
-performance_all %>% 
-  filter(year >= 1950) %>% 
-  group_by(year) %>% 
-  select_at(vars(matches("index"))) %>% 
-  summarise_all(pMiss) %>% 
-  melt(id.vars="year") %>% 
-  ggplot(aes(x=year, y=value, fill=variable)) +
-  geom_bar(stat="identity", width=1) +
-  facet_wrap(variable~.) +
-  scale_y_continuous(breaks=seq(0,100, 10), limit=c(0,100), name=NULL)  +
-  scale_x_continuous(breaks=seq(1950,2020, 10), name=NULL) +
-  theme_bw()  +
-  theme(axis.text.x = element_text(angle=90), legend.position = "none") +
-  ggtitle("Percentage of NA-Values For Each Performance Areas")
 
 
 
-## MAKE PLOTS ####
-
-test = performance_all %>% 
-  select_at(vars(year, matches("index"))) %>% 
-  group_by(year) %>% 
-  summarise_all(funs(mean), na.rm=T) %>% 
-  melt(id.vars=c("year"), value.name="mean") %>% 
-  bind_cols(performance_all %>% 
-              select_at(vars(year, matches("index"))) %>% 
-              group_by(year) %>% 
-              summarise_all(funs(fun_quantile25), na.rm=T) %>% 
-              melt(id.vars=c("year")) %>% 
-              select(lower25 = value)) %>% 
-  bind_cols(performance_all %>% 
-              select_at(vars(year, matches("index"))) %>% 
-              group_by(year) %>% 
-              summarise_all(funs(fun_quantile75), na.rm=T) %>% 
-              melt(id.vars=c("year")) %>% 
-              select(upper75 = value)) %>% 
-  na.omit()
-# OVERALL TREND
-performance_all %>% 
-  select_at(vars(year, matches("index"))) %>% 
-  group_by(year) %>% 
-  summarise_all(funs(mean), na.rm=T) %>% 
-  melt(id.vars=c("year"), value.name="mean") %>% 
-  bind_cols(performance_all %>% 
-              select_at(vars(year, matches("index"))) %>% 
-              group_by(year) %>% 
-              summarise_all(funs(fun_quantile25), na.rm=T) %>% 
-              melt(id.vars=c("year")) %>% 
-              select(lower25 = value)) %>% 
-  bind_cols(performance_all %>% 
-              select_at(vars(year, matches("index"))) %>% 
-              group_by(year) %>% 
-              summarise_all(funs(fun_quantile75), na.rm=T) %>% 
-              melt(id.vars=c("year")) %>% 
-              select(upper75 = value)) %>% 
-  ggplot(aes(x=year, y=mean, col=variable)) +
-  geom_line(size=1) +
-  geom_line(aes(y=lower25), size=1) +
-  geom_line(aes(y=upper75), size=1) +
-  facet_wrap(variable ~ .) +
-  ylim(0,100) +
-  theme_bw() +
-  theme(legend.position = "none")
-
-
-
-# SINGLE COUNTRIES
-samples = c("GBR","NZL", "SWE", "USA", "DEU", "FRA")
-
-samples = sample(unique(performance_all$country_text_id), 4)
-year_sel = 2011
-
-performance_all %>% 
-  filter(country_text_id %in% samples, year == year_sel) %>% 
-  select_at(vars(country_text_id, year, matches("index"))) %>% 
-  melt(id.vars=c("country_text_id", "year")) %>% 
-  mutate(variable = fct_relevel(variable, 
-                                "conf_index" , 
-                                "ds_order_index",
-                                "ds_life_index", 
-                                "soc_index",
-                                "GA_lutz_index",
-                                "GA_ccp_index",
-                                "environment_wdi_index",
-                                "environment_oecd_index",
-                                "eco_oecd_index",
-                                )) %>% 
-  mutate(variable = fct_recode(variable, 
-                               "4: Confidence" = "conf_index" , 
-                               "3B: Order" = "ds_order_index",
-                               "3B: Security" = "ds_life_index", 
-                               "3A: Social P." = "soc_index",
-                               "2: Goal Att L" = "GA_lutz_index",
-                               "2: Goal Att CCP" = "GA_ccp_index",
-                               "1B: Environment P. WDI" = "environment_wdi_index",
-                               "1B: Environment P. OECD" = "environment_oecd_index",
-                               "1A: Economy P." = "eco_oecd_index",
-  )) %>% 
-  ggplot(aes(x=country_text_id, y=variable, fill=value)) +
-  geom_tile() + 
-  geom_text(aes(label = round(value, 1))) +
-  scale_fill_gradient(low = "#e84434", high = "#34e851", limits=c(0,100)) +
-  xlab("") +
-  ylab("") + 
-  ggtitle(year_sel) +
-  geom_hline(yintercept = c(1.5, 4.5,6.5), size=1.5)
-  
-  
-###
-samples = sample(unique(performance_all$country_text_id), 14)
-samples = c("GBR","NZL", "SWE", "USA", "DEU", "FRA")
-# samples = c("CZE","POL")
-
-lower = 2007
-upper = 2017
-performance_all %>% 
-  filter(country_text_id %in% samples, year >= lower, year <= upper) %>% 
-  select_at(vars(country, year, matches("index"))) %>% 
-  select(-year) %>% 
-  group_by(country) %>% 
-  summarise_all(mean, na.rm=T) %>% 
-  melt(id.vars=c("country")) %>% 
-  mutate(variable = fct_relevel(variable, 
-                                "conf_index" , 
-                                "ds_order_index",
-                                "ds_life_index", 
-                                "soc_index",
-                                "GA_lutz_index",
-                                "GA_ccp_index",
-                                "environment_wdi_index",
-                                "environment_oecd_index",
-                                "eco_oecd_index",
-  )) %>% 
-  mutate(variable = fct_recode(variable, 
-                               "4: Confidence" = "conf_index" , 
-                               "3B: Order" = "ds_order_index",
-                               "3B: Security" = "ds_life_index", 
-                               "3A: Social P." = "soc_index",
-                               "2: Goal Att L" = "GA_lutz_index",
-                               "2: Goal Att CCP" = "GA_ccp_index",
-                               "1B: Environment P. WDI" = "environment_wdi_index",
-                               "1B: Environment P. OECD" = "environment_oecd_index",
-                               "1A: Economy P." = "eco_oecd_index",
-  )) %>% 
-  ggplot(aes(x=country, y=variable, fill=value)) +
-  geom_tile() + 
-  geom_text(aes(label = round(value, 1))) +
-  scale_fill_gradient(low = "#e84434", high = "#34e851", limits=c(0,100)) +
-  xlab("") +
-  ylab("") +
-  ggtitle(paste("Mean Value:", lower, "-", upper)) +
-  geom_hline(yintercept = c(1.5, 4.5,6.5), size=1.5)
-
-
-# Cluster Analysis ####
-performance_all_na = performance_all  %>% 
-  select(-environment_wdi_index, -GA_lutz_index) %>% 
-  filter(year >= 2000) %>% 
-  filter(year <= 2010) %>% 
-  group_by(country) %>% 
-  summarise_if(is.numeric, mean, na.rm=T) %>% 
-  na.omit()
-
-
-cluster_performance = hclust(dist(performance_all_na %>% 
-                                   select_at(vars(ends_with("index"))), method="euclidean"))
-plot(cluster_performance)
-performance_all_na$class = cutree(cluster_performance, 4)
-
-library(factoextra)
-fviz_nbclust(performance_all_na %>% 
-               select_at(vars(ends_with("index"))), 
-             pam, method = "silhouette", k.max = 24) + 
-  theme_minimal() + 
-  ggtitle("The Silhouette Plot")
-
-
-pam_solution = pam(performance_all_na %>% 
-                     select_at(vars(ends_with("index"))), 2)
-
-performance_all_na[pam_solution$id.med,]
-
-
-performance_all_na$class = pam_solution$clustering
-
-# Matrix Plot
-performance_all_na %>% 
-  group_by(class) %>% 
-  summarise_if(is.numeric, mean)  %>% 
-  select(-year) %>% 
-  melt(id.vars=c("class")) %>% 
-  mutate(variable = fct_relevel(variable, 
-                                "conf_index" , 
-                                "ds_order_index",
-                                "ds_life_index", 
-                                "soc_index",
-                                "GA_lutz_index",
-                                "GA_ccp_index",
-                                "environment_wdi_index",
-                                "environment_oecd_index",
-                                "eco_oecd_index",
-  )) %>% 
-  mutate(variable = fct_recode(variable, 
-                               "4: Confidence" = "conf_index" , 
-                               "3B: Order" = "ds_order_index",
-                               "3B: Security" = "ds_life_index", 
-                               "3A: Social P." = "soc_index",
-                               "2: Goal Att L" = "GA_lutz_index",
-                               "2: Goal Att CCP" = "GA_ccp_index",
-                               "1B: Environment P. WDI" = "environment_wdi_index",
-                               "1B: Environment P. OECD" = "environment_oecd_index",
-                               "1A: Economy P." = "eco_oecd_index",
-  )) %>% 
-  ggplot(aes(x=class, y=variable, fill=value)) +
-  geom_tile() + 
-  geom_text(aes(label = round(value, 1))) +
-  scale_fill_gradient(low = "#e84434", high = "#34e851", limits=c(0,100)) +
-  xlab("") +
-  ylab("") +
-  ggtitle("Mean Value") +
-  geom_hline(yintercept = c(1.5, 4.5,5.5), size=1.5)
-
-
-# Boxplot
-performance_all_na %>% 
-  group_by(class) %>% 
-  select(-year, -country, -country_text_id ) %>% 
-  melt(id.vars=c("class")) %>% 
-  mutate(variable = fct_recode(variable, 
-                               "4: Confidence" = "conf_index" , 
-                               "3B: Order" = "ds_order_index",
-                               "3B: Security" = "ds_life_index", 
-                               "3A: Social P." = "soc_index",
-                               "2: Goal Att CCP" = "GA_ccp_index",
-                               "1B: Environment P. OECD" = "environment_oecd_index",
-                               "1A: Economy P." = "eco_oecd_index",
-  )) %>% 
-  ggplot(aes(x=as.factor(class), y=value, fill=variable)) +
-  geom_boxplot() + 
-  xlab("") +
-  ylab("") +
-  ggtitle("Mean Value")
-
-
-
-#### Democracy Profiles ####
-
-dmx_performance = performance_all %>% 
-  left_join(dmx_trade_cluster %>% 
-              select(-country_text_id), by=c("country", "year"))
-
-longdemocracies = dmx_performance %>% 
-  select(country, classification_context) %>% 
-  group_by(country) %>% 
-  na.omit() %>% 
-  summarise(nr = n()) %>% 
-  filter(nr > 20) %>% 
-  pull(country)
-
-modes_cluster = dmx_performance %>% 
-  filter(country %in% longdemocracies) %>% 
-  group_by(country_text_id) %>% 
-  summarise(cluster_label_1st_mode = getmode(cluster_label_1st))
-
-modes_cluster %>% 
-  group_by(cluster_label_1st_mode) %>% 
-  summarise(n())
-
-lower = 2007
-upper = 2017
-dmx_performance %>% 
-  left_join(modes_cluster, by="country_text_id")  %>% 
-  filter(year >= lower, year <= upper) %>% 
-  select_at(vars(cluster_label_1st_mode, matches("index"))) %>% 
-  group_by(cluster_label_1st_mode) %>% 
-  summarise_all(mean, na.rm=T) %>% 
-  na.omit() %>% 
-  melt(id.vars=c("cluster_label_1st_mode")) %>% 
-  mutate(variable = fct_relevel(variable, 
-                                "conf_index" , 
-                                "ds_order_index",
-                                "ds_life_index", 
-                                "soc_index",
-                                "GA_lutz_index",
-                                "GA_ccp_index",
-                                "environment_wdi_index",
-                                "environment_oecd_index",
-                                "eco_oecd_index",
-  )) %>% 
-  mutate(variable = fct_recode(variable, 
-                               "4: Confidence" = "conf_index" , 
-                               "3B: Order" = "ds_order_index",
-                               "3B: Security" = "ds_life_index", 
-                               "3A: Social P." = "soc_index",
-                               "2: Goal Att L" = "GA_lutz_index",
-                               "2: Goal Att CCP" = "GA_ccp_index",
-                               "1B: Environment P. WDI" = "environment_wdi_index",
-                               "1B: Environment P. OECD" = "environment_oecd_index",
-                               "1A: Economy P." = "eco_oecd_index",
-  )) %>% 
-  ggplot(aes(x=cluster_label_1st_mode, y=variable, fill=value)) +
-  geom_tile() + 
-  geom_text(aes(label = round(value, 1))) +
-  scale_fill_gradient(low = "#e84434", high = "#34e851", limits=c(0,100)) +
-  xlab("") +
-  ylab("") +
-  ggtitle("Mean Value") +
-  geom_hline(yintercept = c(1.5, 4.5,6.5), size=1.5)
-
-
-
-
-dmx_performance %>% 
-  left_join(modes_cluster, by="country_text_id") %>% 
-  group_by(cluster_label_1st_mode, year) %>% 
-  select_at(vars(cluster_label_1st_mode, year, matches("index"))) %>% 
-  summarise_all(mean, na.rm=T) %>% 
-  filter(is.na(cluster_label_1st_mode)==F) %>% 
-  melt(id.vars=c("cluster_label_1st_mode", "year")) %>% 
-  ggplot(aes(x=year, y=value, col=cluster_label_1st_mode)) +
-  geom_line(size=1) +
-  ylim(0,100) +
-  geom_point() +
-  facet_wrap(variable ~ .) 
-
-
-dmx_performance %>% 
-  left_join(modes_cluster, by="country_text_id") %>% 
-  group_by(cluster_label_1st, year) %>% 
-  select_at(vars(cluster_label_1st, year, matches("index"))) %>% 
-  summarise_all(mean, na.rm=T) %>% 
-  filter(is.na(cluster_label_1st)==F) %>% 
-  melt(id.vars=c("cluster_label_1st", "year")) %>% 
-  ggplot(aes(x=year, y=value, col=cluster_label_1st)) +
-  geom_line(size=1) +
-  geom_point() +
-  facet_wrap(variable ~ .) 
-
-
-#### Compare to Centripetalism ####
-
-
-centripetalism = fread("centripetalism_frame.csv", encoding="UTF-8")
-
-modes_cluster_cent = dmx_performance %>% 
-  group_by(country) %>% 
-  summarise(cluster_label_1st_mode = getmode(cluster_label_1st)) %>% 
-  left_join(centripetalism, by="country")
-
-modes_cluster_cent %>% 
-  ggplot(aes(x=cluster_label_1st_mode, y=cent)) +
-  geom_boxplot()

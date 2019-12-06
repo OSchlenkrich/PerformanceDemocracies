@@ -20,7 +20,7 @@ eco_scores %>%
 
 #### Combining MIs
 
-eco_scores_mean = eco_scores %>% 
+eco_scores_oecd_mean = eco_scores %>% 
   melt(id.vars=c("country_text_id", "year")) %>% 
   group_by(country_text_id, year) %>% 
   summarise(eco_oecd_index = mean(value, na.rm=T)) %>% 
@@ -32,8 +32,8 @@ eco_scores_mean = eco_scores %>%
 
 Economy_Performance_final = Economy_Perfomance %>%
   select(country, country_text_id, regions, year, classification_context, cluster_label_1st) %>% 
-  left_join(eco_scores_mean, by=c("country_text_id", "year")) %>% 
-  #left_join(fa_data_oecd_frame %>% select(-country), by=c("country_text_id", "year")) %>%
+  left_join(eco_scores_oecd_mean, by=c("country_text_id", "year")) %>% 
+  left_join(fa_data_wdi_frame, by=c("country_text_id", "year")) %>%
   left_join(fa_data_oecd_frame %>% select(-country), by=c("country_text_id", "year")) %>%
   ungroup() %>% 
   mutate_at(vars(matches("index")), ~EPI_fun(.))
@@ -41,11 +41,11 @@ Economy_Performance_final = Economy_Perfomance %>%
 
 
 samples = c("GBR","NZL", "SWE", "USA", "DEU", "FRA", "IND")
-samples = c("GBR","JPN", "USA", "IND", "ESP")
+samples = c("GBR","JPN", "USA", "IND", "ESP", "TTO")
 
 Economy_Performance_final %>% 
   filter(country_text_id %in% samples) %>% 
-  select_at(vars(country_text_id, year, matches("oecd_index"))) %>% 
+  select_at(vars(country_text_id, year, matches("index"))) %>% 
   melt(id.vars=c("country_text_id", "year")) %>% 
   ggplot(aes(x=year, y=value, col=country_text_id)) +
   geom_line(size=1) +

@@ -1,8 +1,7 @@
 # Economic Imputation
 
-source("Setup/AuxiliaryVariables.R")
 source("Analyse/Economy/eco_variables.R")
-
+source("Setup/AuxiliaryVariables.R")
 
 fa_data_oecd_frame_mice = fa_data_oecd_frame %>% 
   # WDI is not factorable, so I exlcude it

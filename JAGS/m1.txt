@@ -1,0 +1,47 @@
+model{
+
+  # Likelihood
+  
+  for (g in 1:G) {
+    beta_G[g] ~ dnorm(0, inv.var_G)
+  }
+  
+  for (t in 1:T) {
+    beta_T[t] ~ dnorm(0, inv.var_T)
+  }
+
+  for(i in 1:n){
+    Y[i]   ~ dnorm(mu[i],inv.var[G_index[i]])
+    zeta[i] ~ dcat(pi[i,])
+
+    mu[i] <- Intercept + beta_G[G_index[i]] + beta_T[T_index[i]] + 
+      inprod(beta[1:K], X[i,1:K]) + beta_z[zeta[i]]
+  }
+
+  # Priors
+
+
+  Intercept ~ dnorm(0,0.0001)
+  
+  beta_z[1] = 0
+  for (k in 2:dim_cat) {
+    beta_z[k] ~ dnorm(0,0.0001) 
+  }
+
+  for(j in 1:K){
+    beta[j] ~ dnorm(0,0.0001)
+  }
+
+  for (g in 1:G) {
+    inv.var[g]   ~ dgamma(0.01, 0.01)
+    sigma[g]   <- 1/sqrt(inv.var[g])
+  }
+
+  # Prior for the inverse variance
+  # inv.var   ~ dgamma(0.01, 0.01)
+  inv.var_G ~ dgamma(0.001, 0.001)
+  inv.var_T ~ dgamma(0.001, 0.001)
+  # sigma     <- 1/sqrt(inv.var)
+  sigma_G     <- 1/sqrt(inv.var_G)
+  sigma_T     <- 1/sqrt(inv.var_T)
+}

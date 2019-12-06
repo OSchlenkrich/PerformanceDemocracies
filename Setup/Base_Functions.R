@@ -1,5 +1,23 @@
 # Base Functions
 
+select <- dplyr::select
+
+#VDem: Fill between elections
+fill_elections = function(x, v2x_elecreg) {
+  loadedvalue <- NA
+  for (ii in 1:length(x)) {
+    if (is.na(v2x_elecreg[ii]) == F) {
+      if (v2x_elecreg[ii] == 1) {
+        if (is.na(x[ii]) == F) {
+          loadedvalue <- x[ii]
+        }
+        x[ii] <- loadedvalue      }
+    }
+  } 
+  return(x)
+}
+
+
 # Missing Data Pattern Plot
 
 missd_pattern = function(data) {
@@ -299,6 +317,9 @@ purtest_function = function(dataset, variable, lags, exo) {
     
   }
 }
+
+# opposite of %in%
+'%!in%' <- function(x,y)!('%in%'(x,y))
 
 
 # detrending function

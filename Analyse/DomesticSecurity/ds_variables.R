@@ -1,7 +1,6 @@
 ### Performance Domestic Security ####
 
 
-
 cty_identifier = V_dem %>% 
   select(country, country_text_id) %>% 
   group_by(country) %>% 

@@ -1,5 +1,4 @@
 # Latent Pattern Maintenance Performance
-source("Analyse/Cluster_v3.R")
 
 
 QoC_data = fread("C:/RTest/qog_std_ts_jan19.csv", encoding = "UTF-8") %>% 

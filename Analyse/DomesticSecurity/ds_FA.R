@@ -116,3 +116,6 @@ ds_scores %>%
   geom_line(size=1) +
   theme_bw()
 
+
+write.csv(ds_scores, file="Datasets/performance_data/ImputetDatasets/ds_scores.csv", row.names = F, fileEncoding ="UTF-8")
+write.csv(imputed_ds_inv, file="Datasets/performance_data/ImputetDatasets/imputed_ds.csv", row.names = F, fileEncoding ="UTF-8")

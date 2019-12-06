@@ -1,15 +1,54 @@
 # Load Datasets
 
-# Democracy Matrix ----
-dmx_data = fread("unzip -p Datasets/DemocracyMatrix_v1_1.zip", encoding = "UTF-8")
+# VDEM ----
+V_dem = fread("C:/RTest/V-Dem-CY+Others-v8.csv", encoding = "UTF-8") %>% 
+  dplyr::select(country = country_name, country_text_id, year, cso = v2csstruc_1,
+                COWcode,
+                educ_equal = v2peedueq, 
+                wgi_rq = e_wbgi_rqe,
+                gini_vdem = e_peginiwi,
+                v2dlunivl,
+                v2pehealth,
+                WGI_RQ = e_wbgi_rqe,
+                region = e_regionpol,
+                v2elparlel,
+                v2x_elecreg) %>%
+  mutate(region = as.factor(region),
+         region = fct_recode(region, 
+                             "Eastern Europe and Central Asia" = "1",
+                             "Latin America" = "2",
+                             "The Middle East and North Africa/MENA" = "3" ,
+                             "Sub-Saharan Africa" = "4",
+                             "Western Europe and North America" = "5",
+                             "East Asia" = "6",
+                             "South-East Asia" = "7",
+                             "South Asia" = "8",
+                             "The Pacific" = "9",
+                             "The Caribbean" = "10"))
 
-dmx_data_trade = dmx_data %>% 
-  dplyr::select_at(vars(country, year, regions, classification_context, matches("dim_index_trade_off"))) %>% 
+
+# Democracy Matrix ----
+dmx_data = fread("unzip -p Datasets/DemocracyMatrix_v1_1.zip", encoding = "UTF-8") %>% 
+  left_join(fread("C:/RTest/V-Dem-CY+Others-v8.csv", encoding = "UTF-8") %>% 
+              dplyr::select(country = country_name, country_text_id, year), by=c("country", "year"))
+
+dmx_cluster_names = dmx_data %>%
+  dplyr::select_at(vars(country, year, regions, classification_context, matches("dim_index_trade_off"))) %>%
+  left_join(V_dem %>% select(country, country_text_id) %>%  distinct(), by="country") %>% 
   rename(freedom = freedom_dim_index_trade_off,
          equality = equality_dim_index_trade_off,
-         control = control_dim_index_trade_off) %>% 
-  filter(classification_context == "Deficient Democracy" | classification_context == "Working Democracy" ) %>% 
-  na.omit()
+         control = control_dim_index_trade_off) %>%
+  filter(classification_context == "Deficient Democracy" | classification_context == "Working Democracy" ) %>%
+  distinct(country_text_id) %>% 
+  pull(country_text_id)
+
+# dmx_data_trade = dmx_data %>% 
+#   dplyr::select_at(vars(country, year, regions, classification_context, matches("dim_index_trade_off"))) %>% 
+#   rename(freedom = freedom_dim_index_trade_off,
+#          equality = equality_dim_index_trade_off,
+#          control = control_dim_index_trade_off) %>% 
+#   filter(classification_context == "Deficient Democracy" | classification_context == "Working Democracy" ) %>% 
+#   na.omit()
 
 
 ## QoC Dataset
@@ -23,29 +62,6 @@ QoC_data = fread("C:/RTest/qog_std_ts_jan19.csv", encoding = "UTF-8") %>%
 dmx_data_context = dmx_data %>% 
   dplyr::select_at(vars(country, year, regions, matches("total_index_context"))) 
 
-# VDEM ----
-V_dem = fread("C:/RTest/V-Dem-CY+Others-v8.csv", encoding = "UTF-8") %>% 
-  dplyr::select(country = country_name, country_text_id, year, cso = v2csstruc_1,
-                COWcode,
-         educ_equal = v2peedueq, 
-         wgi_rq = e_wbgi_rqe,
-         gini_vdem = e_peginiwi,
-         v2dlunivl,
-         v2pehealth,
-         WGI_RQ = e_wbgi_rqe,
-         region = e_regionpol) %>%
-  mutate(region = as.factor(region),
-         region = fct_recode(region, 
-                                  "Eastern Europe and Central Asia" = "1",
-                                  "Latin America" = "2",
-                                  "The Middle East and North Africa/MENA" = "3" ,
-                                  "Sub-Saharan Africa" = "4",
-                                  "Western Europe and North America" = "5",
-                                  "East Asia" = "6",
-                                  "South-East Asia" = "7",
-                                  "South Asia" = "8",
-                                  "The Pacific" = "9",
-                                  "The Caribbean" = "10"))
 # OECD ----
 
 
@@ -168,12 +184,14 @@ Age65_percent = fread("Datasets/Age65_percent.csv", header=T) %>%
 
 ##
 population_total = fread("Datasets/WB_population.csv", header=T) %>% 
-  mutate_at(vars(starts_with("19")), log) %>% 
-  mutate_at(vars(starts_with("20")), log) %>% 
   rename(country = "Country Name") %>% 
   dplyr::select(-"Country Code", -"Indicator Name", -"Indicator Code", -V64) %>% 
-  melt(id.vars = c("country"), variable.name = "year", value.name = "log_pop") %>% 
-  mutate(year = as.numeric(levels(year))[year]) %>% 
+  pivot_longer(
+    cols = c(starts_with("19"), starts_with("20")),
+    names_to = "year",
+    values_to ="pop_density"
+  ) %>% 
+  mutate(year = as.numeric(year)) %>% 
   mutate(country = as.factor(country),
          country = fct_recode(country,
                               "South Korea" = "Korea, Rep.",
@@ -181,7 +199,28 @@ population_total = fread("Datasets/WB_population.csv", header=T) %>%
                               "United States of America" = "United States"
          ),
          country = as.character(country)
-  ) 
+  ) %>% 
+  left_join(V_dem %>%  select(country, country_text_id) %>%  distinct(), by="country")
+
+
+population_density = fread("Datasets/WB_population_density.csv", header=T) %>% 
+  rename(country = "Country Name") %>% 
+  dplyr::select(-"Country Code", -"Indicator Name", -"Indicator Code", -V65) %>% 
+  pivot_longer(
+    cols = c(starts_with("19"), starts_with("20")),
+    names_to = "year",
+    values_to ="pop_density"
+    ) %>% 
+  mutate(year = as.numeric(year)) %>% 
+  mutate(country = as.factor(country),
+         country = fct_recode(country,
+                              "South Korea" = "Korea, Rep.",
+                              "Slovakia" = "Slovak Republic",
+                              "United States of America" = "United States"
+         ),
+         country = as.character(country)
+  ) %>% 
+  left_join(V_dem %>%  select(country, country_text_id) %>%  distinct(), by="country")
 ##
 
 Trade_union = fread("Datasets/ILO_trade_union_density.csv", header=T) %>% 

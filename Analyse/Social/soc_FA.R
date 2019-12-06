@@ -106,3 +106,7 @@ soc_scores %>%
   geom_line(size=1) +
   theme_bw()
 
+
+write.csv(soc_scores, file="Datasets/performance_data/ImputetDatasets/soc_scores.csv", row.names = F, fileEncoding ="UTF-8")
+write.csv(imputed_soc_inv, file="Datasets/performance_data/ImputetDatasets/imputed_soc.csv", row.names = F, fileEncoding ="UTF-8")
+

@@ -112,7 +112,6 @@ imputed_eco_inv %>%
 
 ##
 
-
 eco_scores = fa_data_oecd_frame_mice_inv %>% 
   select(country_text_id, year) %>% 
   bind_cols(produce_fa_scores_eco(imputed_eco_inv %>% 
@@ -138,4 +137,8 @@ eco_scores %>%
   ggplot(aes(x=year, y=mean_score, col=country_text_id)) +
   geom_line(size=1) +
   theme_bw()
+
+
+write.csv(eco_scores, file="Datasets/performance_data/ImputetDatasets/eco_scores.csv", row.names = F, fileEncoding ="UTF-8")
+write.csv(imputed_eco_inv, file="Datasets/performance_data/ImputetDatasets/imputed_eco.csv", row.names = F, fileEncoding ="UTF-8")
 
