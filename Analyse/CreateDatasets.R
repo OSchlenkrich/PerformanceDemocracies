@@ -8,9 +8,8 @@ setup = T
 Plot_Impu = F
 
 
-
 #### Create All Datasets ########
-# source("Analyse/Cluster/Cluster_v4.R")
+# source("Analyse/Cluster/Cluster_v5.R")
 # 
 # source("Analyse/Economy/eco_desc.R")
 # source("Analyse/Environment/env_desc.R")
@@ -45,13 +44,17 @@ Plot_Impu = F
 
 # write.csv(confidence_final, file="Datasets/performance_data/confidence_individual.csv", row.names = F, fileEncoding ="UTF-8")
 # write.csv(performance_all, file="Datasets/performance_data/performance_all.csv", row.names = F, fileEncoding ="UTF-8")
-# write.csv(dmx_trade_cluster, file="Datasets/performance_data/dmx_trade_cluster_v3.csv", row.names = F, fileEncoding ="UTF-8")
+# write.csv(dmx_trade_cluster, file="Datasets/performance_data/dmx_trade_cluster_v5.csv", row.names = F, fileEncoding ="UTF-8")
 
 
 #### LOAD DATASETS #######
-dmx_trade_cluster = fread(file="Datasets/performance_data/dmx_trade_cluster_v3.csv", encoding = "UTF-8") %>% 
+dmx_trade_cluster = fread(file="Datasets/performance_data/dmx_trade_cluster_v5.csv", encoding = "UTF-8") %>% 
   mutate(cluster_label_1st = relevel(as.factor(cluster_label_1st), ref="FeC")) %>% 
-  arrange(country, year)
+  arrange(country, year) %>% 
+  rename(X_fEC = X1,
+         X_fEc = X2,
+         X_FeC = X3,
+         X_Fec = X4)
 
 VoC_Welfare_types = read.csv("Datasets/VoC_welfare.csv", sep=";", quote="") %>% 
   rename(country = X.Country,

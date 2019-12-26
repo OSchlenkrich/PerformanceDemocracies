@@ -4,9 +4,10 @@ source("Analyse/CreateDatasets.R")
 library(brms)
 library(gplots)
 
+
 ethnic_frac = fread("Datasets/ethnic_frac.csv", encoding="Latin-1") %>% 
   rename(ethn_caus = Ethnic, ling_caus = Linguistic, rel_caus = Religious) %>%
-  mutate(diverse_caus = (ethn_caus + ling_caus + rel_caus)/3) %>% 
+  mutate(diverse_caus = (ethn_caus + ling_caus)/2) %>% 
   mutate(country = substring(country, 2)) %>%
   mutate(country = fct_recode(country,
                               "Timor-Leste" =	"East Timor",
@@ -144,6 +145,27 @@ causal_vars_fact = causal_vars %>%
   summarise_if(is.factor, list(~getmode(.)))
 
 
+time_democratic = dmx_trade_cluster %>% 
+  filter(year >= 1945) %>% 
+  dplyr::select(country, classification_core) %>% 
+  group_by(country) %>% 
+  na.omit() %>% 
+  summarise(time_democratic = n()) %>%
+  ungroup() %>% 
+  mutate(time_democratic = time_democratic - median(time_democratic))
+
+defdemocracies = dmx_trade_cluster %>% 
+  filter(year >= 1945) %>% 
+  dplyr::select(country, classification_core) %>% 
+  filter(classification_core == "Deficient Democracy") %>% 
+  group_by(country) %>% 
+  summarise(def_democracy  = n()) 
+
+time_democratic = time_democratic %>% 
+  left_join(defdemocracies, by="country") %>% 
+  mutate(def_democracy = ifelse(is.na(def_democracy) == T, 0, def_democracy))
+
+
 # Consolidated Democracy
 longdemocracies = dmx_trade_cluster %>% 
   filter(year >= 1945) %>% 
@@ -151,8 +173,9 @@ longdemocracies = dmx_trade_cluster %>%
   group_by(country) %>% 
   na.omit() %>% 
   summarise(nr = n()) %>% 
-  filter(nr > 10) %>% 
+  filter(nr > 1) %>% 
   pull(country)
+
 
 # Uncertainty
 profiles_agg = dmx_trade_cluster %>% 
@@ -177,7 +200,8 @@ profiles_agg = dmx_trade_cluster %>%
 caus_profiles_data = profiles_agg %>% 
   left_join(causal_vars_num, by="country_text_id") %>% 
   left_join(causal_vars_fact, by="country_text_id") %>% 
-  left_join(ethnic_frac %>% select(-country), by="country_text_id") 
+  left_join(ethnic_frac %>% select(-country), by="country_text_id")  %>% 
+  left_join(time_democratic, by="country")
 
 # md.pattern(caus_profiles_data, rotate.names=T)
 # md.pattern(caus_profiles_data)
@@ -201,31 +225,37 @@ caus_profiles_data %>%
   geom_bar(stat="identity", position="dodge")
 
 
-
 get_plot_sample = function(variable, caus_data=caus_profiles_data, reps = 100) {
   data_to_plot = caus_data %>% 
     select_at(vars(starts_with("count_"))) %>% 
-    mutate(sum=count_fEc + count_fEC + count_FEC + count_FeC + count_Fec) %>% 
+    mutate(sum=count_fEc + count_fEC + count_FeC + count_Fec) %>% 
     mutate_all(funs(./sum)) %>% 
     select(-sum)
   
-  get_sample = data.frame(array(NA, dim=c(dim(data_to_plot)[1], reps))) %>% 
-    bind_cols(caus_data %>% select(var_sel = variable))
+  mean_sample = data.frame(array(NA, dim=c(dim(data_to_plot)[2], reps))) 
   
   
   for (n in 1:reps) {
+    get_sample = data.frame(profiles = array(NA, dim=c(dim(data_to_plot)[1], 1))) %>% 
+      bind_cols(caus_data %>% select(var_sel = variable))
     for (i in 1:dim(data_to_plot)[1]) {
-      get_sample[i,n] = sample(names(data_to_plot), size = 1, prob=data_to_plot[i,])
+      get_sample[i,1] = sample(names(data_to_plot), size = 1, prob=data_to_plot[i,])
     }
+    
+    mean_profiles = get_sample %>% 
+      group_by(profiles) %>% 
+      summarise(mean = mean(var_sel, na.rm=T)) %>% 
+      right_join(data.frame(profiles = names(data_to_plot)), by="profiles")
+    mean_sample[,n] = mean_profiles$mean
   }
   
-  # get_sample %>%
-  #   pivot_longer(cols=starts_with("X")) %>%
-  #   na.omit() %>%
-  #   ggplot(aes(x = value, y=var_sel)) +
-  #   geom_boxplot()
+  mean_sample %>% 
+    bind_cols(data.frame(profiles = names(data_to_plot))) %>% 
+    pivot_longer(cols=starts_with("X")) %>%
+    na.omit() %>%
+    ggplot(aes(x = profiles, y=value, fill= profiles)) +
+    geom_boxplot()
   
-  plotmeans(var_sel ~ value, data = get_sample %>% pivot_longer(cols=starts_with("X")))
 }
 
 
@@ -236,14 +266,13 @@ get_plot_sample("pluralism_1961_caus")
 get_plot_sample("pluralism_1964_caus")
 get_plot_sample("rel_prot_caus")
 get_plot_sample("rel_cath_caus")
-get_plot_sample("protestant_caus")
-get_plot_sample("comp_cult_caus")
-get_plot_sample("harm_cult_caus")
-get_plot_sample("egalit_cult_caus")
+get_plot_sample("protestant_centr_caus")
 get_plot_sample("ethn_caus")
 get_plot_sample("ling_caus")
 get_plot_sample("rel_caus")
 get_plot_sample("diverse_caus")
+get_plot_sample("time_democratic")
+get_plot_sample("def_democracy")
 
 
 ############## Create Final Dataset for Analysis
@@ -255,12 +284,174 @@ caus_profiles_data_final = caus_profiles_data %>%
             ethn_caus,
             ling_caus,
             rel_caus,
-            diverse_caus)
+            diverse_caus,
+            time_democratic,
+            def_democracy)
             ) %>% 
   na.omit() %>% 
-  select(country, country_text_id, count_Fec, everything())
+  mutate(englegal_centr_caus = as.factor(englegal_centr_caus)) %>% 
+  select(country, country_text_id, count_Fec, everything()) 
 
-caus_profiles_data_final$Y = print(DirichletReg::DR_data(caus_profiles_data_final %>%  select_at(vars(starts_with("count_")))), "processed")
+caus_profiles_data_final$Y_Fec = print(DirichletReg::DR_data(caus_profiles_data_final %>%  
+                                                           select_at(vars(starts_with("count_"))) %>% 
+                                                           select(count_Fec, everything())
+                                                         ), "processed")
+
+caus_profiles_data_final$Y_fEc = print(DirichletReg::DR_data(caus_profiles_data_final %>%  
+                                                               select_at(vars(starts_with("count_"))) %>% 
+                                                               select(count_fEc, everything())
+), "processed")
+
+caus_profiles_data_final$Y_fEC = print(DirichletReg::DR_data(caus_profiles_data_final %>%  
+                                                               select_at(vars(starts_with("count_"))) %>% 
+                                                               select(count_fEC, everything())
+), "processed")
+
+caus_profiles_data_final$Y_FeC = print(DirichletReg::DR_data(caus_profiles_data_final %>%  
+                                                               select_at(vars(starts_with("count_"))) %>% 
+                                                               select(count_FeC, everything())
+), "processed")
+
+caus_profiles_data_final$Y_FEC = print(DirichletReg::DR_data(caus_profiles_data_final %>%  
+                                                               select_at(vars(starts_with("count_"))) %>% 
+                                                               select(count_FEC, everything())
+), "processed")
+
+#######
+
+getRRR = function(model, variable) {
+  samples_m1 = brms::posterior_samples(model)
+  
+  selected_sample = samples_m1[, which(grepl(variable, names(samples_m1)))]
+  results = apply(selected_sample, 2, FUN = function(x) {quantile(exp(x), c(0.025, 0.5, 0.975)) }  )
+  
+  show_results = data.frame(results) %>% 
+    bind_cols(data.frame(quantile = c("lower", "mid", "upper"))) %>% 
+    pivot_longer(col=ends_with(variable), names_to = "coef") %>% 
+    pivot_wider(names_from = quantile) %>% 
+    mutate(coef = gsub( "b_mucount", "", coef),
+           sig = if_else(lower >=1 | upper <= 1, "*", NA_character_))
+  
+  names(show_results)[1] = paste("coef_ref", as.character(formula(model))[4], sep="")
+  return(show_results)  
+}
+
+
+m1 = brm(
+  Y_Fec ~  1 + pop_size_caus + diverse_caus + protestant_centr_caus + englegal_centr_caus + def_democracy,
+  caus_profiles_data_final, 
+  family=dirichlet(), 
+  #prior=prior,
+  chains=4, cores=4)
+summary(m1, prob=0.95)
+
+
+
+m2 = brm(
+  Y_fEc ~  1 + pop_size_caus + diverse_caus + protestant_centr_caus + englegal_centr_caus + def_democracy,
+  caus_profiles_data_final, 
+  family=dirichlet(), 
+  #prior=prior,
+  chains=4, cores=4)
+summary(m2, prob=0.95)
+
+
+
+m3 = brm(
+  Y_fEC ~  1 + pop_size_caus + diverse_caus + protestant_centr_caus + englegal_centr_caus + def_democracy,
+  caus_profiles_data_final, 
+  family=dirichlet(), 
+  #prior=prior,
+  chains=4, cores=4)
+summary(m3, prob=0.95)
+
+
+m4 = brm(
+  Y_FeC ~  1 + pop_size_caus + diverse_caus + protestant_centr_caus + englegal_centr_caus + def_democracy,
+  caus_profiles_data_final, 
+  family=dirichlet(), 
+  #prior=prior,
+  chains=4, cores=4)
+summary(m4, prob=0.95)
+
+
+m5 = brm(
+  Y_FEC ~  1 + pop_size_caus + diverse_caus + protestant_centr_caus + englegal_centr_caus + def_democracy,
+  caus_profiles_data_final, 
+  family=dirichlet(), 
+  #prior=prior,
+  chains=4, cores=4)
+summary(m5, prob=0.95)
+
+
+null_m = fit_causes <- brm(
+  Y_FEC ~  1,
+  caus_profiles_data_final, 
+  family=dirichlet(), 
+  chains=4, cores=4)
+summary(null_m)
+
+test = posterior_predict(null_m)
+
+library(bayesplot)
+bayesplot::ppc_dens_overlay(caus_profiles_data_final$Y_FEC[,1], test[1:25,,1])
+bayesplot::ppc_dens_overlay(caus_profiles_data_final$Y_FEC[,2], test[1:25,,2])
+bayesplot::ppc_dens_overlay(caus_profiles_data_final$Y_FEC[,3], test[1:25,,3])
+bayesplot::ppc_dens_overlay(caus_profiles_data_final$Y_FEC[,4], test[1:25,,4])
+bayesplot::ppc_dens_overlay(caus_profiles_data_final$Y_FEC[,5], test[1:25,,5])
+
+
+
+loo::compare(waic(m1), loo(null_m))
+loo::compare(loo(m4), loo(null_m))
+loo::compare(loo(m5), loo(null_m))
+
+my_data = conditional_effects(m2, categorical = T, plot=F, probs = c(0.05, 0.95))
+
+my_data$`pop_size_caus:cats__` %>% 
+  filter(cats__ %in% c("count_FEC", "count_fEC")) %>% 
+  ggplot(aes(x=pop_size_caus, y=estimate__, col=cats__)) +
+  geom_point() +
+  geom_errorbar(aes(ymin=lower__, ymax=upper__))
+
+
+getRRR(m1, "pop_size_caus")
+getRRR(m2, "pop_size_caus")
+getRRR(m3, "pop_size_caus")
+getRRR(m4, "pop_size_caus")
+getRRR(m5, "pop_size_caus")
+
+getRRR(m1, "protestant_centr_caus")
+getRRR(m2, "protestant_centr_caus")
+getRRR(m3, "protestant_centr_caus")
+getRRR(m4, "protestant_centr_caus")
+getRRR(m5, "protestant_centr_caus")
+
+
+getRRR(m1, "diverse_caus")
+getRRR(m2, "diverse_caus")
+getRRR(m3, "diverse_caus")
+getRRR(m4, "diverse_caus")
+getRRR(m5, "diverse_caus")
+
+getRRR(m1, "englegal_centr_caus1")
+getRRR(m2, "englegal_centr_caus1")
+getRRR(m3, "englegal_centr_caus1")
+getRRR(m4, "englegal_centr_caus1")
+getRRR(m5, "englegal_centr_caus1")
+
+getRRR(m1, "def_democracy")
+getRRR(m2, "def_democracy")
+getRRR(m3, "def_democracy")
+getRRR(m4, "def_democracy")
+getRRR(m5, "def_democracy")
+
+
+
+
+
+
+
 
 
 # pop_size_caus
@@ -280,6 +471,7 @@ prior = c(
   set_prior("normal(0,10)", class="Intercept")
           )
 
+library(loo)
 
 null_m = fit_causes <- brm(
   Y ~  1,
@@ -288,8 +480,9 @@ null_m = fit_causes <- brm(
   chains=4, cores=4)
 summary(null_m)
 
-m1 = fit_causes <- brm(
-  Y ~  1 + pop_size_caus,
+
+m1_test = fit_causes <- brm(
+  Y_FEC ~  1 + pop_size_caus,
   caus_profiles_data_final, 
   family=dirichlet(), 
   chains=4, cores=4)
@@ -297,10 +490,9 @@ summary(m1, prob=0.95)
 
 compare(loo(null_m), loo(m1))
 
-library(loo)
 
 m2 = fit_causes <- brm(
-  Y ~  1 + pop_size_caus + pluralism_muller_caus,
+  Y ~  1 + pop_size_caus + diverse_caus,
   caus_profiles_data_final, 
   family=dirichlet(), 
   chains=4, cores=4)
@@ -309,7 +501,7 @@ loo_compare(loo(null_m), loo(m2))
 loo_compare(loo(m1), loo(m2))
 
 m3 = fit_causes <- brm(
-  Y ~  1 + pop_size_caus + pluralism_muller_caus + rel_prot_caus,
+  Y ~  1 + pop_size_caus + diverse_caus + protestant_centr_caus,
   caus_profiles_data_final, 
   family=dirichlet(), 
   chains=4, cores=4)
@@ -318,25 +510,34 @@ loo_compare(loo(null_m), loo(m3))
 loo_compare(loo(m2), loo(m3))
 
 stanfit = m4$fit
-m4 = fit_causes <- brm(
-  Y ~  1 + pop_size_caus + diverse_caus + protestant_centr_caus + englegal_centr_caus,
+m4 = brm(
+  Y ~  1 + pop_size_caus + diverse_caus + protestant_centr_caus + englegal_centr_caus + def_democracy,
   caus_profiles_data_final, 
   family=dirichlet(), 
-  prior=prior,
+  #prior=prior,
   chains=4, cores=4)
 
-summary(m4, prob=0.9)
+
+summary(m4, prob=0.95)
+
 loo_compare(loo(null_m), loo(m4))
 loo_compare(loo(m3), loo(m4))
 
 
-my_data = conditional_effects(m4, categorical = T, plot=F)
+my_data = conditional_effects(m4, categorical = T, plot=F, probs = c(0.05, 0.95))
 
-my_data$`ethn_caus:cats__` %>% 
-  ggplot(aes(x=ethn_caus, y=estimate__, col=cats__)) +
-  geom_point()
+my_data$`diverse_caus:cats__` %>% 
+  filter(cats__ %in% c("count_fEC", "count_fEc")) %>% 
+  ggplot(aes(x=diverse_caus, y=estimate__, col=cats__)) +
+  geom_point() +
+  geom_errorbar(aes(ymin=lower__, ymax=upper__))
 
 
+
+x1 = exp(-0.31)/(1+exp(-0.31) + exp(-0.54) + exp(-0.95) + exp(-0.82))
+x2 = 1/(1+exp(-0.31) + exp(-0.54) + exp(-0.95) + exp(-0.82))
+
+x1/x2
 
 ### Culture
 
@@ -351,8 +552,9 @@ longdemocracies = dmx_trade_cluster %>%
   group_by(country) %>% 
   na.omit() %>% 
   summarise(nr = n()) %>% 
-  filter(nr > 10) %>% 
+  filter(nr > 1) %>% 
   pull(country)
+
 
 profiles_agg_cult = dmx_trade_cluster %>% 
   filter(year >= 1945, country %in% longdemocracies) %>% 
@@ -375,7 +577,8 @@ caus_culture_profiles_data = profiles_agg_cult  %>%
   left_join(ethnic_frac %>% select(-country), by="country_text_id") %>% 
   left_join(causal_vars_num, by="country_text_id") %>%
   left_join(causal_vars_fact, by="country_text_id") %>%
-  left_join(schwartz, by="country") %>% 
+  left_join(schwartz, by="country")  %>% 
+  left_join(time_democratic, by="country") %>% 
   select_at(vars(country, country_text_id, starts_with("count_"), 
                  pop_size_caus, 
                  englegal_centr_caus,
@@ -387,17 +590,21 @@ caus_culture_profiles_data = profiles_agg_cult  %>%
                  embeddedness_cult_caus,
                  hierarchy_cult_caus,
                  aff_auto_cult_caus,
-                 int_auto_cult_caus)
+                 int_auto_cult_caus,
+                 def_democracy,
+                 time_democratic)
   ) %>% 
   left_join(hofstede, by="country") %>% 
-  select(country, country_text_id, count_fEc, everything())
-  # mutate(count_agg_F = count_Fec + count_FeC,
-  #        count_agg_E = count_fEc + count_fEC,
-  #        count_agg_B = count_FEC)
+  select(country, country_text_id, count_fEc, everything()) 
+  # mutate(count_agg1_F = count_Fec + count_FeC,
+  #        count_agg1_E = count_fEc + count_fEC,
+  #        count_agg1_B = count_FEC) %>% 
+  # mutate(count_agg2_C = count_fEC + count_FeC,
+  #        count_agg2_NC = count_fEc + count_Fec,
+  #        count_agg2_B = count_FEC)
 
 caus_culture_profiles_data$Y = print(DirichletReg::DR_data(caus_culture_profiles_data %>%  
                                                              select_at(vars(starts_with("count_")))), "processed")
-
 
 
 get_plot_sample("comp_cult_caus", caus_culture_profiles_data)
@@ -415,7 +622,6 @@ get_plot_sample("uai", caus_culture_profiles_data)
 get_plot_sample("ltowvs", caus_culture_profiles_data,20)
 get_plot_sample("ivr", caus_culture_profiles_data)
 
-hist(rnorm(1000,0,2))
 ####
 
 prior_cult = c(
@@ -437,6 +643,6 @@ summary(m_cult, prob=0.95)
 
 my_data = conditional_effects(m_cult, categorical = T, plot=F)
 
-my_data$`ivr:cats__` %>% 
-  ggplot(aes(x=ivr, y=estimate__, col=cats__)) +
+my_data$`comp_cult_caus:cats__` %>% 
+  ggplot(aes(x=comp_cult_caus, y=estimate__, col=cats__)) +
   geom_point()

@@ -1,0 +1,13 @@
+---
+title: "Sig_table"
+author: "Schlenkrich, Oliver"
+date: "22 12 2019"
+output: word_document
+---
+
+rmarkdown::render("Setup/knitR_tab/table_word.Rmd")
+
+```{r cars}
+my_table
+```
+
