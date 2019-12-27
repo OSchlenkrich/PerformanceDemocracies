@@ -192,3 +192,82 @@ NA_plot = function(data, name_data, var_selection = NULL) {
 }
 
 
+# Odds Ratio Plot
+
+odds_ratio_plot = function(diri_model) {
+  sig = summary(diri_model)
+  nr_vars = diri_model$n.vars[1]-1
+  varnames = colnames(diri_model$d[,-1]) 
+
+  mydata = data.frame(coefs = names(unlist(coef(diri_model)$beta)), 
+                      logits = unlist(coef(diri_model)$beta),
+                      row.names = NULL,
+                      sig = sig$coef.mat[-dim(sig$coef.mat)[1],4]) %>% 
+    mutate(vars = gsub(".*?\\.", "", coefs),
+           cat = gsub("\\..*", "", coefs),
+           sig = if_else(sig < 0.1, 1, 0)) %>% 
+    filter(vars!="(Intercept)")  %>% 
+    pivot_longer(cols=logits, values_to = "logits") %>% 
+    select(-coefs) %>% 
+    rbind(data.frame(cat=colnames(diri_model$Y)[1], 
+                     vars = varnames, 
+                     name="logits", logits=0,sig=0))
+  
+ 
+  
+  marg_eff = data.frame(array(NA, dim = c(4, nr_vars+1)))
+  names(marg_eff)[1] = "cat"
+  names(marg_eff)[-1] = varnames
+  
+  marg_eff[,1] = colnames(diri_model$Y)
+  
+  for (i in 1:nr_vars) {
+    make_dataset_sd = function(dataset1, dataset2) {
+      dataset1 = dataset1
+      dataset2 = dataset2 + sd(dataset2)
+      return(list(dataset1, dataset2))
+    }
+    make_dataset_bin = function(dataset1, dataset2) {
+      dataset1 = 0
+      dataset2 = 1
+      return(list(dataset1, dataset2))
+    }
+    
+    dataset1 = dataset2 = caus_culture_profiles_data_struct
+    
+    
+    if (dim(unique(dataset1[,varnames[i]]))[1] > 2) {
+      dataset1[,varnames[i]] = make_dataset_sd(dataset1[,varnames[i]][[1]], dataset2[,varnames[i]][[1]])[[1]]
+      dataset2[,varnames[i]] = make_dataset_sd(dataset1[,varnames[i]][[1]], dataset2[,varnames[i]][[1]])[[2]]
+    } else {
+      dataset1[,varnames[i]] = make_dataset_bin(dataset1[,varnames[i]][[1]], dataset2[,varnames[i]][[1]])[[1]]
+      dataset2[,varnames[i]] = make_dataset_bin(dataset1[,varnames[i]][[1]], dataset2[,varnames[i]][[1]])[[2]]
+      
+    }
+    
+    marg_eff[,varnames[i]] = colMeans((predict(diri_model, newdata=dataset2) - predict(diri_model, newdata=dataset1)))
+    
+  }
+  marg_eff = marg_eff %>% 
+    pivot_longer(cols=-cat, names_to = "vars", values_to = "marg_eff")
+  
+  # Plot
+  jitter <- position_jitter(width = 0, height = 0.3)
+  
+  mydata %>% 
+    left_join(marg_eff, by=c("cat", "vars")) %>% 
+    mutate(marg_eff_dir = if_else(marg_eff >= 0, "+","-"),
+           cat = gsub("X_","",cat),
+           cat = paste(cat, marg_eff_dir, sep=""),
+           vars = fct_relevel(vars, varnames)) %>% 
+    ggplot(aes(x=logits, y=vars, label=cat, col=as.factor(sig))) +
+    scale_x_continuous(sec.axis = sec_axis(~ exp(.), breaks = seq(0.5,10,0.5))) +
+    #geom_point(position = jitter, color="black") +
+    geom_text(position = jitter, aes(size=abs(marg_eff))) +
+    scale_size(range = c(3,5)) +
+    theme_bw() +
+    theme(legend.position = "none") +
+    geom_hline(yintercept = c(1.5,2.5,3.5,4.5,5.5)) +
+    geom_vline(xintercept = 0, linetype="dashed") +
+    ggtitle(paste("Ref:", colnames(diri_model$Y)[1]))
+}

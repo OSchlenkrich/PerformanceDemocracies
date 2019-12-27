@@ -225,7 +225,7 @@ time_democratic = dmx_trade_cluster %>%
   ungroup() %>% 
   mutate(
     time_democratic_caus_n = time_democratic_caus,
-    time_democratic_caus = time_democratic_caus - median(time_democratic_caus))
+    time_democratic_caus = time_democratic_caus/10)
 
 
 time_democratic_perc = dmx_data %>% 
@@ -419,8 +419,8 @@ caus_culture_profiles_data_struct = caus_culture_profiles_data %>%
                  starts_with("X"), 
                  ends_with("_caus"), -matches("cult"), -matches("hof"), 
                  -protestant_centr_caus)) %>% 
-  na.omit() %>% 
-  filter(country != "Sierra Leone", country != "Switzerland", country != "Israel", country != "Uruguay")
+  na.omit() 
+  #filter(country != "Sierra Leone", country != "Switzerland", country != "Israel", country != "Uruguay")
 
 
 caus_culture_profiles_data_struct$Y_Fec = DirichletReg::DR_data(caus_culture_profiles_data_struct %>%  
@@ -507,6 +507,11 @@ m7_fEc  = DirichReg(Y_fEc ~  gdp_caus +  pop_size_caus + englegal_centr_caus + d
                     caus_culture_profiles_data_struct, "alternative")
 m7_fEC  = DirichReg(Y_fEC ~  gdp_caus +  pop_size_caus + englegal_centr_caus + diverse_caus + time_democratic_caus + rel_cath_wrp_caus | 1,
                     caus_culture_profiles_data_struct, "alternative")
+
+odds_ratio_plot(m7_Fec)
+odds_ratio_plot(m7_FeC)
+odds_ratio_plot(m7_fEc)
+odds_ratio_plot(m7_fEC)
 
 make_table_diri(m7_Fec)
 make_table_diri(m7_FeC)
