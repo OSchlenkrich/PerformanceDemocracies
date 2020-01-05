@@ -191,35 +191,87 @@ NA_plot = function(data, name_data, var_selection = NULL) {
   return(NA_plot)
 }
 
-
+#* sd(pol_att_sub_dummy$age)
 # Odds Ratio Plot
 
-odds_ratio_plot = function(diri_model) {
-  sig = summary(diri_model)
-  nr_vars = diri_model$n.vars[1]-1
-  varnames = colnames(diri_model$d[,-1]) 
+odds_ratio_plot = function(..., sign_niveau=0.05, vars_sel = NULL) {
+  diri_models = list(...)
+  
+  diri_model_ref = diri_models[[1]]
+  nr_vars = diri_model_ref$n.vars[1]-1
+  varnames = colnames(diri_model_ref$d)[-1] 
+  
+  make_Data = function(model) {
+    sig = summary(model) 
+    
+    sd_data = as_tibble(model$d) %>% 
+      pivot_longer(cols=matches("_caus"), names_to = "vars", values_to = "value") %>%
+      select(vars, value) %>%  
+      group_by(vars) %>% 
+      summarise(sd_x = sd(value), nr = n_distinct(value)) %>% 
+      ungroup() %>% 
+      mutate(sd_x = ifelse(nr == 2, 1, sd_x)) %>% 
+      select(-nr)
+    
 
-  mydata = data.frame(coefs = names(unlist(coef(diri_model)$beta)), 
-                      logits = unlist(coef(diri_model)$beta),
-                      row.names = NULL,
-                      sig = sig$coef.mat[-dim(sig$coef.mat)[1],4]) %>% 
-    mutate(vars = gsub(".*?\\.", "", coefs),
-           cat = gsub("\\..*", "", coefs),
-           sig = if_else(sig < 0.1, 1, 0)) %>% 
-    filter(vars!="(Intercept)")  %>% 
-    pivot_longer(cols=logits, values_to = "logits") %>% 
-    select(-coefs) %>% 
-    rbind(data.frame(cat=colnames(diri_model$Y)[1], 
-                     vars = varnames, 
-                     name="logits", logits=0,sig=0))
+    mydata = data.frame(coefs = names(unlist(coef(model)$beta)), 
+                        logits = unlist(coef(model)$beta),
+                        row.names = NULL,
+                        sig = sig$coef.mat[-dim(sig$coef.mat)[1],4])   %>% 
+      mutate(vars = gsub(".*?\\.", "", coefs),
+             cat = gsub("\\..*", "", coefs),
+             sig = if_else(sig < sign_niveau, 1, 0)) %>% 
+      filter(vars!="(Intercept)")  %>% 
+      # SD
+      left_join(sd_data, by="vars") %>% 
+      mutate(logits =  logits * sd_x) %>% 
+      select(-sd_x) %>% 
+      pivot_longer(cols=logits, values_to = "logits") %>% 
+      select(-coefs) %>% 
+      rbind(data.frame(cat=colnames(model$Y)[1], 
+                       vars = varnames, 
+                       name="logits", logits=0,sig=0)) %>%
+      mutate(y_jitter_gr = group_indices(., vars)) %>% 
+      group_by(vars) %>% 
+      mutate(y_jitter = rnorm(dim(model$Y)[2],y_jitter_gr,0.25)) %>% 
+      ungroup()  %>% 
+      mutate(y_jitter = ifelse(cat == colnames(model$Y)[1], y_jitter_gr, y_jitter))
+    return(mydata)
+  }
   
- 
+  mydata = make_Data(diri_model_ref)
   
+  # Lines for insignficant results
+  
+  segment_data_plot = mydata %>% 
+    group_by(vars) %>% 
+    filter(sig!=1) %>% 
+    mutate(x_end = logits[cat==colnames(diri_model_ref$Y)[1]],
+           y_end = y_jitter[cat==colnames(diri_model_ref$Y)[1]])
+  
+  for (i in 2:length(diri_models)) {
+    model = diri_models[[i]]
+    
+    segment_data_add = make_Data(model) %>% 
+      select(sig, vars, cat) %>% 
+      left_join(mydata %>% select(-sig), by=c("vars", "cat")) %>% 
+      group_by(vars) %>%  
+      mutate(x_end = logits[cat==colnames(model$Y)[1]],
+             y_end = y_jitter[cat==colnames(model$Y)[1]]) %>% 
+      filter(sig!=1)   
+    
+    segment_data_plot = segment_data_plot %>% 
+      bind_rows(segment_data_add)
+  }
+
+  
+  
+  # Calculate Marginal Effects
   marg_eff = data.frame(array(NA, dim = c(4, nr_vars+1)))
   names(marg_eff)[1] = "cat"
   names(marg_eff)[-1] = varnames
   
-  marg_eff[,1] = colnames(diri_model$Y)
+  marg_eff[,1] = colnames(diri_model_ref$Y)
   
   for (i in 1:nr_vars) {
     make_dataset_sd = function(dataset1, dataset2) {
@@ -233,41 +285,70 @@ odds_ratio_plot = function(diri_model) {
       return(list(dataset1, dataset2))
     }
     
-    dataset1 = dataset2 = caus_culture_profiles_data_struct
+    dataset1 = dataset2 = diri_model_ref$d
     
     
-    if (dim(unique(dataset1[,varnames[i]]))[1] > 2) {
-      dataset1[,varnames[i]] = make_dataset_sd(dataset1[,varnames[i]][[1]], dataset2[,varnames[i]][[1]])[[1]]
-      dataset2[,varnames[i]] = make_dataset_sd(dataset1[,varnames[i]][[1]], dataset2[,varnames[i]][[1]])[[2]]
+    if (length(unique(dataset1[,varnames[i]])) > 2) {
+      dataset1[,varnames[i]] = make_dataset_sd(dataset1[,varnames[i]], dataset2[,varnames[i]])[[1]]
+      dataset2[,varnames[i]] = make_dataset_sd(dataset1[,varnames[i]], dataset2[,varnames[i]])[[2]]
     } else {
       dataset1[,varnames[i]] = make_dataset_bin(dataset1[,varnames[i]][[1]], dataset2[,varnames[i]][[1]])[[1]]
       dataset2[,varnames[i]] = make_dataset_bin(dataset1[,varnames[i]][[1]], dataset2[,varnames[i]][[1]])[[2]]
-      
     }
     
-    marg_eff[,varnames[i]] = colMeans((predict(diri_model, newdata=dataset2) - predict(diri_model, newdata=dataset1)))
+    marg_eff[,varnames[i]] = colMeans((predict(diri_model_ref, newdata=dataset2) - predict(diri_model_ref, newdata=dataset1)))
     
   }
+  
   marg_eff = marg_eff %>% 
     pivot_longer(cols=-cat, names_to = "vars", values_to = "marg_eff")
   
-  # Plot
-  jitter <- position_jitter(width = 0, height = 0.3)
   
-  mydata %>% 
+  # Plotting
+
+  plot_data = mydata %>% 
     left_join(marg_eff, by=c("cat", "vars")) %>% 
     mutate(marg_eff_dir = if_else(marg_eff >= 0, "+","-"),
            cat = gsub("X_","",cat),
-           cat = paste(cat, marg_eff_dir, sep=""),
-           vars = fct_relevel(vars, varnames)) %>% 
-    ggplot(aes(x=logits, y=vars, label=cat, col=as.factor(sig))) +
-    scale_x_continuous(sec.axis = sec_axis(~ exp(.), breaks = seq(0.5,10,0.5))) +
-    #geom_point(position = jitter, color="black") +
-    geom_text(position = jitter, aes(size=abs(marg_eff))) +
-    scale_size(range = c(3,5)) +
-    theme_bw() +
-    theme(legend.position = "none") +
-    geom_hline(yintercept = c(1.5,2.5,3.5,4.5,5.5)) +
-    geom_vline(xintercept = 0, linetype="dashed") +
-    ggtitle(paste("Ref:", colnames(diri_model$Y)[1]))
+           cat = paste(cat, marg_eff_dir, sep="")) 
+
+  if (is.null(vars_sel) == F) {
+    plot_data = plot_data %>% 
+      filter(vars == vars_sel)
+    segment_data_plot = segment_data_plot %>% 
+      filter(vars == vars_sel)
+  }
+  
+  var_labels = plot_data %>% 
+    group_by(vars) %>% 
+    slice(1) %>% 
+    pull(vars)
+  
+  if (length(var_labels) == 1) {
+    plot_data %>% 
+      ggplot(aes(x=logits, y=y_jitter, label=cat)) +
+      geom_text(aes(size=abs(marg_eff))) +
+      scale_x_continuous(sec.axis = sec_axis(~ exp(.), breaks = seq(0,10,0.25))) +
+      scale_y_continuous(name=var_labels) +
+      scale_size(range = c(3,5)) +
+      theme_bw() +
+      theme(legend.position = "none", axis.text.y = element_blank()) +
+      geom_vline(xintercept = 0, linetype="dashed") +
+      geom_segment(data=segment_data_plot, aes(x=logits, y=y_jitter, xend=x_end, yend=y_end), alpha=0.5) +
+      ggtitle(paste("Ref:", colnames(diri_model_ref$Y)[1]))
+  } else {
+    plot_data %>% 
+      ggplot(aes(x=logits, y=y_jitter, label=cat)) +
+      geom_text(aes(size=abs(marg_eff))) +
+      scale_x_continuous(sec.axis = sec_axis(~ exp(.), breaks = seq(0,10,0.25))) +
+      scale_y_continuous(name=NULL, breaks=seq(1,length(var_labels),1), labels=var_labels) +
+      scale_size(range = c(3,5)) +
+      theme_bw() +
+      theme(legend.position = "none") +
+      geom_hline(yintercept = seq(1,length(var_labels)-1,1) + 0.5) +
+      geom_vline(xintercept = 0, linetype="dashed") +
+      geom_segment(data=segment_data_plot, aes(x=logits, y=y_jitter, xend=x_end, yend=y_end), alpha=0.5) +
+      ggtitle(paste("Ref:", colnames(diri_model_ref$Y)[1]))
+  }
+    
 }

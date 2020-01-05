@@ -419,8 +419,8 @@ caus_culture_profiles_data_struct = caus_culture_profiles_data %>%
                  starts_with("X"), 
                  ends_with("_caus"), -matches("cult"), -matches("hof"), 
                  -protestant_centr_caus)) %>% 
-  na.omit() 
-  #filter(country != "Sierra Leone", country != "Switzerland", country != "Israel", country != "Uruguay")
+  na.omit()  %>% 
+  filter(country != "Sierra Leone", country != "Switzerland", country != "Israel", country != "Uruguay")
 
 
 caus_culture_profiles_data_struct$Y_Fec = DirichletReg::DR_data(caus_culture_profiles_data_struct %>%  
@@ -497,8 +497,6 @@ plot_residual_diri(m7)
 make_table_diri(m1,m2,m3,m4,m5,m6,m7, oddsRatios=F)
 
 
-
-
 m7_Fec  = DirichReg(Y_Fec ~  gdp_caus +  pop_size_caus + englegal_centr_caus + diverse_caus + time_democratic_caus + rel_cath_wrp_caus | 1,
                 caus_culture_profiles_data_struct, "alternative")
 m7_FeC  = DirichReg(Y_FeC ~  gdp_caus +  pop_size_caus + englegal_centr_caus + diverse_caus + time_democratic_caus + rel_cath_wrp_caus | 1,
@@ -508,11 +506,10 @@ m7_fEc  = DirichReg(Y_fEc ~  gdp_caus +  pop_size_caus + englegal_centr_caus + d
 m7_fEC  = DirichReg(Y_fEC ~  gdp_caus +  pop_size_caus + englegal_centr_caus + diverse_caus + time_democratic_caus + rel_cath_wrp_caus | 1,
                     caus_culture_profiles_data_struct, "alternative")
 
-odds_ratio_plot(m7_Fec)
-odds_ratio_plot(m7_FeC)
-odds_ratio_plot(m7_fEc)
-odds_ratio_plot(m7_fEC)
+odds_ratio_plot(m7_Fec, m7_FeC, m7_fEc, m7_fEC, sign_niveau = 0.05)
 
+
+  
 make_table_diri(m7_Fec)
 make_table_diri(m7_FeC)
 make_table_diri(m7_fEc)
@@ -525,7 +522,7 @@ m7$d %>%
 # pop_size_caus
 simu_pop_size = data.frame(
   gdp_caus = 3.38532,
-  pop_size_caus = seq(4.88044, 8.911705, length.out = 15),
+  pop_size_caus = seq(4.88044, 8.911705, length.out = 10),
   englegal_centr_caus = 0.2989691,
   diverse_caus =  0.3817845,
   time_democratic_caus = 13.03093,
@@ -547,7 +544,7 @@ simu_diverse = data.frame(
   gdp_caus = 3.38532,
   pop_size_caus = 6.81844 ,
   englegal_centr_caus = 0.2989691,
-  diverse_caus = seq(0.00515, 0.9061, length.out = 15),
+  diverse_caus = seq(0.00515, 0.9061, length.out = 10),
   time_democratic_caus = 13.03093,
   rel_cath_wrp_caus =  0.3657608
 )
@@ -558,39 +555,79 @@ simu_time_democratic = data.frame(
   pop_size_caus = 6.81844 ,
   englegal_centr_caus = 0.2989691,
   diverse_caus = 0.3817845,
-  time_democratic_caus = seq(-22, 93, length.out = 25),
+  time_democratic_caus = seq(min(m7$d$time_democratic_caus), max(m7$d$time_democratic_caus), length.out = 20),
   rel_cath_wrp_caus =  0.3657608
 )
 
-simu_diri_function_expected(m7, simu_pop_size, draws = 100, selected_variable = "pop_size_caus", categorical = F )
-simu_diri_function_expected(m7, simu_english, draws = 100, selected_variable = "englegal_centr_caus", categorical = T )
-simu_diri_function_expected(m7, simu_diverse, draws = 100, selected_variable = "diverse_caus", categorical = F )
-simu_diri_function_expected(m7, simu_time_democratic, draws = 100, selected_variable = "time_democratic_caus", categorical = F )
+p1 = data.frame(predict(m7, simu_pop_size)) %>%
+  rename_all(funs(colnames(m7$Y))) %>% 
+  cbind(pop_size_caus = simu_pop_size$pop_size_caus) %>% 
+  pivot_longer(cols=-pop_size_caus) %>% 
+  ggplot(aes(x=pop_size_caus, y=value, col=name)) +
+  geom_line() +
+  geom_point() +
+  theme_bw() +
+  ggtitle("pop_size_caus")
+
+p2 = data.frame(predict(m7, simu_diverse)) %>%
+  rename_all(funs(colnames(m7$Y))) %>% 
+  cbind(diverse_caus = simu_diverse$diverse_caus) %>% 
+  pivot_longer(cols=-diverse_caus) %>% 
+  ggplot(aes(x=diverse_caus, y=value, col=name)) +
+  geom_line() +
+  geom_point() +
+  theme_bw() +
+  ggtitle("diverse_caus")
+
+p3 = data.frame(predict(m7, simu_time_democratic)) %>%
+  rename_all(funs(colnames(m7$Y))) %>% 
+  cbind(time_democratic_caus = simu_time_democratic$time_democratic_caus) %>% 
+  pivot_longer(cols=-time_democratic_caus) %>% 
+  ggplot(aes(x=time_democratic_caus, y=value, col=name)) +
+  geom_line() +
+  geom_point() +
+  theme_bw() +
+  ggtitle("time_democratic_caus")
+
+p4 = simu_diri_function_expected(m7, simu_english, draws = 100, selected_variable = "englegal_centr_caus", categorical = T ) 
+grid.arrange(p1,p2,p3,p4)
+
+# simu_diri_function_expected(m7, simu_pop_size, draws = 100, selected_variable = "pop_size_caus", categorical = F )
+# simu_diri_function_expected(m7, simu_diverse, draws = 100, selected_variable = "diverse_caus", categorical = F )
+# simu_diri_function_expected(m7, simu_time_democratic, draws = 100, selected_variable = "time_democratic_caus", categorical = F )
 
 #simu_diri_function_predicted(m7, simu)
 
 # Configurations
-# Small State + Low Diversity
+# Small State + Low Diversity + english
 simu_conf1 = data.frame(
   gdp_caus = 3.38532,
-  pop_size_caus = 4.88044 ,
-  englegal_centr_caus = c(0,1),
-  diverse_caus =  0.00515,
-  time_democratic_caus = 13.03093,
+  pop_size_caus = mean(m7$d$pop_size_caus) - 2*sd(m7$d$pop_size_caus),
+  englegal_centr_caus = 1,
+  diverse_caus =  mean(m7$d$diverse_caus) - 2*sd(m7$d$diverse_caus),
+  time_democratic_caus = 3.803093,
   rel_cath_wrp_caus =  0.3657608 
 )
-simu_diri_function_expected(m7, simu_conf1, draws = 100, selected_variable = "englegal_centr_caus", categorical = T )
 
-# Big State + High Diversity 
+p1 = simu_diri_function_expected(m7, simu_conf1, draws = 100, selected_variable = "englegal_centr_caus", categorical = T )
+
+# Big State + High Diversity + nonenglish
 simu_conf2 = data.frame(
   gdp_caus = 3.38532,
-  pop_size_caus = 9.88044 ,
-  englegal_centr_caus = c(0,1),
-  diverse_caus =  0.90515,
-  time_democratic_caus = 13.03093,
+  pop_size_caus = mean(m7$d$pop_size_caus) + 2*sd(m7$d$pop_size_caus) ,
+  englegal_centr_caus = 0,
+  diverse_caus =  mean(m7$d$diverse_caus) + 2*sd(m7$d$diverse_caus),
+  time_democratic_caus = 3.803093,
   rel_cath_wrp_caus =  0.3657608 
 )
-simu_diri_function_expected(m7, simu_conf2, draws = 100, selected_variable = "englegal_centr_caus", categorical = T )
+p2 = simu_diri_function_expected(m7, simu_conf2, draws = 100, selected_variable = "englegal_centr_caus", categorical = T )
+
+p1$data %>% 
+  bind_rows(p2$data) %>%
+  ggplot(aes(x=name, y=mean, ymin = lower, ymax = upper, col=name)) + 
+  geom_errorbar() +
+  facet_wrap(select_x~.) +
+  theme_bw()
 
 
 ############ Consolidated Democracies####
@@ -696,6 +733,9 @@ m7_fEc_c  = DirichReg(Y_fEc ~  gdp_caus +  pop_size_caus + englegal_centr_caus +
                       caus_culture_profiles_data_struct_consol, "alternative")
 m7_fEC_c  = DirichReg(Y_fEC ~  gdp_caus +  pop_size_caus + englegal_centr_caus + diverse_caus + rel_cath_wrp_caus + time_democratic_caus  | 1,
                       caus_culture_profiles_data_struct_consol, "alternative")
+
+odds_ratio_plot(m7_Fec_c, m7_FeC_c, m7_fEc_c, m7_fEC_c, sign_niveau = 0.05)
+
 
 make_table_diri(m7_Fec_c)
 make_table_diri(m7_FeC_c)

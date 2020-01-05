@@ -162,7 +162,8 @@ simu_diri_function_expected = function(model, simu, draws = 100, N = 100, select
       geom_errorbar() +
       facet_wrap(name~.) +
       scale_y_continuous(breaks=seq(0,1,0.2), limits = c(0,1)) +
-      xlab(selected_variable)
+      xlab(selected_variable)  +
+      theme_bw()
   } else {
     container %>% 
       select_at(vars(select_x = selected_variable, starts_with("X_"))) %>% 
@@ -174,9 +175,10 @@ simu_diri_function_expected = function(model, simu, draws = 100, N = 100, select
       ggplot(aes(x=select_x, y=mean, ymin = lower, ymax = upper, fill=name)) + 
       geom_line() + 
       geom_ribbon(alpha= 0.5) +
-      facet_wrap(name~.) +
+      #facet_wrap(name~.) +
       scale_y_continuous(breaks=seq(0,1,0.2), limits = c(0,1)) +
-      xlab(selected_variable)
+      xlab(selected_variable)  +
+      theme_bw()
     
   }
   

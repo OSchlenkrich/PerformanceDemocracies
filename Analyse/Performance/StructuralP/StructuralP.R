@@ -1,11 +1,13 @@
 source("Analyse/CreateDatasets.R")
+source("Setup/Sig_Tables.R")
+source("Setup/Simulation_Dirichlet.R")
 
 
 # Structural Performance
 
-library(gmodels)
-library(vcd)
-library(rcompanion)
+# library(gmodels)
+# library(vcd)
+# library(rcompanion)
 
 dmx_performance = performance_all %>% 
   left_join(dmx_trade_cluster %>% 

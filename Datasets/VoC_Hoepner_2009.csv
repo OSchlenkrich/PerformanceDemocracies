@@ -1,0 +1,21 @@
+country;country_code;VoC_HS;Coord_Ind_1990
+Australia;AUS;LME;0.36
+Austria;AUT;CME;1
+Belgium;BEL;CME;0.74
+Canada;CAN;LME;0.13
+Denmark;DNK;CME;0.7
+Finland;FIN;CME;0.72
+France;FRA;Mixed;0.69
+Germany;DEU;CME;0.95
+Ireland;IRL;LME;0.29
+Italy;ITA;Mixed;0.87
+Japan;JPN;CME;0.74
+Netherlands;NLD;CME;0.66
+New Zealand;NZL;LME;0.21
+Norway;NOR;CME;0.76
+Portugal;PRT;Mixed;0.72
+Spain;ESP;Mixed;0.57
+Sweden;SWE;CME;0.69
+Switzerland;CHE;CME;0.51
+United Kingdom;GBR;LME;0.07
+United States of America;USA;LME;0

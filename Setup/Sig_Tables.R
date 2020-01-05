@@ -138,8 +138,15 @@ make_table_diri = function(..., oddsRatios = F) {
     }  
   }
   
-  border_intercept = dust_data[[length(dust_data)]][[3]]
+  border_intercept = dust_data_join %>% 
+    select(term) %>% 
+    filter(grepl("caus", term) | grepl("Inter", term)) %>% 
+    summarise(rows = n()/3 + 1) %>% 
+    mutate(rows2 = 2*rows) %>% 
+    as.numeric() +1
+    
   
+
   ###################################
   # Create Table with pixiedust
   dust(dust_data_join, glance_foot = F)  %>% 

@@ -29,6 +29,11 @@ library(miceadds)
 library(Amelia)
 library(haven)
 library(umx)
+library(margins)
+library(DirichletReg)
+library(betareg)
+library(ggrepel)
+
 
 # for correct display of tibbles
 options(crayon.enabled = FALSE)
