@@ -56,25 +56,6 @@ dmx_trade_cluster = fread(file="Datasets/performance_data/dmx_trade_cluster_v5.c
          X_FeC = X3,
          X_Fec = X4)
 
-VoC_Welfare_types = read.csv("Datasets/VoC_welfare.csv", sep=";", quote="") %>% 
-  rename(country = X.Country,
-         VoC_HS = Varieties.of.capitalism.,
-         country_text_id = Country.code,
-         welfare_E = Three.worlds,
-         VoC_Kitschelt = Types.of.capitalism
-  ) %>% 
-  mutate(country = gsub("\"", "", country),
-         VoC_HS = gsub("\"", "", VoC_HS),
-         welfare_E = fct_recode(welfare_E, NULL = "NC/C"),
-         VoC_Kitschelt = fct_recode(VoC_Kitschelt, NULL = "NC/C"),
-         VoC_HS = fct_recode(VoC_HS, NULL = "NC/C")
-  ) %>%
-  select(-country) %>% 
-  left_join(V_dem %>%  select(country, country_text_id) %>%  distinct(), by=c("country_text_id")) %>% 
-  select(country, everything()) %>% 
-  arrange(welfare_E, country)
-
-
 confidence_individual = fread(file="Datasets/performance_data/confidence_individual.csv", encoding = "UTF-8")
 performance_all = fread(file="Datasets/performance_data/performance_all.csv", encoding = "UTF-8") %>% 
   mutate(conf_index  = na_interpol(conf_index, 10)) 

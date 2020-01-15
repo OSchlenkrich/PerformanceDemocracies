@@ -1,0 +1,355 @@
+names
+3.1 Elections 53
+3.1.1 Disclosure of campaign donations (C) (v2eldonate) 53
+3.1.2 Public campaign finance (C) (v2elpubfin) 54
+3.1.3 EMB autonomy (C) (v2elembaut) 54
+3.1.4 EMB capacity (C) (v2elembcap) 55
+3.1.5 Elections multiparty (C) (v2elmulpar) 55
+3.1.6 Election voter registry (C) (v2elrgstry) 56
+3.1.7 Election vote buying (C) (v2elvotbuy) 56
+3.1.8 Election other voting irregularities (C) (v2elirreg) 57
+3.1.9 Election government intimidation (C) (v2elintim) 57
+3.1.10 Election other electoral violence (C) (v2elpeace) 58
+3.1.11 Election boycotts (C) (v2elboycot) 58
+3.1.12 Election free campaign media (C) (v2elfrcamp) 59
+3.1.13 Election paid campaign advertisements (C) (v2elpdcamp) 59
+3.1.14 Election paid interest group media (C) (v2elpaidig) 59
+3.1.15 Election free and fair (C) (v2elfrfair) 60
+3.1.16 Election losers accept results (C) (v2elaccept) 60
+3.1.17 Election assume office (C) (v2elasmoff) 61
+3.1.18 Regional government exists (A,C) (v2elreggov) 61
+3.1.19 Regional government name (A,C) (v2elregnam) 62
+3.1.20 Regional government elected (A,C) (v2elsrgel) 62
+3.1.21 Regional offices relative power (C) (v2elrgpwr) 63
+3.1.22 Local government exists (A,C) (v2ellocgov) 63
+3.1.23 Local government name (A,C) (v2ellocnam) 64
+3.1.24 Local government elected (A,C) (v2ellocelc) 64
+3.1.25 Local offices relative power (C) (v2ellocpwr) 65
+3.1.26 Subnational elections free and fair (C) (v2elffelr) 65
+3.1.27 Subnational elections held (C) (v2elffelrbin) 66
+3.1.28 Subnational election unevenness (C) (v2elsnlsff) 66
+3.1.29 Subnational election area less free and fair name (C) (v2elsnless) 66
+3.1.30 Subnational election area less free and fair characteristics (C) (v2elsnlfc) . . . 67
+3.1.31 Subnational election area more free and fair name (C) (v2elsnmore) . . . . . . 67
+3.1.32 Subnational election area more free and fair characteristics (C) (v2elsnmrfc) . 68
+3.1.33 Suffrage (A) (v2asuffrage) . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 68
+3.1.34 Minimum voting age (A) (v2elage) . . . . . . . . . . . . . . . . . . . . . . . . 69
+3.1.35 Compulsory voting (A) (v2elcomvot) . . . . . . . . . . . . . . . . . . . . . . . 69
+3.1.36 Election domestic election monitors (B) (v2eldommon) . . . . . . . . . . . . . 69
+3.1.37 Female suffrage restricted (A) (v2elfemrst) . . . . . . . . . . . . . . . . . . . . 70
+3.1.38 Suffrage level (A) (v2elgvsuflvl) . . . . . . . . . . . . . . . . . . . . . . . . . . 70
+3.1.39 Election international monitors (A) (v2elintmon) . . . . . . . . . . . . . . . . 71
+3.1.40 Lower chamber election consecutive (D) (v2ellocons) . . . . . . . . . . . . . . 71
+3.1.41 Lower chamber election cumulative (D) (v2ellocumul) . . . . . . . . . . . . . . 71
+3.1.42 Lower chamber election district magnitude (A) (v2elloeldm) . . . . . . . . . . 71
+3.1.43 Lower chamber electoral system — 13 categories (A) (v2elloelsy) . . . . . . . . 72
+3.1.44 Lower chamber election seats (A) (v2elloseat) . . . . . . . . . . . . . . . . . . 73
+3.1.45 Lower chamber election seats won by largest party (A) (v2ellostlg) . . . . . . . 73
+3.1.46 Lower chamber election seat share won by largest party (A) (v2ellostsl) . . . . 74
+3.1.47 Lower chamber election seats won by second largest party (A) (v2ellostsm) . . 74
+3.1.48 Lower chamber election seat share won by second largest party (A) (v2ellostss) 74
+3.1.49 Lower chamber election seat won by third largest party (A) (v2ellosttm) 75
+3.1.50 Lower chamber election seat share won by third largest party (A) (v2ellostts) 75
+3.1.51 Lower chamber election vote share of largest vote-getter (A) (v2ellovtlg) 75
+3.1.52 Lower chamber election vote share of second-largest vote-getter (A) (v2ellovtsm) 75
+3.1.53 Lower chamber election vote share of third-largest vote-getter (A) (v2ellovttm) 76
+3.1.54 Election international monitors denied (A) (v2elmonden) 76
+3.1.55 Monitors refuse to be present (A) (v2elmonref) 76
+3.1.56 Effective number of cabinet parties (B) (v2elncbpr) 77
+3.1.57 Lower chamber electoral system (A) (v2elparlel) 77
+3.1.58 Presidential elections consecutive (D) (v2elprescons) 77
+3.1.59 Presidential elections cumulative (D) (v2elprescumul) 77
+3.1.60 HOG restriction by ethnicity, race, religion, or language (A) (v2elrsthog) 78
+3.1.61 HOS restriction by ethnicity, race, religion, or language (A) (v2elrsthos) 78
+3.1.62 Candidate restriction by ethnicity, race, religion, or language (A) (v2elrstrct) 78
+3.1.63 Percentage of population with suffrage (A) (v2elsuffrage) 79
+3.1.64 Lower chamber election statutory threshold (B) (v2elthresh) 79
+3.1.65 Election turnout (A) (v2eltrnout) 80
+3.1.66 Election HOG turnover ordinal (A) (v2elturnhog) 80
+3.1.67 Election HOS turnover ordinal (A) (v2elturnhos) 81
+3.1.68 Election executive turnover nominal (B) (v2eltvrexn) 81
+3.1.69 Election executive turnover ordinal (A) (v2eltvrexo) 81
+3.1.70 Lower chamber election turnover (A) (v2eltvrig) 82
+3.1.71 Election type (A*) (v2eltype) 83
+3.1.72 Election VAP turnout (A) (v2elvaptrn) 83
+3.1.73 Presidential election vote share of largest vote-getter (A) (v2elvotlrg) 84
+3.1.74 Presidential election vote share of second-largest vote-getter (A) (v2elvotsml) 84
+3.1.75 Fraud allegations by Western monitors (A) (v2elwestmon) 84
+3.1.76 Female suffrage (A) (v2fsuffrage) 85
+3.1.77 Name of largest party (A) (v2lpname) 85
+3.1.78 Male suffrage (A) (v2msuffrage) 85
+3.1.79 Name of second largest party (A) (v2slpname) 86
+3.1.80 Name of third largest party (A) (v2tlpname) 86
+3.2 Political Parties 87
+3.2.1 Barriers to parties (C) (v2psbars) 87
+3.2.2 Party ban (C) (v2psparban) 87
+3.2.3 Party ban target (C) (v2psbantar) 88
+3.2.4 Opposition parties autonomy (C) (v2psoppaut) 88
+3.2.5 Party organizations (C) (v2psorgs) 89
+3.2.6 Party branches (C) (v2psprbrch) 89
+3.2.7 Party linkages (C) (v2psprlnks) 89
+3.2.8 Distinct party platforms (C) (v2psplats) 90
+3.2.9 Candidate selection-national/local (C) (v2pscnslnl) 90
+3.2.10 Legislative party cohesion (C) (v2pscohesv) 91
+3.2.11 Party competition across regions (C) (v2pscomprg) 91
+3.2.12 National party control (C) (v2psnatpar) 91
+3.2.13 Subnational party control (C) (v2pssunpar) 92
+3.3 Direct Democracy 93
+3.3.1 Initiatives permitted (A) (v2ddlexci) 93
+3.3.2 Initiatives signatures (A) (v2ddsignci) 93
+3.3.3 Initiatives signatures % (A) (v2ddsigpci) 94
+3.3.4 Initiatives signature-gathering period (A) (v2ddsigdci) 94
+3.3.5 Initiatives signature-gathering time limit (A) (v2ddsiglci) 94
+3.3.6 Initiatives participation threshold (A) (v2ddpartci) 94
+3.3.7 Initiatives approval threshold (A) (v2ddapprci) 95
+3.3.8 Initiatives administrative threshold (A) (v2ddadmci) 95
+3.3.9 Initiatives super majority (A) (v2ddspmci) 95
+3.3.10 Popular initiative credible threat (A) (v2ddthreci) 95
+3.3.11 Referendums permitted (A) (v2ddlexrf) 96
+3.3.12 Referendums signatures (A) (v2ddsignrf) 96
+3.3.13 Referendums signatures % (A) (v2ddsigprf) 96
+3.3.14 Referendums signature-gathering period (A) (v2ddsigdrf) 97
+3.3.15 Referendums signature-gathering limit (A) (v2ddsiglrf) 97
+3.3.16 Referendums participation threshold (A) (v2ddpartrf) 97
+3.3.17 Referendums approval threshold (A) (v2ddapprrf) 97
+3.3.18 Referendums administrative threshold (A) (v2ddadmrf) 98
+3.3.19 Referendums super majority (A) (v2ddspmrf) 98
+3.3.20 Popular referendum credible threat (A) (v2ddthrerf) 98
+3.3.21 Enforcement of Constitutional changes through popular vote (A) (v2ddlexor) 98
+3.3.22 Obligatory referendum participation threshold (A) (v2ddpartor) 99
+3.3.23 Obligatory referendum approval threshold (A) (v2ddappor) 99
+3.3.24 Obligatory referendum administrative threshold (A) (v2ddadmor) 99
+3.3.25 Obligatory referendum super majority (A) (v2ddspmor) 100
+3.3.26 Obligatory referendum credible threat (A) (v2ddthreor) 100
+3.3.27 Plebiscite permitted (A) (v2ddlexpl) 100
+3.3.28 Plebiscite participation threshold (A) (v2ddpartpl) 100
+3.3.29 Plebiscite approval threshold (A) (v2ddapprpl) 101
+3.3.30 Plebiscite administrative threshold (A) (v2ddadmpl) 101
+3.3.31 Plebiscite super majority (A) (v2ddspmpl) 101
+3.3.32 Plebiscite credible threat (A) (v2ddthrepl) 102
+3.3.33 Occurrence of referendum this year (A) (v2ddyrrf) 102
+3.3.34 Occurrence of obligatory referendum this year (A) (v2ddyror) 102
+3.3.35 Occurrence of plebiscite this year (A) (v2ddyrpl) 102
+3.3.36 Occurrence of citizen-initiative this year (A) (v2ddyrci) 102
+3.3.37 Occurrence of any type of popular vote this year credible (A) (v2ddcredal) 103
+3.3.38 Number of popular votes this year (A) (v2ddyrall) 103
+3.4 The Executive 104
+3.4.1 HOS name (A*) (v2exnamhos) 107
+3.4.2 HOS title (A*) (v2extithos) 107
+3.4.3 HOS removal by legislature in practice (C) (v2exremhsp) 108
+3.4.4 HOS removal by other in practice (C) (v2exrmhsol) 108
+3.4.5 HOS other body remove HOS in practice (C) (v2exrmhsnl) 109
+3.4.6 HOS control over (C) (v2exctlhs) 109
+3.4.7 HOS other body controls (C) (v2exctlhos) 109
+3.4.8 HOS dissolution in practice (C) (v2exdfdshs) 110
+3.4.9 HOS appoints cabinet in practice (C) (v2exdfcbhs) 110
+3.4.10 HOS appoints cabinet in practice (C) (v2exdfcbhs_rec) 111
+3.4.11 HOS veto power in practice (C) (v2exdfvths) 111
+3.4.12 HOS dismisses ministers in practice (C) (v2exdfdmhs) 112
+3.4.13 HOS proposes legislation in practice (C) (v2exdfpphs) 112
+3.4.14 HOS = HOG (A*) (v2exhoshog) 112
+3.4.15 HOG name (A*) (v2exnamhog) 113
+3.4.16 HOG title (A*) (v2extithog) 113
+3.4.17 HOG removal by legislature in practice (C) (v2exremhog) 114
+3.4.18 HOG removal by other in practice (C) (v2exrmhgnp) 114
+3.4.19 HOG other body remove HOG in practice (C) (v2exrmhgop) 115
+3.4.20 HOG control over (C) (v2exctlhg) 115
+3.4.21 HOG other body controls (C) (v2exctlhog) 116
+3.4.22 HOG dissolution in practice (C) (v2exdjdshg) 116
+3.4.23 HOG appoints cabinet in practice (C) (v2exdjcbhg) 116
+3.4.24 HOG dismisses ministers in practice (C) (v2exdfdshg) 117
+3.4.25 HOG veto power in practice (C) (v2exdfvthg) 117
+3.4.26 HOG proposes legislation in practice (C) (v2exdfpphg) 118
+3.4.27 Executive respects constitution (C) (v2exrescon) 118
+3.4.28 Executive bribery and corrupt exchanges (C) (v2exbribe) 119
+3.4.29 Executive embezzlement and theft (C) (v2exembez) 119
+3.4.30 Public sector corrupt exchanges (C) (v2excrptps) 120
+3.4.31 Public sector theft (C) (v2exthftps) 120
+3.4.32 HOG age (A) (v2exagehog) 121
+3.4.33 HOS age (A) (v2exagehos) 121
+3.4.34 HOG selection by legislature in practice (A) (v2exaphogp) 121
+3.4.35 HOS selection by legislature in practice (A) (v2exaphos) 122
+3.4.36 Chief executive appointment by upper chamber (A) (v2exapup) 122
+3.4.37 Chief executive appointment by upper chamber implicit approval (A) (v2exapupap)122
+3.4.38 HOG disadvantaged social group (B) (v2exdighog) 123
+3.4.39 HOS disadvantaged social group (B) (v2exdighos) 123
+3.4.40 HOG directly elected (D) (v2ex_elechog) 123
+3.4.41 HOS directly elected (D) (v2ex_elechos) 124
+3.4.42 HOG female (A) (v2exfemhog) 124
+3.4.43 HOS female (A) (v2exfemhos) 124
+3.4.44 HOG term length by law (A) (v2exfxtmhg) 124
+3.4.45 HOS term length by law (A) (v2exfxtmhs) 125
+3.4.46 Relative power of the HOG (D) (v2ex_hogw) 125
+3.4.47 HOG appointed by HOS (D) (v2ex_hosconhog) 126
+3.4.48 HOG other appointing body in practice (A) (v2exothhgl) 126
+3.4.49 HOS other appointing body in practice (A) (v2exothhs) 126
+3.4.50 HOG appointment in practice (A) (v2expathhg) 126
+3.4.51 HOS appointment in practice (A) (v2expathhs) 127
+3.4.52 Regime information (A*) (v2reginfo) 128
+3.4.53 Regime interregnum (A) (v2regint) 128
+3.4.54 Regime end type (A*) (v2regendtype) 128
+3.4.55 Regime end type, multiple selection version (A) (v2regendtypems) 129
+3.4.56 Regime support groups (C) (v2regsupgroups) 129
+3.4.57 Regime most important support group (C) (v2regimpgroup) 130
+3.4.58 Regime support groups size (C) (v2regsupgroupssize) 131
+3.5 The Legislature 132
+3.5.1 Legislature bicameral (A*) (v2lgbicam) 132
+3.5.2 Upper chamber name (A*) (v2lgnameup) 133
+3.5.3 Upper chamber legislates in practice (C) (v2lglegpup) 133
+3.5.4 Legislature dominant chamber (C) (v2lgdomchm) 134
+3.5.5 Legislature questions officials in practice (C) (v2lgqstexp) 134
+3.5.6 Legislature investigates in practice (C) (v2lginvstp) 134
+3.5.7 Executive oversight (C) (v2lgotovst) 135
+3.5.8 Legislature corrupt activities (C) (v2lgcrrpt) 135
+3.5.9 Legislature opposition parties (C) (v2lgoppart) 136
+3.5.10 Legislature controls resources (C) (v2lgfunds) 136
+3.5.11 Representation of disadvantaged social groups (C) (v2lgdsadlo) 136
+3.5.12 Representation of disadvantaged social groups binary (C) (v2lgdsadlobin) 137
+3.5.13 Lower chamber legislature name (A*) (v2lgnamelo) 137
+3.5.14 Lower chamber legislates in practice (C) (v2lglegplo) 138
+3.5.15 Lower chamber committees (C) (v2lgcomslo) 138
+3.5.16 Lower chamber members serve in government (C) (v2lgsrvlo) 139
+3.5.17 Lower chamber staff (C) (v2lgstafflo) 139
+3.5.18 Relative power of the HOS (D) (v2ex_hosw) 139
+3.5.19 HOG appointed by legislature (D) (v2ex_legconhog) 140
+3.5.20 HOS appointed by legislature (D) (v2ex_legconhos) 140
+3.5.21 Legislature amends constitution (B) (v2lgamend) 140
+3.5.22 Legislature amnesties (B) (v2lgamnsty) 140
+3.5.23 Upper chamber elected (A) (v2lgelecup) 141
+3.5.24 Lower chamber elected (A) (v2lgello) 141
+3.5.25 Lower chamber female legislators (A) (v2lgfemleg) 141
+3.5.26 Percentage of indirectly elected legislators lower chamber (A) (v2lginello) 142
+3.5.27 Percentage of indirectly elected legislators upper chamber (A) (v2lginelup) 142
+3.5.28 Lower chamber introduces bills (A) (v2lgintblo) 142
+3.5.29 Upper chamber introduces bills (A) (v2lgintbup) 143
+3.5.30 Lower chamber legislates by law (B) (v2lglegllo) 143
+3.5.31 Upper chamber legislates by law (B) (v2lgleglup) 143
+3.5.32 Lower chamber gender quota (A) (v2lgqugen) 144
+3.5.33 Lower chamber gender quota placement mandate (A) (v2lgqugens) 144
+3.5.34 Lower chamber gender quota threshold (A) (v2lgqugent) 145
+3.5.35 Legislature approval of treaties by law (A) (v2lgtreaty) 145
+3.5.36 Lower chamber term limits (A) (v2lgtrmlup) 145
+3.5.37 Upper chamber term limits (A) (v2lguchatrmlim) 146
+3.5.38 Legislature declares war by law (A) (v2lgwarlaw) 146
+3.6 Deliberation 147
+3.6.1 Reasoned justification (C) (v2dlreason) 147
+3.6.2 Common good (C) (v2dlcommon) 147
+3.6.3 Respect counterarguments (C) (v2dlcountr) 148
+3.6.4 Range of consultation (C) (v2dlconslt) 148
+3.6.5 Engaged society (C) (v2dlengage) 149
+3.6.6 Particularistic or public goods (C) (v2dlencmps) 149
+3.6.7 Means-tested vuniversalistic policy (C) (v2dlunivl) 150
+3.7 The Judiciary 151
+3.7.1 Judicial reform (C) (v2jureform) 151
+3.7.2 Judicial purges (C) (v2jupurge) 152
+3.7.3 Government attacks on judiciary (C) (v2jupoatck) 152
+3.7.4 Court packing (C) (v2jupack) 153
+3.7.5 Judicial accountability (C) (v2juaccnt) 153
+3.7.6 Judicial corruption decision (C) (v2jucorrdc) 154
+3.7.7 High court name (A) (v2juhcname) 154
+3.7.8 High court size by law (C) (v2juhcsizl) 154
+3.7.9 High court size in practice (C) (v2juhcsizp) 155
+3.7.10 Female judges (C) (v2jufemjdg) 155
+3.7.11 First woman appointed (C) (v2jufrstfm) 155
+3.7.12 High court independence (C) (v2juhcind) 156
+3.7.13 Lower court independence (C) (v2juncind) 156
+3.7.14 Compliance with high court (C) (v2juhccomp) 157
+3.7.15 Compliance with judiciary (C) (v2jucomp) 157
+3.7.16 Judicial review (C) (v2jureview) 157
+3.7.17 Codeable (A) (v2jucodable) 158
+3.7.18 Corresponding flowchart (A) (v2juflow) 158
+3.7.19 Language (A) (v2julanguage) 158
+3.7.20 Team translated (A) (v2juteamtr) 159
+3.8 Civil Liberty 160
+3.8.1 Freedom of academic and cultural expression (C) (v2clacfree) 160
+3.8.2 Freedom of religion (C) (v2clrelig) 160
+3.8.3 Freedom from torture (C) (v2cltort) 161
+3.8.4 Freedom from political killings (C) (v2clkill) 161
+3.8.5 Transparent laws with predictable enforcement (C) (v2cltrnslw) 162
+3.8.6 Rigorous and impartial public administration (C) (v2clrspct) 162
+3.8.7 Freedom of foreign movement (C) (v2clfmove) 163
+3.8.8 Freedom of domestic movement for men (C) (v2cldmovem) 163
+3.8.9 Freedom of domestic movement for women (C) (v2cldmovew) 164
+3.8.10 Freedom of discussion for men (C) (v2cldiscm) 164
+3.8.11 Freedom of discussion for women (C) (v2cldiscw) 165
+3.8.12 Freedom from forced labor for men (C) (v2clslavem) 166
+3.8.13 Freedom from forced labor for women (C) (v2clslavef) 166
+3.8.14 State ownership of economy (C) (v2clstown) 167
+3.8.15 Property rights for men (C) (v2clprptym) 167
+3.8.16 Property rights for women (C) (v2clprptyw) 168
+3.8.17 Access to justice for men (C) (v2clacjstm) 168
+3.8.18 Access to justice for women (C) (v2clacjstw) 169
+3.8.19 Social class equality in respect for civil liberty (C) (v2clacjust) 169
+3.8.20 Social group equality in respect for civil liberties (C) (v2clsocgrp) 170
+3.8.21 Subnational civil liberties unevenness (C) (v2clrgunev) 170
+3.8.22 Stronger civil liberties characteristics (C) (v2clrgstch) 170
+3.8.23 Weaker civil liberties population (C) (v2clsnlpct) 171
+3.8.24 Weaker civil liberties characteristics (C) (v2clrgwkch) 171
+3.9 Sovereignty/State 173
+3.9.1 Domestic autonomy (C) (v2svdomaut) 173
+3.9.2 International autonomy (C) (v2svinlaut) 174
+3.9.3 State authority over territory (C) (v2svstterr) 175
+3.9.4 State fiscal capacity (C) (v2stfisccap) 175
+3.9.5 Bureaucratic remuneration (C) (v2strenadm) 176
+3.9.6 Criteria for appointment decisions in the state administration (C) (v2stcritrecadm)176
+3.9.7 Criteria for appointment decisions in the armed forces (C) (v2stcritapparm) 177
+3.9.8 Remuneration in the Armed Forces (C) (v2strenarm) 177
+3.9.9 Independent states (A) (v2svindep) 177
+3.10 Civil Society 179
+3.10.1 CSO entry and exit (C) (v2cseeorgs) 179
+3.10.2 CSO repression (C) (v2csreprss) 180
+3.10.3 CSO consultation (C) (v2cscnsult) 180
+3.10.4 CSO structure (C) (v2csstruc) 181
+3.10.5 CSO participatory environment (C) (v2csprtcpt) 181
+3.10.6 CSO women’s participation (C) (v2csgender) 182
+3.10.7 CSO anti-system movements (C) (v2csantimv) 182
+3.10.8 CSO anti-system movement character (C) (v2csanmvch) 183
+3.10.9 Religious organization repression (C) (v2csrlgrep) 183
+3.10.10 Religious organization consultation (C) (v2csrlgcon) 184
+3.11 The Media 185
+3.11.1 Government censorship effort — Media (C) (v2mecenefm) 185
+3.11.2 Internet censorship effort (C) (v2mecenefi) 185
+3.11.3 Internet binary (C) (v2mecenefibin) 186
+3.11.4 Print/broadcast media critical (C) (v2mecrit) 186
+3.11.5 Print/broadcast media perspectives (C) (v2merange) 187
+3.11.6 Female journalists (C) (v2mefemjrn) 187
+3.11.7 Harassment of journalists (C) (v2meharjrn) 187
+3.11.8 Media self-censorship (C) (v2meslfcen) 188
+3.11.9 Media bias (C) (v2mebias) 188
+3.11.10 Media corrupt (C) (v2mecorrpt) 189
+3.12 Political Equality 190
+3.12.1 Power distributed by socioeconomic position (C) (v2pepwrses) 190
+3.12.2 Power distributed by social group (C) (v2pepwrsoc) 190
+3.12.3 Power distributed by gender (C) (v2pepwrgen) 191
+3.12.4 Power distributed by sexual orientation (C) (v2pepwrort) 191
+3.12.5 Educational equality (C) (v2peedueq) 192
+3.12.6 Health equality (C) (v2pehealth) 192
+3.12.7 Primary school enrollment (A) (v2peprisch) 193
+3.12.8 Secondary school enrollment (A) (v2pesecsch) 193
+3.12.9 Tertiary school enrollment (A) (v2petersch) 193
+3.13 Exclusion 195
+3.13.1 Power distributed by urban-rural location (C) (v2pepwrgeo) 195
+3.13.2 Gender equality in respect for civil liberties (C) (v2clgencl) 196
+3.13.3 Political group equality in respect for civil liberties (C) (v2clpolcl) 196
+3.13.4 Urban-rural location equality in respect for civil liberties (C) (v2clgeocl) 197
+3.13.5 Access to public services distributed by social group (C) (v2peapssoc) 197
+3.13.6 Access to public services distributed by gender (C) (v2peapsgen) 198
+3.13.7 Access to public services distributed by socio-economic position (C) (v2peapsecon)198
+3.13.8 Access to public services distributed by political group (C) (v2peapspol) 199
+3.13.9 Access to public services distributed by urban-rural location (C) (v2peapsgeo) 199
+3.13.10 Access to state jobs by social group (C) (v2peasjsoc) 200
+3.13.11 Access to state jobs by gender (C) (v2peasjgen) 200
+3.13.12 Access to state jobs by socio-economic position (C) (v2peasjsoecon) 201
+3.13.13 Access to state jobs by urban-rural location (C) (v2peasjgeo) 201
+3.13.14 Access to state jobs by political group (C) (v2peasjpol) 202
+3.13.15 Access to state business opportunities by social group (C) (v2peasbsoc) 202
+3.13.16 Access to state business opportunities by gender (C) (v2peasbgen) 203
+3.13.17 Access to state business opportunities by socio-economic position (C) (v2peasbecon)203
+3.13.18 Access to state business opportunities by political group (C) (v2peasbepol) 204
+3.13.19 Access to state business opportunities by urban-rural location (C) (v2peasbegeo)204
+3.14 Legitimation 206
+3.14.1 Ideology (C) (v2exl_legitideol) 206
+3.14.2 Ideology character (C) (v2exl_legitideolcr) 206
+3.14.3 Person of the Leader (C) (v2exl_legitlead) 207
+3.14.4 Performance legitimation (C) (v2exl_legitperf) 207
+3.14.5 Rational-legal legitimation (C) (v2exl_legitratio) 207

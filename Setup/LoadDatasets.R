@@ -1,7 +1,7 @@
 # Load Datasets
 
 # VDEM ----
-V_dem = fread("C:/RTest/V-Dem-CY+Others-v8.csv", encoding = "UTF-8") %>% 
+V_dem = fread("unzip -p C:/RTest/V-Dem-CY+Others-v8.zip", encoding = "UTF-8") %>% 
   dplyr::select(country = country_name, country_text_id, year, cso = v2csstruc_1,
                 COWcode,
                 educ_equal = v2peedueq, 
@@ -29,7 +29,7 @@ V_dem = fread("C:/RTest/V-Dem-CY+Others-v8.csv", encoding = "UTF-8") %>%
 
 # Democracy Matrix ----
 dmx_data = fread("unzip -p Datasets/DemocracyMatrix_v1_1.zip", encoding = "UTF-8") %>% 
-  left_join(fread("C:/RTest/V-Dem-CY+Others-v8.csv", encoding = "UTF-8") %>% 
+  left_join(fread("unzip -p C:/RTest/V-Dem-CY+Others-v8.zip", encoding = "UTF-8") %>% 
               dplyr::select(country = country_name, country_text_id, year), by=c("country", "year"))
 
 dmx_cluster_names = dmx_data %>%
@@ -155,7 +155,7 @@ WB_export = fread("Datasets/WB_export.csv", header=T) %>%
   )
 
 ###
-frame = fread("C:/RTest/V-Dem-CY+Others-v8.csv") %>% 
+frame = fread("unzip -p C:/RTest/V-Dem-CY+Others-v8.zip") %>% 
   dplyr::select(country = country_name, ccy_code = country_text_id, year)
 
 

@@ -1,6 +1,7 @@
 # VoC and Welfare and Democracy Profiles
 
-
+library(car)
+library(stargazer)
 source("Analyse/CreateDatasets.R")
 source("Setup/Sig_Tables.R")
 source("Setup/Simulation_Dirichlet.R")
@@ -184,24 +185,14 @@ make_table_diri(m1_VoC)
 simu_diri_function_expected(m1_VoC,  data.frame(VoC_caus = c(0,1)), draws = 100, selected_variable = "VoC_caus", categorical = T ) 
 
 ## Welfare State and Democracy Profile ####
+# EA 1990 ---------
 
 structuralP_Welfare = structuralP %>%
   select_at(vars(country, starts_with("X"), cl_Esping_Andersen_1990_caus = cl_Esping_Andersen_1990)) %>% 
-  mutate(EA_1990_caus = ifelse(cl_Esping_Andersen_1990_caus == "Lib", 1, 0)) %>%
-  # fastDummies::dummy_cols(., select_columns="cl_Esping_Andersen_1990_caus", ignore_na = T) %>% 
-  #filter(country != "Switzerland", country != "United States of America", country != "Italy") %>% 
+  mutate(EA_1990_caus = ifelse(cl_Esping_Andersen_1990_caus == "Lib", 1, 0))  %>% 
   na.omit() %>% 
   make_DR()
 
-
-# m1_EA_1990  = DirichReg(Y_Fec ~  1 + cl_Esping_Andersen_1990_caus_Lib + cl_Esping_Andersen_1990_caus_Con  | 1,
-#                 structuralP_Welfare, "alternative")
-# m2_EA_1990  = DirichReg(Y_FeC ~  + cl_Esping_Andersen_1990_caus_Lib + cl_Esping_Andersen_1990_caus_Con,
-#                 structuralP_Welfare, "alternative")
-# m3_EA_1990  = DirichReg(Y_fEc ~  + cl_Esping_Andersen_1990_caus_Lib + cl_Esping_Andersen_1990_caus_Con,
-#                 structuralP_Welfare, "alternative")
-# m4_EA_1990  = DirichReg(Y_fEC ~  + cl_Esping_Andersen_1990_caus_Lib + cl_Esping_Andersen_1990_caus_Con,
-#                 structuralP_Welfare, "alternative")
 
 m1_EA_1990  = DirichReg(Y_Fec ~  1 + EA_1990_caus  | 1,
                         structuralP_Welfare, "alternative")
@@ -217,28 +208,21 @@ p1 = odds_ratio_plot(m1_EA_1990, m2_EA_1990, m3_EA_1990, m4_EA_1990)
 p1
 make_table_diri(m1_EA_1990)
 
-
 simu_diri_function_expected(m1_EA_1990,  data.frame(EA_1990_caus = c(0,1)), draws = 100, selected_variable = "EA_1990_caus", categorical = T ) 
 
-##
+# EA 1999 ---------
 
 structuralP_Welfare = structuralP %>%
   select_at(vars(country, starts_with("X"), cl_Esping_Andersen_1999_caus = cl_Esping_Andersen_1999)) %>% 
   mutate(EA_1999_caus = ifelse(cl_Esping_Andersen_1999_caus == "Lib", 1, 0)) %>%
-  # fastDummies::dummy_cols(., select_columns="cl_Esping_Andersen_1999_caus", ignore_na = T) %>% 
-  # filter(country != "Switzerland") %>% 
   na.omit() %>% 
   make_DR()
 
 
-# m1_EA_1990  = DirichReg(Y_Fec ~  1 + cl_Esping_Andersen_1990_caus_Lib + cl_Esping_Andersen_1990_caus_Con  | 1,
-#                 structuralP_Welfare, "alternative")
-# m2_EA_1990  = DirichReg(Y_FeC ~  + cl_Esping_Andersen_1990_caus_Lib + cl_Esping_Andersen_1990_caus_Con,
-#                 structuralP_Welfare, "alternative")
-# m3_EA_1990  = DirichReg(Y_fEc ~  + cl_Esping_Andersen_1990_caus_Lib + cl_Esping_Andersen_1990_caus_Con,
-#                 structuralP_Welfare, "alternative")
-# m4_EA_1990  = DirichReg(Y_fEC ~  + cl_Esping_Andersen_1990_caus_Lib + cl_Esping_Andersen_1990_caus_Con,
-#                 structuralP_Welfare, "alternative")
+structuralP_Welfare %>% 
+  pivot_longer(cols=starts_with("X_")) %>% 
+  ggplot(aes(x=cl_Esping_Andersen_1999_caus))
+
 
 m1_EA_1999  = DirichReg(Y_Fec ~  1 + EA_1999_caus  | 1,
                         structuralP_Welfare, "alternative")
@@ -256,37 +240,105 @@ p2 = odds_ratio_plot(m1_EA_1999, m2_EA_1999, m3_EA_1999, m4_EA_1999)
 make_table_diri(m1_EA_1990, m1_EA_1999)
 grid.arrange(p1,p2)
 grid.arrange(p1_res, p2_res)
-##
 
-structuralP_Welfare = structuralP %>%
-  select_at(vars(country, starts_with("X"), cl_Bambra_2006_caus = cl_Bambra_2006)) %>% 
-  mutate(B_2006_caus = ifelse(cl_Bambra_2006_caus == "Lib", 1, 0)) %>%
-  fastDummies::dummy_cols(., select_columns="cl_Bambra_2006_caus", ignore_na = T) %>% 
-  #filter(country != "Switzerland") %>% 
+
+## Cultural Explanation ####
+schwartz = fread("Datasets/Schwartz_culture.csv") %>% 
+  select(country, 
+         comp_cult_caus = mastery, 
+         harm_cult_caus = harmony, 
+         egalit_cult_caus = egalitarianism, 
+         embeddedness_cult_caus = embeddedness,
+         hierarchy_cult_caus = hierarchy, 
+         aff_auto_cult_caus = affective_autonomy, 
+         int_auto_cult_caus = intellectual_autonomy)
+
+# Belgium is missing from Schwartz
+structuralP_Cult_Welfare_1990 = structuralP %>%
+  select_at(vars(country, starts_with("X"), cl_Esping_Andersen_1990_caus = cl_Esping_Andersen_1990)) %>% 
+  mutate(EA_1990_caus = ifelse(cl_Esping_Andersen_1990_caus == "Lib", 1, 0))  %>%
+  left_join(schwartz, by = "country") %>% 
   na.omit() %>% 
   make_DR()
 
+structuralP_Cult_Welfare_1999 = structuralP %>%
+  select_at(vars(country, starts_with("X"), cl_Esping_Andersen_1999_caus = cl_Esping_Andersen_1999)) %>% 
+  mutate(EA_1999_caus = ifelse(cl_Esping_Andersen_1999_caus == "Lib", 1, 0)) %>%
+  left_join(schwartz, by = "country") %>% 
+  na.omit() %>% 
+  make_DR()
 
-# m1_EA_1990  = DirichReg(Y_Fec ~  1 + cl_Esping_Andersen_1990_caus_Lib + cl_Esping_Andersen_1990_caus_Con  | 1,
-#                 structuralP_Welfare, "alternative")
-# m2_EA_1990  = DirichReg(Y_FeC ~  + cl_Esping_Andersen_1990_caus_Lib + cl_Esping_Andersen_1990_caus_Con,
-#                 structuralP_Welfare, "alternative")
-# m3_EA_1990  = DirichReg(Y_fEc ~  + cl_Esping_Andersen_1990_caus_Lib + cl_Esping_Andersen_1990_caus_Con,
-#                 structuralP_Welfare, "alternative")
-# m4_EA_1990  = DirichReg(Y_fEC ~  + cl_Esping_Andersen_1990_caus_Lib + cl_Esping_Andersen_1990_caus_Con,
-#                 structuralP_Welfare, "alternative")
+# EA 1990 ####
 
-m1_B_2006  = DirichReg(Y_Fec ~  1 + B_2006_caus  | 1,
-                        structuralP_Welfare, "alternative")
-m2_B_2006  = DirichReg(Y_FeC ~  + B_2006_caus,
-                        structuralP_Welfare, "alternative")
-m3_B_2006  = DirichReg(Y_fEc ~  + B_2006_caus,
-                        structuralP_Welfare, "alternative")
-m4_B_2006  = DirichReg(Y_fEC ~  + B_2006_caus,
-                        structuralP_Welfare, "alternative")
-summary(m1_B_1990)
-plot_residual_diri(m1_B_1990)
-odds_ratio_plot(m1_B_1990, m2_B_1990, m3_B_1990, m4_B_1990)
+m1_EA_1990_diri  = DirichReg(Y_Fec ~  1 + EA_1990_caus  | 1,
+                        structuralP_Cult_Welfare_1990, "alternative")
+summary(m1_EA_1990_diri)
 
-make_table_diri(m1_EA_1990, m1_EA_1999, m1_B_1990)
+
+m1_EA_1990_log  = glm(EA_1990_caus ~  comp_cult_caus,
+                  structuralP_Cult_Welfare_1990, family="binomial")
+
+summary(m1_EA_1990_log)
+
+m2_EA_1990_log  = glm(EA_1990_caus ~  egalit_cult_caus,
+                      structuralP_Cult_Welfare_1990, family="binomial")
+
+summary(m2_EA_1990_log)
+
+influencePlot(m1_EA_1990_log)
+influencePlot(m2_EA_1990_log)
+
+
+# EA 1999 ####
+m1_EA_1999_diri  = DirichReg(Y_Fec ~  1 + EA_1999_caus  | 1,
+                        structuralP_Cult_Welfare_1999, "alternative")
+summary(m1_EA_1999_diri)
+
+m1_EA_1999_log  = glm(EA_1999_caus ~  1 + comp_cult_caus,
+                      structuralP_Cult_Welfare_1999, family="binomial")
+
+summary(m1_EA_1999_log)
+
+m2_EA_1999_log  = glm(EA_1999_caus ~  egalit_cult_caus,
+                      structuralP_Cult_Welfare_1999, family="binomial")
+
+summary(m2_EA_1999_log)
+
+
+influencePlot(m1_EA_1999_log)
+influencePlot(m2_EA_1999_log)
+
+
+## VoC ####
+
+structuralP_cult_VoC = structuralP %>%
+  select_at(vars(country, starts_with("X"), VoC_caus)) %>%
+  left_join(schwartz, by = "country") %>% 
+  na.omit() 
+
+m1_voc_log  = glm(VoC_caus ~  1 + comp_cult_caus,
+                  structuralP_cult_VoC, family="binomial")
+
+summary(m1_voc_log)
+m2_voc_log  = glm(VoC_caus ~  1 + egalit_cult_caus,
+                  structuralP_cult_VoC, family="binomial")
+
+summary(m2_voc_log)
+
+influencePlot(m1_voc_log)
+influencePlot(m2_voc_log)
+
+
+#### Table Results #####
+stargazer(# Competition
+          m1_EA_1990_log,
+          m1_EA_1999_log,
+          m1_voc_log,  
+          # Egalitarian
+          m2_EA_1990_log,
+          m2_EA_1999_log,
+          m2_voc_log,
+          type="html",
+          out="Analyse/Performance/StructuralP/glm_tables.doc")
+
 
