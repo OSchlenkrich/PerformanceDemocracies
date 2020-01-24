@@ -264,7 +264,7 @@ inverser = function(x) {
 
 
 # interpolation
-na_interpol = function(x, max_gap = 5) {
+na_interpol = function(x, max_gap = 2) {
   if (length(na.omit(x)) >= 2) {
 
     pointer = length(x)

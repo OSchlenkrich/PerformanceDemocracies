@@ -1,12 +1,14 @@
 # V-Dem Chapter 2.1 Script
 
 # Setup #####
+library(bayestestR)
+
 source("Setup/Packages.R")
 source("Setup/Base_Functions.R")
 source("Setup/Plotting_Functions.R")
 
-# Load V-Dem Dataset and V-Dem Disaggregated Dataset #####
 
+# Load V-Dem Dataset and V-Dem Disaggregated Dataset #####
 
 vdem_main = fread("unzip -p C:/RTest/V-Dem-CY-Full+Others-v9.zip", encoding = "UTF-8")
 
@@ -24,9 +26,10 @@ vdemcontent = fread("Datasets/VDem_content.csv", sep=";")
 posterior_v2elfrfair = fread("unzip -p Datasets/v2elfrfair.10000.Z.sample.zip")
 
 
-### Number of Variables per Section and per Coders per Section
 
+### Number of Variables per Section and per Coders per Section ----
 
+# Extract Variable Names from V-Dem Dataset
 vdem_varnames  = vdem_main %>% 
   select_at(vars(starts_with("v2"), 
                  -matches("_code"), 
@@ -50,18 +53,19 @@ vdem_varnames  = vdem_main %>%
 vdem_varnames = gsub("_0", "", vdem_varnames)
 
 
-cod_type = sub("\\).*", "", vdemcontent$names)
+# Extract Variables Types from the Codebook
+cod_type = sub("\\).*", "", vdemcontent$names) 
 cod_type_2 = sub(".*\\(", "", cod_type)
 
-test = sub(".*\\) \\(", "", vdemcontent$names)
-test_2 = sub("\\).*", "", test)
+cod_name = sub(".*\\) \\(", "", vdemcontent$names)
+cod_name_2 = sub("\\).*", "", cod_name)
 
-var_data = data.frame(varname = test_2, codetype = cod_type_2) %>% 
+var_data = data.frame(varname = cod_name_2, codetype = cod_type_2) %>% 
   filter(grepl("v2", varname))
 
 
-
-length_varname = var_data %>% 
+length_varname = var_data %>%
+  # Only variables which are actually in the dataset
   filter(varname %in% vdem_varnames) %>% 
   filter(grepl("_", varname) == F) %>% 
   mutate(sections = ifelse(grepl("v2el", varname), "el", 
@@ -132,31 +136,178 @@ p2
 
 grid.arrange(p2, p1, nrow=2)
 
+# HDI Interval ####
 
-library(bayestestR)
-
-test = apply(posterior_v2elfrfair[,-1],1, FUN = function(x) { hdi(as.numeric(x), ci = 0.68 )})
-unlist(test)
-
-
-
-my_data = data.frame(
+v2elfrfair_wide = data.frame(
   ctry = posterior_v2elfrfair[,1],
-  posterior = posterior_v2elfrfair[,-1]
-) %>% 
+  posterior = posterior_v2elfrfair[,-1]) %>% 
   pivot_longer(cols= starts_with("posterior")) %>% 
   pivot_wider(names_from = "V1") %>% 
   select(-name)
 
-hdi_sample = hdi(my_data, ci=0.68)
-hdi_sample$mean = rowMeans(posterior_v2elfrfair[,-1])
+hdi_sample = hdi(v2elfrfair_wide, ci=0.68) %>% 
+  mutate(mean = rowMeans(posterior_v2elfrfair[,-1])) %>% 
+  rename(hdi_low68 = CI_low, hdi_high68 = CI_high) %>% 
+  select(-CI) %>% 
+  left_join(eti(v2elfrfair_wide, ci=0.68) %>% 
+              rename(eti_low68 = CI_low, eti_high68 = CI_high)%>% 
+              select(-CI), by="Parameter") %>% 
+  left_join(hdi(v2elfrfair_wide, ci=0.95) %>% 
+              rename(hdi_low95 = CI_low, hdi_high95 = CI_high)%>% 
+              select(-CI), by="Parameter")  %>% 
+  rename(country_year = "Parameter")
 
-test = hdi_sample %>% 
-  mutate(diff = (CI_high - CI_low)/2,
-         diff2 = (CI_low + diff) - mean)
+
+hdi_sample %>% 
+  sample_n(500) %>% 
+  mutate(country_year = fct_reorder(country_year, mean)) %>% 
+  ggplot(aes(x=country_year, y=mean)) +
+  geom_point() +
+  geom_errorbar(aes(ymin=hdi_low68, ymax=hdi_high68)) +
+  geom_errorbar(aes(ymin=hdi_low95, ymax=hdi_high95), color="red", alpha=0.5) +
+  coord_flip()  +
+  theme(axis.text.y = element_blank()) 
+
+
+# find skewed cases
+skewed_test = hdi_sample %>% 
+  mutate(diff = (hdi_high68 - hdi_low68)/2,
+         degree_skewness = (hdi_low68 + diff) - mean,
+         degree_skewness = abs(degree_skewness)
+         ) %>% 
+  arrange(-degree_skewness)
+skewed_test
+
+
+# NZL 1919-12-17	
+case = "NZL 1919-12-17"
+
+v2elfrfair_wide %>% 
+  select(NZL1919 = case) %>% 
+  mutate(mean = mean(NZL1919), median = median(NZL1919)) %>% 
+  cbind(hdi_sample %>%  filter(country_year == case) %>%  select(hdi_low68,  hdi_high68, eti_low68,  eti_high68)) %>% 
+  ggplot(aes(x=NZL1919)) +
+  geom_histogram(bins=50, alpha=0.5) +
+  geom_vline(aes(xintercept = mean)) +
+  geom_vline(aes(xintercept = median)) +
+  geom_segment(aes(y=10, yend=10, x = hdi_low68, xend = hdi_high68), size=1.1)  +
+  annotate("text",y=12, x = 1.5, label = "HPD") +
+  geom_segment(aes(y=5, yend=5, x = eti_low68, xend = eti_high68), size=1.1)  +
+  annotate("text",y=7, x = 1.5, label = "ETI") + 
+  ggtitle(case) +
+  theme_bw()
+
+### Number of coders ####
+
+mean_coder_df = vdem_main %>% 
+  select_at(vars(country_name, year,  ends_with("_nr"))) %>%
+  select_at(vars(country_name, year,  starts_with("v2"))) %>%
+  filter(year >= 1900) %>% 
+  pivot_longer(cols=starts_with("v2")) %>% 
+  group_by(year, country_name) %>% 
+  summarise(mean_country = mean(value, na.rm=T)) %>% 
+  group_by(year) %>% 
+  summarise(mean_coder = mean(mean_country, na.rm=T),
+            lower_coder = quantile(mean_country, prob=0.25, na.rm=T),
+            higher_coder = quantile(mean_country, prob=0.75, na.rm=T))
+
+mean_coder_df %>% 
+  ggplot(aes(x=year, y=mean_coder)) +
+  geom_line(size=1.1) +
+  geom_errorbar(aes(ymin=lower_coder, ymax=higher_coder)) +
+  scale_y_continuous(breaks=seq(0,20, 2)) +
+  scale_x_continuous(breaks=seq(1900,2020, 20)) +
+  geom_hline(yintercept = 5) +
+  theme_bw() +
+  ggtitle("Number of Coders per country per year")
+
+
+vdem_main %>% 
+  select_at(vars(country_name, year,  ends_with("_nr"))) %>%
+  select_at(vars(country_name, year,  starts_with("v2"))) %>%
+  filter(year >= 1900) %>% 
+  pivot_longer(cols=starts_with("v2")) %>% 
+  group_by(name) %>% 
+  summarise(mean_indicator = mean(value, na.rm=T)) %>% 
+  mutate(name = fct_reorder(name, mean_indicator)) %>% 
+  ggplot(aes(x=name, y=mean_indicator)) +
+  geom_point() +
+  coord_flip() +
+  theme_bw() +
+  ggtitle("Average Number of Coders per Indicator")
+
+
+vdem_main %>% 
+  select_at(vars(country_name, year,  ends_with("_nr"))) %>%
+  select_at(vars(country_name, year,  starts_with("v2"))) %>%
+  filter(year >= 1900) %>% 
+  pivot_longer(cols=starts_with("v2"), names_to = "varname") %>% 
+  group_by(varname) %>% 
+  summarise(mean_indicator = mean(value, na.rm=T)) %>% 
+  mutate(varname = gsub("_nr", "", varname)) %>% 
+  left_join(length_varname, by="varname")  %>% 
+  mutate(sections = fct_reorder(sections, mean_indicator)) %>% 
+  ggplot(aes(x=sections, y=mean_indicator)) +
+  geom_boxplot() +
+  theme_bw() +
+  ggtitle("Average Number of Coders per Section")
+
+
+### Average Confidence ####
+
+conf_rater_vdem = vdem_ds %>% 
+  select_at(vars(country_text_id, year, starts_with("v2"))) %>% 
+  select_at(vars(country_text_id, year, 
+                 ends_with("_conf"),
+                 -matches("_1"), 
+                 -matches("_2"), 
+                 -matches("_3"), 
+                 -matches("_4"), 
+                 -matches("_5"), 
+                 -matches("_6"), 
+                 -matches("_7"), 
+                 -matches("_8"), 
+                 -matches("_9"), 
+                 -matches("_10"))) %>% 
+  filter(year >= 1900) 
+  
+conf_rater_vdem %>% 
+  pivot_longer(cols=ends_with("_conf")) %>% 
+  #filter(name %in% paste(length_varname$varname, "_conf", sep="")) %>% 
+  group_by(country_text_id, year) %>%
+  summarise(mean_conf_ctry_year = mean(value, na.rm=T)) %>% 
+  ungroup() %>% 
+  group_by(year) %>%
+  summarise(mean_conf_year = mean(mean_conf_ctry_year, na.rm=T),
+            lower_conf_year = quantile(mean_conf_ctry_year, prob=0.25, na.rm=T),
+            higher_conf_year = quantile(mean_conf_ctry_year, prob=0.75, na.rm=T)) %>% 
+  ungroup() %>% 
+  ggplot(aes(x=year, y=mean_conf_year)) +
+  geom_line(size=1) +
+  geom_errorbar(aes(ymin=lower_conf_year, ymax=higher_conf_year)) +
+  scale_x_continuous(breaks=seq(1900,2020, 20)) +
+  theme_bw() +
+  ylim(0.5,1) +
+  ggtitle("Average Confidence of Coders per year")
+
+
+conf_rater_vdem %>% 
+  pivot_longer(cols=ends_with("_conf"), names_to = "varname") %>% 
+  group_by(varname) %>% 
+  summarise(mean_indicator = mean(value, na.rm=T)) %>% 
+  mutate(varname = gsub("_conf", "", varname)) %>% 
+  left_join(length_varname, by="varname") %>% 
+  mutate(sections = fct_reorder(sections, mean_indicator)) %>% 
+  ggplot(aes(x=sections, y=mean_indicator)) +
+  geom_boxplot() +
+  # geom_errorbar(aes(ymin=lower_conf_year, ymax=higher_conf_year)) +
+  theme_bw() +
+  ggtitle("Average Confidence of Coders per section")
+
+
+
 
 ###
-
 
 rater_beta = vdem_ds %>% 
   select(coder_id, v2clkill_beta) %>% 

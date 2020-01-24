@@ -3,10 +3,12 @@ if (clustersetup == T) {
   source("Analyse/Cluster/Cluster_v4.R")
 }
 
-
+# Debt WDI aufnehmen
+# GNI weg
 Economy_Perfomance = QoC_data %>% 
   select(country_text_id, year,
          GDP_capita_oecd = oecd_sizegdp_t1,
+         GDP_growth_oecd = oecd_evogdp_t1,
          Inflation_oecd = oecd_cpi_t1a,
          Interest_oecd = oecd_ltintrst_t1,
          Balance_oecd = oecd_bop_t1,
@@ -14,11 +16,16 @@ Economy_Perfomance = QoC_data %>%
          Invest_oecd = oecd_invrates_t1,
          
          GDP_capita_wdi = wdi_gdpcapcur,
+         GNI_capita_wdi = wdi_gnicapatlcur,
          Debt_wdi = wdi_debt,
          Inflation_wdi = wdi_inflation,
          Interest_wdi = wdi_intrate,
          Unemployment_pr_wdi = wdi_unempilo
   ) %>% 
+  filter(year >= 1970) %>% 
+  mutate(Inflation_wdi = abs(Inflation_wdi),
+         Inflation_oecd = abs(Inflation_oecd)) %>% 
+  
   mutate_at(vars(matches("_pr_")), funs(./100)) %>% 
   # Contra Deflation 
   mutate_at(vars(starts_with("Inflation")), funs(abs(.))) %>% 
@@ -39,6 +46,7 @@ Economy_Perfomance = QoC_data %>%
   select(country, country_text_id, regions, year, everything())  %>% 
   ungroup() %>%  
   dplyr::arrange(country_text_id, year)  
+
 
 
 ##### NA-Plots ####
@@ -77,7 +85,7 @@ Economy_Perfomance %>%
 
 #### Linear Interpolation ####
 
-Economy_Perfomance_IP = Economy_Perfomance %>%
+Economy_Perfomance_IP = Economy_Perfomance %>% 
   group_by(country_text_id) %>% 
   mutate_at(vars(ends_with("oecd")), .funs = list(~na_interpol(.))) %>% 
   mutate_at(vars(ends_with("wdi")), .funs = list(~na_interpol(.))) %>% 
@@ -141,7 +149,7 @@ Economy_Perfomance_IP %>%
 
 ####
 
-Economy_Perfomance_IP_norm = Economy_Perfomance_IP %>% 
+Economy_Perfomance_IP_norm = Economy_Perfomance_IP  %>% 
   select_at(vars(ends_with("oecd"), ends_with("wdi"))) %>%
   mutate_at(vars("Inflation_oecd",
                  "Invest_oecd",
