@@ -62,7 +62,7 @@ dim(fa_data_oecd_frame_mice_inv)
 KMO(fa_data_oecd_frame_mice_inv %>% 
       select_at(vars(ends_with("eco")))) 
 KMO(fa_data_oecd_frame_mice_inv %>% 
-      select_at(vars(ends_with("eco"), -"Unemployment_pr_oecd_num_eco", -"Invest_oecd_num_eco"))) 
+      select_at(vars(ends_with("eco"), -"Unemployment_pr_oecd_num_eco", -"GDP_growth_oecd_num_eco", -"Invest_oecd_num_eco"))) 
 corrplot(cor(fa_data_oecd_frame_mice_inv %>% 
       select_at(vars(ends_with("eco"))) , use="pairwise"), method="number")
 
@@ -71,7 +71,7 @@ corrplot(cor(fa_data_oecd_frame_mice_inv %>%
 
 
 fa_eco_data = fa_data_oecd_frame_mice_inv %>% 
-  select_at(vars(ends_with("eco"), -"Unemployment_pr_oecd_num_eco", -"GNI_capita_oecd_num_eco", -"Invest_oecd_num_eco"))
+  select_at(vars(ends_with("eco"), -"Unemployment_pr_oecd_num_eco", -"GDP_growth_oecd_num_eco", -"Invest_oecd_num_eco"))
 
 # fa.parallel(fa_eco_data, fm="mle", n.iter=1000, quant=0.95, fa="fa",
 #             use="pairwise.complete.obs",
@@ -79,8 +79,10 @@ fa_eco_data = fa_data_oecd_frame_mice_inv %>%
 
 par(mfrow=c(1,1))
 paran(na.omit(fa_eco_data), iterations=0, graph=T, cfa=T, centile=95)
-
+fa.parallel(fa_eco_data, fm="ml")
 vss(fa_eco_data, fm="mle", rotate="none")$map %>% 
+  round(.,3)
+vss(fa_eco_data, fm="mle", rotate="none")$vss.stats$SRMR %>% 
   round(.,3)
 
 

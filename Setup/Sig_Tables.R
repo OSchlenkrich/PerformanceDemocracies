@@ -5,7 +5,132 @@ library(DataCombine)
 
 
 # Create Summary Table with Significance
+# For GLMMTMB
+make_glmm_tables = function(..., rsquared = F) {
+  make_glmm_data = function(model) {
+    library(broom.mixed)
+    library(DataCombine)
+    library(pixiedust)
+    
+    
+    tab1_FE = broom.mixed::tidy(model) %>% 
+      filter(effect != "ran_pars") %>% 
+      select(-component,-group) %>% 
+      mutate_at(vars(estimate, std.error), funs(round(., 3))) %>% 
+      mutate("sig" = ifelse(p.value < 0.001, "***", 
+                            ifelse(p.value < 0.01, "**",
+                                   ifelse(p.value < 0.05, "*",
+                                          ifelse(p.value < 0.1, "+", "")))))  %>% 
+      # mutate_if(is.numeric, funs(round(.,3))) %>% 
+      mutate(std.error = paste("(", std.error, ")", sep="")) %>% 
+      select(term, estimate, std.error, sig) %>% 
+      unite("Estimate", estimate, sig, sep=" ") %>% 
+      unite("Estimate", Estimate, std.error, sep="<br>") %>% 
+      InsertRow(., NewRow = c("Fixed Part", ""), 1)
+    
+    tab1_RE = broom.mixed::tidy(model) %>% 
+      filter(effect != "fixed")  %>% 
+      mutate_at(vars(estimate), funs(round(., 3))) %>%
+      unite("term",group, term) %>% 
+      select(term, Estimate = estimate)  %>% 
+      InsertRow(., NewRow = c("Random Part", ""), 1)
+    
+    tab1 = tab1_FE %>% 
+      bind_rows(tab1_RE)
+    
+    summary_model = summary(model)
+    if (rsquared == T) {
+      r_squared = r2(model)
+      if (length(summary_model$ngrps$cond) == 2) {
+        tab1_foot = glance(model) %>% 
+          select(logLik, AIC , BIC, df.residual) %>% 
+          mutate(
+            'R2 (cond.)' = r_squared$R2_conditional,
+            'R2 (marg.)' = r_squared$R2_marginal,
+            N_Obs = summary_model$nobs,
+            N_Group1 = summary_model$ngrps$cond[1],
+            N_Group2 = summary_model$ngrps$cond[2]) %>% 
+          pivot_longer(cols=everything()) %>% 
+          mutate(value = round(value, 2))
+      } else {
+        tab1_foot = glance(model) %>% 
+          select(logLik, AIC , BIC, df.residual) %>% 
+          mutate(
+            'R2 (cond.)' = r_squared$R2_conditional,
+            'R2 (marg.)' = r_squared$R2_marginal,
+            N_Obs = summary_model$nobs,
+            N_Group = summary_model$ngrps$cond[1]) %>% 
+          pivot_longer(cols=everything()) %>% 
+          mutate(value = round(value, 2))
+      }  
+    } else {
+      if (length(summary_model$ngrps$cond) == 2) {
+        tab1_foot = glance(model) %>% 
+          select(logLik, AIC , BIC, df.residual) %>% 
+          mutate(
+            # 'R2 (cond.)' = r_squared$R2_conditional,
+            # 'R2 (marg.)' = r_squared$R2_marginal,
+            N_Obs = summary_model$nobs,
+            N_Group1 = summary_model$ngrps$cond[1],
+            N_Group2 = summary_model$ngrps$cond[2]) %>% 
+          pivot_longer(cols=everything()) %>% 
+          mutate(value = round(value, 2))
+      } else {
+        tab1_foot = glance(model) %>% 
+          select(logLik, AIC , BIC, df.residual) %>% 
+          mutate(
+            # 'R2 (cond.)' = r_squared$R2_conditional,
+            # 'R2 (marg.)' = r_squared$R2_marginal,
+            N_Obs = summary_model$nobs,
+            N_Group = summary_model$ngrps$cond[1]) %>% 
+          pivot_longer(cols=everything()) %>% 
+          mutate(value = round(value, 2))
+      }
+    }
+  
+    return(list(tab1, tab1_foot))
+  }
+  sum_obj = list(...)
+  nr_models = length(sum_obj)
+  
+  dust_tables = lapply(sum_obj, make_glmm_data)
+  
+  tab_full = data.frame(term = dust_tables[[nr_models]][[1]]$term)
+  tab_full_foot = data.frame(name = dust_tables[[nr_models]][[2]]$name)
+  for (i in 1:nr_models) {
+    tab_full = tab_full %>% 
+      left_join(dust_tables[[i]][[1]], "term") 
+    tab_full_foot = tab_full_foot %>% 
+      left_join(dust_tables[[i]][[2]], "name") 
+    
+  }
+  colnames(tab_full)[-1] = paste("M", 1:nr_models, sep="")
+  
+  italic = c(which(tab_full$term == "Fixed Part"), which(tab_full$term == "Random Part"))
+  
+  dust_obj = dust(tab_full, glance_foot = F) %>% 
+    redust(tab_full_foot, part="foot") %>% 
+    #Colnames
+    sprinkle_colnames(term = "Term") %>%
+    
+    sprinkle(rows = 1, border = "top") %>%
+    sprinkle(rows = 1, border = "top", part = "foot") %>%
+    
+    # font size
+    sprinkle(rows = italic, border = "top", border_color = "black", italic = TRUE) %>% 
+    sprinkle(font_size = 10, font_size_units = "pt", part="head") %>% 
+    sprinkle(font_size = 9, font_size_units = "pt", part="body") %>% 
+    sprinkle(font_size = 9, font_size_units = "pt", part="foot") %>% 
+    
+    #NA values
+    sprinkle_na_string(na_string = "") %>% 
+    sprinkle_print_method("html")
+  
+  return(dust_obj)  
+  
+}
 
+# FOR DIRICHLET
 make_table_diri = function(..., oddsRatios = F) {
   library(Compositional)
   insertRow_f <- function(existingDF, newrow, r) {

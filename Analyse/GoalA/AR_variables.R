@@ -1,5 +1,17 @@
 ## Goal-Attainment Performance
 
+source("Setup/Packages.R")
+source("Setup/Base_Functions.R")
+source("Setup/Plotting_Functions.R")
+
+dmx_trade_cluster = fread(file="Datasets/performance_data/dmx_trade_cluster_v5.csv", encoding = "UTF-8") %>% 
+  mutate(cluster_label_1st = relevel(as.factor(cluster_label_1st), ref="FeC")) %>% 
+  arrange(country, year) %>% 
+  rename(X_fEC = X1,
+         X_fEc = X2,
+         X_FeC = X3,
+         X_Fec = X4)
+
 dmx_trade_cluster_ccp = dmx_trade_cluster %>% 
   left_join(V_dem %>% select(country_text_id, year, COWcode), by=c("country_text_id", "year")) %>% 
   mutate(COWcode = if_else(COWcode == 255, as.integer(260), COWcode))
@@ -39,13 +51,13 @@ AR_dmx = V_dem %>%
   select(country, country_text_id, year, COWcode)  %>% 
   mutate(COWcode = if_else(COWcode == 255, as.integer(260), COWcode)) %>% 
   left_join(Amendment_data_yearly, by=c("COWcode", "year")) %>% 
-  left_join(dmx_trade_cluster %>% select(-country, -regions, -classification_context), by=c("country_text_id", "year")) %>% 
+  left_join(dmx_trade_cluster %>% select_at(vars(country_text_id, year, starts_with("X_"))), by=c("country_text_id", "year")) %>% 
 
   # Filtering
   filter(year >= 1950) %>%
   filter(country_text_id %in% unique(dmx_trade_cluster$country_text_id)) %>% 
-  left_join(dmx_data %>%  select(country, year, classification_context) , by=c("country", "year")) %>% 
-  filter(classification_context == "Deficient Democracy" |  classification_context == "Working Democracy")  %>%
+  left_join(dmx_data %>%  select(country, year, classification_core) , by=c("country", "year")) %>% 
+  filter(classification_core == "Deficient Democracy" |  classification_core == "Working Democracy")  %>%
   
   # add country and regions
   left_join(dmx_data %>%  select(country, regions) %>%  distinct(), by=c("country"))  %>%

@@ -23,10 +23,13 @@ get_type = function(x) {
 
 library(bayestestR)
 library(glmmTMB)
+library(ggeffects)
+library(performance)
 
 source("Setup/Packages.R")
 source("Setup/Base_Functions.R")
 source("Setup/Plotting_Functions.R")
+source("Setup/Sig_Tables.R")
 
 
 # Load V-Dem Dataset and V-Dem Disaggregated Dataset #####
@@ -1144,6 +1147,51 @@ c_disagree %>%
 # Create Independent Variables
 source("Setup/LoadDatasets.R")
 
+vartype = vdem_ds %>% 
+  select_at(vars(country_text_id, coder_id, year, historical_date, starts_with("v2"))) %>% 
+  select_at(vars(-ends_with("_beta"),
+                 -ends_with("_conf"),
+                 -ends_with("bin"),
+                 -ends_with("_1"), 
+                 -matches("_2"), 
+                 -matches("_3"), 
+                 -matches("_4"), 
+                 -matches("_5"), 
+                 -matches("_6"), 
+                 -matches("_7"), 
+                 -matches("_8"), 
+                 -matches("_9"), 
+                 -matches("_10"), 
+                 -matches("_1"), 
+                 -matches("_2"), 
+                 -matches("_3"), 
+                 -matches("_4"), 
+                 -matches("_5"), 
+                 -matches("_6"), 
+                 -matches("_7"), 
+                 -matches("_8"), 
+                 -matches("_9"), 
+                 -matches("_10"), 
+                 -matches("_11"), 
+                 -matches("_12"), 
+                 -matches("_13"), 
+                 -matches("_14"), 
+                 -matches("_15"), 
+                 -matches("_16"), 
+                 -matches("_17"), 
+                 -matches("_18"), 
+                 -matches("_19"), 
+                 -matches("_20"))) %>% 
+  pivot_longer(cols=starts_with("v2")) %>% 
+  mutate(name = gsub("_0", "", name)) %>% 
+  filter(year >= 1900) %>% 
+  na.omit() %>% 
+  group_by(name) %>% 
+  summarise(vartype = n_distinct(value)) %>% 
+  mutate(percentageVar = ifelse(vartype >= 90, T, F)) %>% 
+  filter(percentageVar == F)
+
+
 set.seed(1234)
 regression_vars = length_varname %>% 
   right_join(vartype %>%  rename(varname = name), by="varname") %>% 
@@ -1212,12 +1260,14 @@ dmx_reg_data = fread("unzip -p Datasets/DemocracyMatrix_v1_1.zip", encoding = "U
 QoC_caus = QoC_data %>% 
   select(country_text_id, year,
          GDP_capita_wdi = wdi_gdpcapcur,
-         pop_wdi = wdi_pop) %>% 
+         pop_wdi = wdi_pop,
+         primaryschool_wdi = wdi_gerp) %>% 
   filter_if(is.double, any_vars(!is.na(.))) %>% 
   filter(year >= 1970) %>% 
   group_by(country_text_id) %>% 
   summarise(popsize = log10(mean(pop_wdi, na.rm=T)),
-            loggdp = log10(mean(GDP_capita_wdi, na.rm=T))
+            loggdp = log10(mean(GDP_capita_wdi, na.rm=T)),
+            primaryschool_wdi = mean(primaryschool_wdi, na.rm=T)
   )
 
 # QoC_data %>%
@@ -1229,60 +1279,16 @@ vdem_caus = vdem_main %>%
          polrights_fh = e_fh_pr, 
          internalconf = e_miinterc,
          coups = e_coups) %>% 
-  mutate(polrights_fh = as.numeric(polrights_fh)) %>% 
+  mutate(polrights_rev_fh = 7 - as.numeric(polrights_fh)) %>% 
   group_by(country_text_id) %>% 
-  summarise(polrights_mean_fh = mean(polrights_fh, na.rm=T),
-            polrights_sd_fh = sd(polrights_fh, na.rm=T),
+  summarise(polrights_rev_mean_fh = mean(polrights_rev_fh, na.rm=T),
+            polrights_rev_sd_fh = sd(polrights_rev_fh, na.rm=T),
             coups = sum(coups, na.rm=T)
             )
 
 
 # Regression Setup: Number Coders ####
 # Create Dependent Variable
-vartype = vdem_ds %>% 
-  select_at(vars(country_text_id, coder_id, year, historical_date, starts_with("v2"))) %>% 
-  select_at(vars(-ends_with("_beta"),
-                 -ends_with("_conf"),
-                 -ends_with("bin"),
-                 -ends_with("_1"), 
-                 -matches("_2"), 
-                 -matches("_3"), 
-                 -matches("_4"), 
-                 -matches("_5"), 
-                 -matches("_6"), 
-                 -matches("_7"), 
-                 -matches("_8"), 
-                 -matches("_9"), 
-                 -matches("_10"), 
-                 -matches("_1"), 
-                 -matches("_2"), 
-                 -matches("_3"), 
-                 -matches("_4"), 
-                 -matches("_5"), 
-                 -matches("_6"), 
-                 -matches("_7"), 
-                 -matches("_8"), 
-                 -matches("_9"), 
-                 -matches("_10"), 
-                 -matches("_11"), 
-                 -matches("_12"), 
-                 -matches("_13"), 
-                 -matches("_14"), 
-                 -matches("_15"), 
-                 -matches("_16"), 
-                 -matches("_17"), 
-                 -matches("_18"), 
-                 -matches("_19"), 
-                 -matches("_20"))) %>% 
-  pivot_longer(cols=starts_with("v2")) %>% 
-  mutate(name = gsub("_0", "", name)) %>% 
-  filter(year >= 1900) %>% 
-  na.omit() %>% 
-  group_by(name) %>% 
-  summarise(vartype = n_distinct(value)) %>% 
-  mutate(percentageVar = ifelse(vartype >= 90, T, F)) %>% 
-  filter(percentageVar == F)
-
 
 reg_coder_df = vdem_main %>% 
   select_at(vars(country_text_id, year,  ends_with("_nr"))) %>%
@@ -1342,7 +1348,7 @@ reg_data %>%
   geom_bar(stat="identity")
 
 
-# Regression 1: No Coders ####
+# Regression 1: Nr Coders ####
 # merge data
 reg_data_caus = reg_data %>% 
   left_join(vdem_caus, by="country_text_id") %>% 
@@ -1352,69 +1358,158 @@ reg_data_caus = reg_data %>%
   left_join(dmx_reg_data, by="country_text_id")  %>% 
   left_join(variable_caus, by="name") %>% 
   ungroup() %>% 
-  mutate(obs_effect = 1:nrow(.)) %>% 
-  sample_frac(0.25)
+  na.omit() %>%
+  #sample_frac(0.25) %>% 
+  mutate(obs_effect = 1:nrow(.))
 
+hist(reg_data_caus$nr_coder)
 
 reg_data_caus %>% 
   ungroup() %>% 
-  bind_cols(fastDummies::dummy_cols(reg_data_caus$regions, ignore_na = T)) %>% 
   select_if(is.numeric) %>% 
   cor(., use="pairwise") %>% 
   corrplot(method="number")
 
-# reg_data_caus %>% 
-#   ggplot(aes(x=polrights_sd_fh, y=nr_coder)) +
-#   geom_point()
-
-m0_noml <- glmmTMB(nr_coder ~ 1 + offset(log(years_counted)), 
+# Analysis
+# Null model without ML
+m0_noml_nc <- glmmTMB(nr_coder ~ 1 + offset(log(years_counted)), 
               family=truncated_poisson(link = "log"), 
               reg_data_caus)
-summary(m0_noml)
+summary(m0_noml_nc)
 
-m0 <- glmmTMB(nr_coder ~ 1 + (1|name), 
-              family=truncated_poisson(link = "log"), 
+
+# Null model with ML
+m0_nc <- glmmTMB(nr_coder ~ 1 + offset(log(years_counted)) + 
+                   (1|name), 
+              family=truncated_nbinom1(link = "log"), 
               reg_data_caus)
-summary(m0)
-anova(m0_noml,m0)
+summary(m0_nc)
 
-m1 <- glmmTMB(nr_coder ~ 1 + offset(log(years_counted)) +
-                # regions + 
-                popsize + 
+# favors ML
+anova(m0_noml_nc,m0_nc)
+
+# Control + Modernization
+m1_nc <- glmmTMB(nr_coder ~ 1 + offset(log(years_counted)) +
+                   loggdp + 
+                   primaryschool_wdi + 
+                   (1|name), 
+                 family=truncated_nbinom1(link = "log"), 
+                 reg_data_caus)
+summary(m1_nc)
+r2(m1_nc)
+anova(m0_nc,m1_nc)
+
+# Control + Modernization + Population Size
+m2_nc <- glmmTMB(nr_coder ~ 1 + offset(log(years_counted)) +
+                   loggdp + 
+                   primaryschool_wdi + 
+                   popsize + 
+                   (1|name), 
+                 family=truncated_nbinom1(link = "log"), 
+                 reg_data_caus)
+summary(m2_nc)
+r2(m2_nc)
+
+# Control + Modernization + Population Size + DQ
+m3_nc <- glmmTMB(nr_coder ~ 1 + offset(log(years_counted)) +
+                   loggdp + 
+                   primaryschool_wdi + 
+                   popsize + 
+                   polrights_rev_mean_fh + I(polrights_rev_mean_fh^2) +
+                   (1|name), 
+                 family=truncated_nbinom1(link = "log"), 
+                 reg_data_caus)
+summary(m3_nc)
+r2(m3_nc)
+
+# Control + Modernization + Population Size + DQ + DiffObj
+m4_nc <- glmmTMB(nr_coder ~ 1 + offset(log(years_counted)) +
+                   loggdp + 
+                   primaryschool_wdi + 
+                   popsize + 
+                   polrights_rev_mean_fh + I(polrights_rev_mean_fh^2) +
+                   polrights_rev_sd_fh +
+                   coups +
+                   (1|name), 
+                 family=truncated_nbinom1(link = "log"), 
+                 reg_data_caus)
+summary(m4_nc)
+r2(m4_nc)
+
+# Control + Modernization + Population Size + DQ + DiffObj + DiffQuestion
+m5_nc <- glmmTMB(nr_coder ~ 1 + offset(log(years_counted)) +
                 loggdp + 
-                polrights_mean_fh + I(polrights_mean_fh^2) +
-                polrights_sd_fh +
-                coups +
-                (1|name) + (1|obs_effect), 
-              family=truncated_poisson(link = "log"), 
-              reg_data_caus)
-summary(m1)
-check_overdispersion(m1)
-anova(m0,m1)
-
-
-m2 <- glmmTMB(nr_coder ~ 1 + offset(log(years_counted)) +
-                #regions + 
+                primaryschool_wdi + 
                 popsize + 
-                loggdp + 
-                polrights_mean_fh + I(polrights_mean_fh^2) +
-                polrights_sd_fh +
+                polrights_rev_mean_fh + I(polrights_rev_mean_fh^2) +
+                polrights_rev_sd_fh +
                 coups +
                 q_diff + 
                 nr_categories +
-                (1|name) + (1|obs_effect), 
-              family=truncated_poisson(link = "log"), 
+                (1|name), 
+              family=truncated_nbinom1(link = "log"), 
               reg_data_caus)
-summary(m2)
-anova(m1,m2)
+summary(m5_nc)
+r2(m5_nc)
 
-source("Setup/Sig_Tables.R")
-make_glmm_tables(m0,m1,m2)
+make_glmm_tables(m0_nc, m1_nc, m2_nc, m3_nc, m4_nc, m5_nc)
 
+# For R2
+# m6_nc <- glmmTMB(nr_coder ~ 1 + offset(log(years_counted)) +
+#                    loggdp + 
+#                    primaryschool_wdi + 
+#                    popsize + 
+#                    polrights_rev_mean_fh + I(polrights_rev_mean_fh^2) +
+#                    polrights_rev_sd_fh +
+#                    coups +
+#                    q_diff + 
+#                    nr_categories +
+#                    (1|name), 
+#                  family=nbinom1(link = "log"), 
+#                  reg_data_caus)
+# summary(m6_nc)
 
-plot(effect("polrights_mean_fh",m2))
-interplot(m2)
-### Regression 2: No Bridged/Lateral Coders ####
+# Visualization
+eff_m5_nc = ggeffect(m5_nc, offset=0)
+get_complete_df(eff_m5_nc) %>% 
+  filter(group != "years_counted") %>% 
+  ggplot(aes(x=x, y=predicted, ymin=conf.low, ymax = conf.high)) +
+  facet_wrap(group ~ ., scales = "free_x") +
+  geom_line(size=1.1) +
+  geom_ribbon(alpha=0.5) +
+  theme_bw() +
+  geom_hline(yintercept = 5)
+
+# Own Sample
+dmx_reg_vis = fread("unzip -p Datasets/DemocracyMatrix_v1_1.zip", encoding = "UTF-8")  %>% 
+  left_join(fread("unzip -p C:/RTest/V-Dem-CY+Others-v8.zip", encoding = "UTF-8") %>% 
+              dplyr::select(country = country_name, country_text_id, year), by=c("country", "year")) %>% 
+  select(country_text_id, regions, classification_core) %>% 
+  filter(classification_core == "Deficient Democracy" | classification_core == "Working Democracy") %>% 
+  select(country_text_id) %>% 
+  distinct()
+
+new_data = dmx_reg_vis %>% 
+  left_join(reg_data_caus, by="country_text_id") %>% 
+  select(loggdp, primaryschool_wdi,
+         popsize,
+         polrights_rev_mean_fh, 
+         polrights_rev_sd_fh, coups,
+         nr_categories, q_diff) %>% 
+  pivot_longer(cols=everything()) %>% 
+  group_by(name) %>% 
+  summarise(conf_lower = quantile(value, 0.25, na.rm=T),
+            conf_median = quantile(value, 0.5, na.rm=T),
+            conf_upper = quantile(value, 0.75, na.rm=T)) %>% 
+  pivot_longer(cols=starts_with("conf_"), names_to = "conf") %>% 
+  pivot_wider(names_from = name, values_from = value) %>% 
+  mutate(years_counted = 1,
+         name = NA)
+
+predict(m5_nc, newdata = new_data, type="response", offset=0, 
+        se.fit=F)
+
+### Regression 2: Nr Bridged/Lateral Coders ####
 
 reg_data_bridged = year_type_df %>% 
   mutate(bridged = if_else(coder_type == "LC" |  coder_type == "BLC", 1, 0)) %>% 
@@ -1438,53 +1533,137 @@ reg_data_bridged_caus = reg_data_bridged %>%
   left_join(variable_caus, by="name") %>% 
   ungroup() %>% 
   mutate(obs_effect = 1:nrow(.)) %>% 
-  sample_frac(0.25)
+  sample_frac(1)
 
 
-m0 <- glmmTMB(times_bridged ~ 1 + offset(log(years_counted)) + (1|name), 
+
+# Analysis
+# Null model without ML
+m0_noml_bc <- glmmTMB(times_bridged ~ 1 + offset(log(years_counted)), 
               family=nbinom1(link = "log"), 
               reg_data_bridged_caus)
-summary(m0)
-anova(m0_noml,m0)
 
-m1 <- glmmTMB(times_bridged ~ 1 + offset(log(years_counted)) +
-                regions + 
-                popsize + 
+# Null model with ML
+m0_bc <- glmmTMB(times_bridged ~ 1 + offset(log(years_counted)) + 
+                   (1|name), 
+              family=nbinom1(link = "log"), 
+              reg_data_bridged_caus)
+summary(m0_bc)
+r2(m0_bc)
+
+#favors ML
+anova(m0_noml_bc,m0_bc)
+
+# Control + Modernization
+m1_bc <- glmmTMB(times_bridged ~ 1 + offset(log(years_counted)) +
                 loggdp + 
-                polrights_mean_fh + I(polrights_mean_fh^2) +
-                polrights_sd_fh +
-                coups +
+                primaryschool_wdi + 
                 (1|name), 
               family=nbinom1(link = "log"), 
               reg_data_bridged_caus)
-summary(m1)
+summary(m1_bc)
+anova(m0_bc,m1_bc)
+r2(m1_bc)
 
-anova(m0,m1)
+
+# Control + Modernization + Population Size
+m2_bc <- glmmTMB(times_bridged ~ 1 + offset(log(years_counted)) +
+                   loggdp + 
+                   primaryschool_wdi +
+                   popsize +
+                   (1|name), 
+                 family=nbinom1(link = "log"), 
+                 reg_data_bridged_caus)
+summary(m2_bc)
+anova(m1_bc,m2_bc)
+r2(m2_bc)
 
 
-m2 <- glmmTMB(times_bridged ~ 1 + offset(log(years_counted)) +
-                #regions + 
-                popsize + 
+# Control + Modernization + Population Size + DQ
+m3_bc <- glmmTMB(times_bridged ~ 1 + offset(log(years_counted)) +
                 loggdp + 
-                polrights_mean_fh + I(polrights_mean_fh^2) +
-                polrights_sd_fh +
-                coups +
-                q_diff +
-                nr_categories +
-                (1|name) + (1|obs_effect),
-              family=poisson(link = "log"), 
+                primaryschool_wdi +
+                popsize + 
+                polrights_rev_mean_fh + I(polrights_rev_mean_fh^2) +
+                (1|name),
+              family=nbinom1(link = "log"), 
               reg_data_bridged_caus)
-summary(m2)
-anova(m1,m2)
-library(performance)
-make_glmm_tables(m1)
-icc(m1)
-r2(m2)
-performance::check_singularity(m2)
-check_overdispersion(m2)
-check_zeroinflation(m2)
+summary(m3_bc)
+anova(m2_bc, m3_bc)
+r2(m3_bc)
 
-make_glmm_tables(m1, m2)
+# Control + Modernization + Population Size + DQ + DiffObj
+m4_bc <- glmmTMB(times_bridged ~ 1 + offset(log(years_counted)) +
+                loggdp + 
+                primaryschool_wdi +
+                popsize + 
+                polrights_rev_mean_fh + I(polrights_rev_mean_fh^2) +
+                polrights_rev_sd_fh +
+                coups +
+                (1|name),
+              family=nbinom1(link = "log"), 
+              reg_data_bridged_caus)
+summary(m4_bc)
+anova(m3_bc,m4_bc)
+r2(m4_bc)
+
+# Control + Modernization + Population Size + DQ + DiffObj + DiffQuestion
+m5_bc <- glmmTMB(times_bridged ~ 1 + offset(log(years_counted)) +
+                   loggdp + 
+                   primaryschool_wdi + 
+                   popsize + 
+                   polrights_rev_mean_fh + I(polrights_rev_mean_fh^2) +
+                   polrights_rev_sd_fh +
+                   coups +
+                   q_diff + 
+                   nr_categories +
+                   (1|name), 
+                 family=nbinom1(link = "log"), 
+                 reg_data_bridged_caus)
+summary(m5_bc)
+anova(m4_bc,m5_bc)
+r2(m5_bc)
+
+make_glmm_tables(m0_bc, m1_bc, m2_bc, m3_bc, m4_bc, m5_bc, rsquared=F)
+
+# Visualization
+eff_m5_bc = ggeffect(m5_bc, offset=0)
+get_complete_df(eff_m5_bc) %>% 
+  filter(group != "years_counted") %>% 
+  ggplot(aes(x=x, y=predicted, ymin=conf.low, ymax = conf.high)) +
+  facet_wrap(group ~ ., scales = "free_x") +
+  geom_line(size=1.1) +
+  geom_ribbon(alpha=0.5) +
+  theme_bw()
+
+# Own Sample
+dmx_reg_vis = fread("unzip -p Datasets/DemocracyMatrix_v1_1.zip", encoding = "UTF-8")  %>% 
+  left_join(fread("unzip -p C:/RTest/V-Dem-CY+Others-v8.zip", encoding = "UTF-8") %>% 
+              dplyr::select(country = country_name, country_text_id, year), by=c("country", "year")) %>% 
+  select(country_text_id, regions, classification_core) %>% 
+  filter(classification_core == "Deficient Democracy" | classification_core == "Working Democracy") %>% 
+  select(country_text_id) %>% 
+  distinct()
+
+new_data_bridge = dmx_reg_vis %>% 
+  left_join(reg_data_bridged_caus, by="country_text_id") %>% 
+  select(loggdp, primaryschool_wdi,
+         popsize,
+         polrights_rev_mean_fh, 
+         polrights_rev_sd_fh, coups,
+         nr_categories, q_diff) %>% 
+  pivot_longer(cols=everything()) %>% 
+  group_by(name) %>% 
+  summarise(conf_lower = quantile(value, 0.25, na.rm=T),
+            conf_median = quantile(value, 0.5, na.rm=T),
+            conf_upper = quantile(value, 0.75, na.rm=T)) %>% 
+  pivot_longer(cols=starts_with("conf_"), names_to = "conf") %>% 
+  pivot_wider(names_from = name, values_from = value) %>% 
+  mutate(years_counted = 1,
+         name = NA)
+
+predict(m5_bc, newdata = new_data_bridge, type="response", offset=0, 
+        se.fit=F)
 
 ### Regression 3: Disagreement ####
 
@@ -1538,7 +1717,7 @@ disagree_df = c_disagree %>%
   filter(vartype == 5) %>% 
   left_join(length_varname %>%  rename(name = varname), by="name") %>% 
   group_by(name, country_text_id) %>% 
-  summarise(disagree = mean(disagree, na.rm = T))
+  summarise(disagree = mean(disagree, na.rm = T)) 
 
 hist(disagree_df$disagree, breaks=100)
 
@@ -1551,105 +1730,141 @@ disagree_reg = disagree_df %>%
   left_join(variable_caus, by="name") %>% 
   left_join(reg_data %>% mutate(coders_p_year = nr_coder/years_counted), by=c("name", "country_text_id")) %>% 
   ungroup()   %>% 
-  filter(disagree > 0)
+  filter(disagree > 0) %>% 
+  mutate(disagree = scale(disagree)[,1])
+
 hist(disagree_reg$disagree, breaks=100)
 
+# Analysis
+# Null model without ML
+m0_disagree <- glmmTMB(disagree ~ 1,
+                       family=gaussian, 
+                       disagree_reg)
+summary(m0_disagree)
 
-m1 <- glmmTMB(disagree ~ 1 +
-                popsize + 
-                loggdp + 
-                polrights_mean_fh + I(polrights_mean_fh^2) +
-                polrights_sd_fh +
-                coups +
-                coders_p_year +
+# Null model with ML
+m0_ml_disagree <- glmmTMB(disagree ~ 1 +
                 (1|name),
               family=gaussian, 
               disagree_reg)
-summary(m1)
+summary(m0_ml_disagree)
 
-check_distribution(m1)
-hist(predict(m1, type = "response"), breaks=100)
+# ML favored
+anova(m0_disagree, m0_ml_disagree)
 
 
-m2 <- glmmTMB(disagree ~ 1 +
-                popsize + 
-                loggdp + 
-                polrights_mean_fh + I(polrights_mean_fh^2) +
-                polrights_sd_fh +
-                coups +
-                q_diff +
+# Control + Modernization
+m1_disagree <- glmmTMB(disagree ~ 1 +
                 coders_p_year +
+                primaryschool_wdi +
+                loggdp +
                 (1|name),
               family=gaussian, 
               disagree_reg)
-summary(m2)
-check_model(m2)
-plot(effect("polrights_mean_fh",m2))
-###
-
-rater_beta = vdem_ds %>% 
-  select(coder_id, v2clkill_beta) %>% 
-  filter(is.na(v2clkill_beta) == F) 
+summary(m1_disagree)
+r2(m1_disagree)
 
 
-ratings_country = vdem_ds %>% 
-  select(country, country_text_id, coder_id, year, v2clkill, v2clkill_conf) %>% 
-  left_join(rater_beta, by="coder_id") %>% 
-  filter(year >= 1900) %>% 
-  na.omit()
+# Control + Modernization + Population Size
+m2_disagree <- glmmTMB(disagree ~ 1 +
+                         coders_p_year +
+                         loggdp +
+                         primaryschool_wdi +
+                         popsize +
+                         (1|name),
+                       family=gaussian, 
+                       disagree_reg)
+summary(m2_disagree)
+r2(m2_disagree)
 
 
-test = ratings_country %>% 
-  group_by(country) %>% 
-  summarise(beta_mean = mean(v2clkill_beta, na.rm=T),
-            conf_mean = mean(v2clkill_conf, na.rm=T)) %>% 
-  mutate(country = fct_reorder(country, beta_mean))
+# Control + Modernization + Population Size + DQ
+m3_disagree <- glmmTMB(disagree ~ 1 +
+                         coders_p_year +
+                         loggdp +
+                         primaryschool_wdi +
+                         popsize +
+                         polrights_rev_mean_fh + I(polrights_rev_mean_fh^2) +
+                         (1|name),
+                       family=gaussian, 
+                       disagree_reg)
+summary(m3_disagree)
+r2(m3_disagree)
 
-test %>% 
-  ggplot(aes(x=country, y=beta_mean)) +
-  geom_point() +
-  coord_flip()
-
-test %>% 
-  ggplot(aes(x=conf_mean, y=beta_mean)) +
-  geom_point() +
-  geom_smooth(method="lm", se=F, color="red")
-
-cor(test$beta_mean, test$conf_mean, use="pairwise")
-
-
-sd_fh = vdem_main %>% 
-  select(country = country_name, year, 
-         e_polity2, 
-         e_civil_war, 
-         e_coups,
-         e_wb_pop,
-         e_migdppcln) %>% 
-  filter(year >= 1900) %>% 
-  group_by(country) %>% 
-  summarise(mean_pol = mean(e_polity2, na.rm=T),
-            sd_pol = sd(e_polity2, na.rm=T),
-            sum_cw = sum(e_civil_war, na.rm=T),
-            sum_coups = sum(e_coups, na.rm=T),
-            mean_pop = mean(log(e_wb_pop), na.rm=T),
-            mean_gdp = mean(e_migdppcln, na.rm=T))
+# Control + Modernization + Population Size + DQ + DiffObj
+m4_disagree <- glmmTMB(disagree ~ 1 +
+                         coders_p_year +
+                         loggdp +
+                         primaryschool_wdi +
+                         popsize +
+                         polrights_rev_mean_fh + I(polrights_rev_mean_fh^2) +
+                         polrights_rev_sd_fh +
+                         coups +
+                         (1|name),
+                       family=gaussian, 
+                       disagree_reg)
+summary(m4_disagree)
+r2(m4_disagree)
 
 
-reg_data = test %>% 
-  left_join(sd_fh, by="country")
-m1 = lm(beta_mean ~ mean_pol+ sd_pol + sum_cw + sum_coups + mean_pop + mean_gdp, reg_data)
-summary(m1)
+# Control + Modernization + Population Size + DQ + DiffObj + DiffQuestion
+m5_disagree <- glmmTMB(disagree ~ 1 +
+                         coders_p_year +
+                         loggdp +
+                         primaryschool_wdi +
+                         popsize +
+                         polrights_rev_mean_fh + I(polrights_rev_mean_fh^2) +
+                         polrights_rev_sd_fh +
+                         coups +
+                         q_diff +
+                         (1|name),
+                       family=gaussian, 
+                       disagree_reg)
+summary(m5_disagree)
+r2(m5_disagree)
 
+make_glmm_tables(m0_ml_disagree,m1_disagree,m2_disagree,m3_disagree,m4_disagree,m5_disagree)
 
+# Visualization
+library(ggeffects)
 
-plot(m1)
-library(car)
-influencePlot(m1)
-cooks.distance(m1)
-interplot::interplot(m1, var1="mean_pol", var2="sd_pol")
+eff_m5_disaggree = ggeffect(m5_disagree)
+get_complete_df(eff_m5_disaggree) %>% 
+  ggplot(aes(x=x, y=predicted, ymin=conf.low, ymax = conf.high)) +
+  facet_wrap(group ~ ., scales = "free_x") +
+  geom_line(size=1.1) +
+  geom_ribbon(alpha=0.5) +
+  theme_bw() +
+  geom_hline(yintercept = 0)
 
-margins(m1)
-cplot(m1, "mean_pol")
-persp(m1, "mean_pol", "sd_pol")
+# Own Sample
+dmx_reg_vis = fread("unzip -p Datasets/DemocracyMatrix_v1_1.zip", encoding = "UTF-8")  %>% 
+  left_join(fread("unzip -p C:/RTest/V-Dem-CY+Others-v8.zip", encoding = "UTF-8") %>% 
+              dplyr::select(country = country_name, country_text_id, year), by=c("country", "year")) %>% 
+  select(country_text_id, regions, classification_core) %>% 
+  filter(classification_core == "Deficient Democracy" | classification_core == "Working Democracy") %>% 
+  select(country_text_id) %>% 
+  distinct()
+
+new_data = dmx_reg_vis %>% 
+  left_join(disagree_reg, by="country_text_id") %>% 
+  select(coders_p_year,
+         loggdp, primaryschool_wdi,
+         popsize,
+         polrights_rev_mean_fh, 
+         polrights_rev_sd_fh, coups,
+         nr_categories, q_diff) %>% 
+  pivot_longer(cols=everything()) %>% 
+  group_by(name) %>% 
+  summarise(conf_lower = quantile(value, 0.25, na.rm=T),
+            conf_median = quantile(value, 0.5, na.rm=T),
+            conf_upper = quantile(value, 0.75, na.rm=T)) %>% 
+  pivot_longer(cols=starts_with("conf_"), names_to = "conf") %>% 
+  pivot_wider(names_from = name, values_from = value) %>% 
+  mutate(name = NA)
+
+predict(m5_disagree, newdata = new_data, type="response", 
+        se.fit=F)
+
 
 
