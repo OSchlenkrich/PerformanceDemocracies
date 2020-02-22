@@ -307,4 +307,59 @@ make_table_diri = function(..., oddsRatios = F) {
 # For Rendering in knitr, see Setup/knitR_tab/table_word.Rmd
 # my_table = make_table_diri(m1, m2, m3, m4, m5, m6, m7)
 
+# Factor Table
 
+fa_table = function(fa_model) {
+  my_omega = omega(fa_model$r, nfactors=fa_model$factors, fm="mle", option="second", plot=F)
+  
+  
+  dust_df = data.frame(varnames = row.names(fa_model$loadings),
+                       unclass(fa_model$loadings),
+                       h2 = round(fa_model$communalities,3)) %>% 
+    mutate(varnames = gsub("_num_eco", "", varnames)) %>%
+    arrange(-.[,2]) %>% 
+    mutate_if(is.numeric, funs(round(.,3)))  %>% 
+    mutate(h2 = as.character(h2)) %>% 
+    mutate_if(is.numeric, funs(ifelse(abs(.) > 0.3, paste("<b>", ., sep=""), .)))
+  
+  if (fa_model$factors == 1) {
+    dust_sub_df = data.frame(fitmeasure = "Proportion var:", value = fa_model$Vaccounted[2,1]) %>%
+      bind_rows(data.frame(fitmeasure = "&omega;<sup>t", value = my_omega$omega.tot)) %>% 
+      mutate_if(is.numeric, funs(round(.,3))) 
+  } else {
+    dust_sub_df = data.frame(fitmeasure = "Proportion var:", value = fa_model$Vaccounted[2,1]) %>%
+      bind_rows(data.frame(fitmeasure = "RMSEA:", value = fa_model$RMSEA[1]) ) %>% 
+      bind_rows(data.frame(fitmeasure = "BIC:", value = fa_model$BIC)) %>% 
+      bind_rows(data.frame(fitmeasure = "TLI:", value = fa_model$TLI)) %>% 
+      bind_rows(data.frame(fitmeasure = "&omega;<sup>t", value = my_omega$omega.tot)) %>% 
+      mutate_if(is.numeric, funs(round(.,3))) 
+    
+    if (fa_model$factors > 1) {
+      for (i in 2:fa_model$factors) {
+        dust_sub_df = dust_sub_df %>% 
+          mutate(!!paste(i) := c(round(fa_model$Vaccounted[2,i],3), NA, NA, NA, NA)) 
+      }
+    }
+  }
+
+  dust_sub_df = dust_sub_df %>%
+    mutate(X = NA)
+  
+  dust_sub_df = data.frame(dust_sub_df)
+  
+  fa_table = dust(dust_df)  %>% 
+    redust(dust_sub_df, part="foot")  %>%
+    sprinkle_colnames(h2 = "h<sup>2") %>% 
+    #borders
+    sprinkle(rows = 1, border = "top", border_color = "black", border_thickness=2) %>%
+    sprinkle(rows=1, border = "top", part = "foot", border_thickness=2)  %>%
+    # font size
+    sprinkle(font_size = 10, font_size_units = "pt", part="head") %>% 
+    sprinkle(font_size = 9, font_size_units = "pt", part="body") %>% 
+    sprinkle(font_size = 9, font_size_units = "pt", part="foot") %>% 
+    sprinkle_na_string(na_string = "") %>% 
+    sprinkle_na_string(na_string = "", part="foot") %>% 
+    
+    sprinkle_print_method("html")
+  return(fa_table)
+}

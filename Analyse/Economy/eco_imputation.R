@@ -2,20 +2,24 @@
 
 source("Analyse/Economy/eco_variables.R")
 source("Setup/AuxiliaryVariables.R")
+names(fa_data_oecd_frame_mice)
 
-fa_data_oecd_frame_mice = fa_data_oecd_frame %>% 
-  # WDI is not factorable, so I exlcude it
-  # select_at(vars(-ends_with("wdi"))) %>% 
+fa_data_oecd_frame_mice = fa_data_eco_frame %>% 
+  select_at(vars(-ends_with("is_na"), "missing_OECD", -"missing_WDI")) %>% 
   rename_all(funs(sub("_oecd", "_oecd_num_eco", .))) %>% 
-  rename_all(funs(sub("_wdi", "_wdi_gen_num_aux", .))) %>% 
+  rename_all(funs(sub("_wdi", "_wdi_num_eco", .))) %>% 
+  rename_all(funs(sub("_imf", "_imf_num_eco", .))) %>% 
+  
   # include auxiliary and analyse variables
   left_join(aux_vars %>%  select_at(vars(country_text_id, year, 
-                                         matches("_eco"))
-  ), by=c("country_text_id", "year")) %>%
+                                         matches("_eco"))), 
+            by=c("country_text_id", "year")) %>%
   left_join(aux_vars_dmx_env, by=c("country_text_id", "year")) %>%
   left_join(analyse_vars, by=c("country_text_id", "year")) %>%
+  
   # scale variables
   mutate_at(vars(ends_with("_eco"), ends_with("num_aux")), scale) %>% 
+  
   # leads and lags for better predicition
   group_by(country_text_id) %>% 
   mutate_at(vars(ends_with("_eco")), funs(
@@ -23,16 +27,14 @@ fa_data_oecd_frame_mice = fa_data_oecd_frame %>%
     "lead"= dplyr::lead(.,1))
     ) %>%
   ungroup()  %>%
-  # at least one of target variables not missing
-  #filter(non_na_perc > 0, is.na(cluster_label_1st_fact_anal) == F) %>% 
-  filter(non_na_perc > 0) %>% 
-  filter(classification_context == "Deficient Democracy" |  classification_context == "Working Democracy") %>% 
-  select(-non_na_perc, -country, -classification_context) %>% 
+
+  filter(missing_OECD != max(missing_OECD, na.rm=T)) %>% 
+  filter(classification_core == "Deficient Democracy" |  classification_core == "Working Democracy") %>% 
+  select(-country, -classification_core, -missing_OECD) %>% 
   dplyr::arrange(country_text_id, year) %>% 
   # analyse time range: 1970 - 2017
   filter(year>=1970) %>% 
-  mutate(year_0 = year - min(year)) %>% 
-  select(-Debt_wdi_gen_num_aux)
+  mutate(year_0 = year - min(year))
 
 
 mice_data = as.data.frame(fa_data_oecd_frame_mice) %>% 
@@ -67,7 +69,6 @@ a.out <- amelia(mice_data,
 
 a.out
 
-
 if (Plot_Impu == T) {
   # convergence
   par(mfrow=c(1,1))
@@ -75,21 +76,38 @@ if (Plot_Impu == T) {
   
   # obs vs. imp
   par(mfrow=c(3,2))
-  compare.density(a.out, var = c("GDP_capita_oecd_num_eco"), main= "Observed vs. Imputed Values of GDP per capita")
-  compare.density(a.out, var = c("Inflation_oecd_num_eco"), main= "Observed vs. Imputed Values of Inflation")
-  compare.density(a.out, var = c("Interest_oecd_num_eco"), main= "Observed vs. Imputed Values of Interest Rate")
-  compare.density(a.out, var = c("Balance_oecd_num_eco"), main= "Observed vs. Imputed Values of Trade Balance")
-  compare.density(a.out, var = c("Unemployment_pr_oecd_num_eco"), main= "Observed vs. Imputed Values of Unemployment")
-  compare.density(a.out, var = c("Invest_oecd_num_eco"), main= "Observed vs. Imputed Values of Investment")
+  compare.density(a.out, var = c("GDP_capita_oecd_num_eco"), main= "Observed vs. Imputed Values of GDP per capita (OECD)")
+  compare.density(a.out, var = c("Inflation_oecd_num_eco"), main= "Observed vs. Imputed Values of Inflation (OECD)")
+  compare.density(a.out, var = c("Interest_oecd_num_eco"), main= "Observed vs. Imputed Values of Interest Rate (OECD)")
+  compare.density(a.out, var = c("Balance_oecd_num_eco"), main= "Observed vs. Imputed Values of Trade Balance (OECD)")
+  compare.density(a.out, var = c("Unemployment_pr_oecd_num_eco"), main= "Observed vs. Imputed Values of Unemployment (OECD)")
+  compare.density(a.out, var = c("Invest_oecd_num_eco"), main= "Observed vs. Imputed Values of Investment (OECD)")
+  
+  par(mfrow=c(3,2))
+  compare.density(a.out, var = c("GDP_capita_wdi_num_eco"), main= "Observed vs. Imputed Values of GDP per capita (WDI)")
+  compare.density(a.out, var = c("Inflation_wdi_num_eco"), main= "Observed vs. Imputed Values of Inflation (WDI)")
+  compare.density(a.out, var = c("Interest_wdi_num_eco"), main= "Observed vs. Imputed Values of Interest Rate (WDI)")
+  compare.density(a.out, var = c("Balance_wdi_num_eco"), main= "Observed vs. Imputed Values of Trade Balance (WDI)")
+  compare.density(a.out, var = c("Unemployment_pr_wdi_num_eco"), main= "Observed vs. Imputed Values of Unemployment (WDI)")
+  compare.density(a.out, var = c("Invest_wdi_num_eco"), main= "Observed vs. Imputed Values of Investment (WDI)")
   
   # predictive capability
   par(mfrow=c(3,2))
-  Amelia::overimpute(a.out, var = "GDP_capita_oecd_num_eco", main= "Observed vs. Imputed Values of GDP per capita")
-  Amelia::overimpute(a.out, var = "Inflation_oecd_num_eco", main= "Observed vs. Imputed Values of Inflation")
-  Amelia::overimpute(a.out, var = "Interest_oecd_num_eco", main= "Observed vs. Imputed Values of Interest Rate")
-  Amelia::overimpute(a.out, var = "Balance_oecd_num_eco", main= "Observed vs. Imputed Values of Trade Balance")
-  Amelia::overimpute(a.out, var = "Unemployment_pr_oecd_num_eco", main= "Observed vs. Imputed Values of Unemployment")
-  Amelia::overimpute(a.out, var = "Invest_oecd_num_eco", main= "Observed vs. Imputed Values of Investment")
+  Amelia::overimpute(a.out, var = "GDP_capita_oecd_num_eco", main= "Observed vs. Imputed Values of GDP per capita (OECD)")
+  Amelia::overimpute(a.out, var = "Inflation_oecd_num_eco", main= "Observed vs. Imputed Values of Inflation (OECD)")
+  Amelia::overimpute(a.out, var = "Interest_oecd_num_eco", main= "Observed vs. Imputed Values of Interest Rate (OECD)")
+  Amelia::overimpute(a.out, var = "Balance_oecd_num_eco", main= "Observed vs. Imputed Values of Current Account Balance (OECD)")
+  Amelia::overimpute(a.out, var = "Unemployment_pr_oecd_num_eco", main= "Observed vs. Imputed Values of Unemployment (OECD)")
+  Amelia::overimpute(a.out, var = "Invest_oecd_num_eco", main= "Observed vs. Imputed Values of Investment (OECD)")
+  
+  par(mfrow=c(3,2))
+  Amelia::overimpute(a.out, var = "GDP_capita_wdi_num_eco", main= "Observed vs. Imputed Values of GDP per capita (WDI)")
+  Amelia::overimpute(a.out, var = "Inflation_wdi_num_eco", main= "Observed vs. Imputed Values of Inflation (WDI)")
+  Amelia::overimpute(a.out, var = "Interest_wdi_num_eco", main= "Observed vs. Imputed Values of Interest Rate (WDI)")
+  Amelia::overimpute(a.out, var = "Balance_wdi_num_eco", main= "Observed vs. Imputed Values of Current Account Balance (WDI)")
+  Amelia::overimpute(a.out, var = "Unemployment_pr_wdi_num_eco", main= "Observed vs. Imputed Values of Unemployment (WDI)")
+  Amelia::overimpute(a.out, var = "Invest_wdi_num_eco", main= "Observed vs. Imputed Values of Investment (WDI)")
+  
   
   par(mfrow=c(1,1))
   tscsPlot(a.out, cs = "IND",
@@ -106,35 +124,36 @@ if (Plot_Impu == T) {
 }
 
 ## Combine Imputation into Long Format
+names(fa_data_oecd_frame_mice)
+
 imputed_eco = mapply(cbind, a.out$imputations, ".imp" = 1:nr_imputations, SIMPLIFY = FALSE) %>% 
   bind_rows() %>% 
-  mutate(.imp = as.factor(.imp))
+  mutate(.imp = as.factor(.imp)) 
 
-
-
-sample = c("AUS", "IND", "DEU")
-imputed_eco %>% 
-  select(country_text_id, year_0, variable = GDP_capita_oecd_num_eco) %>% 
+imputed_eco_vars = imputed_eco %>% 
+  left_join(fa_data_oecd_frame_mice %>%
+              select(country_text_id, year, year_0),
+            by = c("country_text_id", "year_0")) %>% 
+  left_join(fa_data_eco_frame, by=c("country_text_id", "year"))  %>% 
+  mutate_at(vars(ends_with("_oecd_num_eco")), funs(ifelse(missing_OECD == max(missing_OECD), NA, .))) %>% 
+  mutate_at(vars(ends_with("_wdi_num_eco")), funs(ifelse(missing_WDI == max(missing_WDI), NA, .)))  %>% 
+  select_at(vars(country, country_text_id, year, .imp, 
+                 ends_with("_oecd_num_eco"), ends_with("_wdi_num_eco"), ends_with("_imf_num_eco"), ends_with("is_na"), "missing_OECD", "missing_WDI"))
+  
+  
+#
+sample = c("DEU")
+imputed_eco_vars %>% 
+  select_at(vars(country_text_id, year, ends_with("_oecd_num_eco"), ends_with("_imf_num_eco"))) %>% 
   filter(country_text_id %in% sample) %>% 
-  group_by(country_text_id, year_0) %>% 
-  summarise(mean = mean(variable),
-            lower = quantile(variable, 0.025),
-            upper = quantile(variable, 0.975)) %>% 
-  ggplot(aes(x=year_0, y=mean, col=country_text_id)) + 
+  pivot_longer(cols=ends_with("num_eco")) %>% 
+  group_by(country_text_id, name, year) %>% 
+  summarise(mean = mean(value),
+            lower = quantile(value, 0.025),
+            upper = quantile(value, 0.975)) %>% 
+  ggplot(aes(x=year, y=mean, col=name)) + 
   geom_line() +
   geom_errorbar(aes(ymin=lower, ymax=upper))
 
 
-###
 
-sample = c("AUS", "IND", "DEU", "SWE")
-imputed_eco %>% 
-  select_at(vars(country_text_id, year_0, ends_with("_eco"))) %>% 
-  filter(country_text_id %in% sample) %>% 
-  group_by(country_text_id, year_0) %>% 
-  summarise_if(is.numeric, funs(mean = mean(.))) %>% 
-  melt(id.vars=c("country_text_id", "year_0")) %>% 
-  ggplot(aes(x=year_0, y=value, col=country_text_id)) + 
-  geom_line() +
-  #geom_errorbar(aes(ymin=lower, ymax=upper)) + 
-  facet_wrap(variable ~ .)

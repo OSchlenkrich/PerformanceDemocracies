@@ -116,6 +116,107 @@ reverse_sgi_fun = function(x) {
   x = 11-x
 }
 
+transformTukeyown = function (x, start = -10, end = 10, int = 0.025, plotit = TRUE, 
+                              verbose = FALSE, quiet = FALSE, statistic = 1, returnLambda = FALSE) 
+{
+  library(nortest)
+  
+  n = (end - start)/int
+  lambda = as.numeric(rep(0, n))
+  W = as.numeric(rep(0, n))
+  Shapiro.p.value = as.numeric(rep(0, n))
+  if (statistic == 2) {
+    A = as.numeric(rep(1000, n))
+    Anderson.p.value = as.numeric(rep(0, n))
+  }
+  for (i in (1:n)) {
+    lambda[i] = signif(start + (i - 1) * int, digits = 4)
+    if (lambda[i] > 0) {
+      TRANS = x^lambda[i]
+    }
+    if (lambda[i] == 0) {
+      TRANS = log(x)
+    }
+    if (lambda[i] < 0) {
+      TRANS = -1 * x^lambda[i]
+    }
+    W[i] = NA
+    if (statistic == 2) {
+      A[i] = NA
+    }
+    if (any(is.infinite(TRANS)) == FALSE & any(is.nan(TRANS)) == 
+        FALSE) {
+    # I disabled shapiro.test due to sample limitations (only 5000)  
+    
+      
+      # W[i] = signif(shapiro.test(TRANS)$statistic, digits = 4)
+      # Shapiro.p.value[i] = signif(shapiro.test(TRANS)$p.value, 
+      #                             digits = 4)
+      if (statistic == 2) {
+        A[i] = signif(ad.test(TRANS)$statistic, digits = 4)
+        Anderson.p.value[i] = signif(ad.test(TRANS)$p.value, 
+                                     digits = 4)
+      }
+    }
+  }
+  if (statistic == 2) {
+    df = data.frame(lambda, W, Shapiro.p.value, A, Anderson.p.value)
+  }
+  if (statistic == 1) {
+    df = data.frame(lambda, W, Shapiro.p.value)
+  }
+  if (verbose == TRUE) {
+    print(df)
+  }
+  if (plotit == TRUE) {
+    if (statistic == 1) {
+      plot(lambda, W, col = "black")
+    }
+    if (statistic == 2) {
+      plot(lambda, A, col = "blue")
+    }
+  }
+  if (statistic == 1) {
+    df2 = df[with(df, order(-W)), ]
+  }
+  if (statistic == 2) {
+    df2 = df[with(df, order(A)), ]
+  }
+  if (quiet == FALSE) {
+    cat("\n")
+    print(df2[1, ])
+    cat("\n")
+    cat("if (lambda >  0){TRANS = x ^ lambda}", "\n")
+    cat("if (lambda == 0){TRANS = log(x)}", "\n")
+    cat("if (lambda <  0){TRANS = -1 * x ^ lambda}", "\n")
+    cat("\n")
+  }
+  lambda = df2[1, "lambda"]
+  if (lambda > 0) {
+    TRANS = x^lambda
+  }
+  if (lambda == 0) {
+    TRANS = log(x)
+  }
+  if (lambda < 0) {
+    TRANS = -1 * x^lambda
+  }
+  if (plotit == TRUE) {
+    plotNormalHistogram(TRANS, xlab = "Transformed variable", 
+                        linecol = "red", col = "lightgray")
+  }
+  if (plotit == TRUE) {
+    qqnorm(TRANS)
+    qqline(TRANS, col = "red")
+  }
+  if (returnLambda == FALSE) {
+    return(TRANS)
+  }
+  if (returnLambda == TRUE) {
+    names(lambda) = "lambda"
+    return(lambda)
+  }
+}
 
 ladder_fun = function(x) {
   library(rcompanion)
@@ -133,13 +234,13 @@ ladder_fun = function(x) {
     x_aligned = x + constant + 1
   }
 
-  y = rcompanion::transformTukey(x_aligned, plotit=T, start=-2, end=2)
+  y = transformTukeyown(x_aligned, plotit=F, start=-2, end=2, statistic = 2)
   return(y)
 }
 
 
-
 folded_ladder_fun = function(x, plotting = F) {
+  library(nortest)
   
   f_fun <- function(x, lambda) (x^lambda - (1-x)^lambda)
   
@@ -171,7 +272,7 @@ folded_ladder_fun = function(x, plotting = F) {
   for (i in 2:nr_iterations) {
     results = f_fun(x, lambda)
     sh_test_W = shapiro.test(results)
-    #sh_test_W = ad.test(results)
+    sh_test_W = ad.test(results)
     
     my_results_frame[i,] = c(lambda, sh_test_W$statistic, round(sh_test_W$p.value, 3))
     lambda = lambda + 0.025
@@ -213,6 +314,12 @@ fun_quantile25 = function(x, na.rm=T) {
 }
 fun_quantile75 = function(x, na.rm=T) {
   quantile(x, 0.75, na.rm=T)
+}
+fun_quantile10 = function(x, na.rm=T) {
+  quantile(x, 0.10, na.rm=T)
+}
+fun_quantile90 = function(x, na.rm=T) {
+  quantile(x, 0.90, na.rm=T)
 }
 
 
@@ -290,6 +397,7 @@ na_interpol = function(x, max_gap = 2) {
 
 # Percentage Missings
 pMiss <- function(x){sum(is.na(x))/length(x)*100}
+pMiss_01 <- function(x){sum(is.na(x))/length(x)}
 pMiss_Abs <- function(x){sum(is.na(x))}
 
 

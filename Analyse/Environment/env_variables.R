@@ -5,8 +5,31 @@ per_capita_maker = function(x, pop) {
   # no values which are exactly 0
   (x+(1/2))/(pop+1)
 }
+library(OECD)
+
+oecd_ghg_data = get_dataset("AIR_GHG")
+
+oecd_air_data = get_dataset("AIR_EMISSIONS")
 
 
+oecd_ghg_data %>% 
+  filter(Measure == "In percentage of Gross Domestic Product",
+         Source == "Public",
+         Branch == "Total",
+         `Type of Expenditure` == "Total") %>% 
+  dplyr::select(country = Country, year = Year, SOCX = Value) %>% 
+  mutate(country = as.factor(country),
+         country = fct_recode(country,
+                              "South Korea"  = "Korea",
+                              "Slovakia" = "Slovak Republic",
+                              "United States of America" = "United States"
+         ),
+         country = as.character(country)
+  ) %>% 
+  arrange(country, year)
+
+
+  
 Environment_Performance = QoC_data %>% 
   select(country_text_id, year,
          greenhouse_oecd = oecd_greenhouse_t1,
@@ -20,7 +43,8 @@ Environment_Performance = QoC_data %>%
          GDP_capita = oecd_sizegdp_t1,
          
          population_wdi = wdi_pop,
-         GDP_capita_wdi = wdi_gdpcapcur
+         GDP_capita_wdi = wdi_gdpcapcur,
+         realgdp_pwt = pwt_rgdp
   ) %>% 
   filter_if(is.double, any_vars(!is.na(.))) %>% 
   group_by(country_text_id) %>% 
@@ -28,10 +52,10 @@ Environment_Performance = QoC_data %>%
   tidyr::complete(country_text_id, year = 1950:2017, fill = list(NA)) %>% 
   ungroup() %>% 
   
-  mutate_at(vars(ends_with("oecd")), funs(int_oecd_per_capita = per_capita_maker(., GDP_capita_wdi*population_wdi)))  %>%
-  mutate(greenhouse_wdi_per_capita = (greenhouse_wdi_per_capita*population_wdi)/(GDP_capita_wdi*population_wdi)) %>% 
+  mutate_at(vars(ends_with("oecd")), funs(int_oecd_per_capita = ./realgdp_pwt))  %>%
+  mutate(greenhouse_wdi_per_capita = (greenhouse_wdi_per_capita*population_wdi)/realgdp_pwt) %>% 
   
-  #Senegal as negative number
+  #Senegal has a negative number
   mutate(greenhouse_wdi_per_capita = abs(greenhouse_wdi_per_capita)) %>% 
   
   filter(country_text_id %in% unique(dmx_trade_cluster$country_text_id)) %>% 
@@ -52,70 +76,42 @@ Environment_Performance = QoC_data %>%
 
 Environment_Performance %>% 
   group_by(year) %>% 
-  select_at(vars(ends_with("wdi_per_capita"))) %>% 
-  summarise_all(pMiss) %>% 
+  select_at(vars(ends_with("oecd_per_capita"), ends_with("wdi_per_capita"))) %>% 
+  summarise_all(pMiss_01) %>% 
   melt(id.vars="year") %>% 
   ggplot(aes(x=year, y=value, fill=variable)) +
   geom_bar(stat="identity", width=1) +
   facet_wrap(variable~.) +
-  scale_y_continuous(breaks=seq(0,100, 10), limit=c(0,100))  +
-  scale_x_continuous(breaks=seq(1950,2020, 10)) +
+  scale_y_continuous(name=NULL, breaks=seq(0,1, 0.25), limit=c(0,1), labels=percent)  +
+  scale_x_continuous(name=NULL, breaks=seq(1950,2020, 10)) + 
   theme_bw()  +
-  theme(axis.text.x = element_text(angle=90), legend.position = "bottom") +
-  ggtitle("Missings in Democracy Profile Sample - WDI")
-
-Environment_Performance %>% 
-  group_by(year) %>% 
-  select_at(vars(ends_with("oecd_per_capita"))) %>% 
-  summarise_all(pMiss) %>% 
-  melt(id.vars="year") %>% 
-  ggplot(aes(x=year, y=value, fill=variable)) +
-  geom_bar(stat="identity", width=1) +
-  facet_wrap(variable~.) +
-  scale_y_continuous(breaks=seq(0,100, 10), limit=c(0,100))  +
-  scale_x_continuous(breaks=seq(1950,2020, 10)) +
-  theme_bw()  +
-  theme(axis.text.x = element_text(angle=90), legend.position = "bottom") +
-  ggtitle("Missings in Democracy Profile Sample - OECD")
+  theme(axis.text.x = element_text(angle=90), legend.position = "none") +
+  ggtitle("Missings in Democracy Profile Sample - Environmental")
 
 
 
 #### Linear Interpolation ####
-
+# disabled
 Environment_Performance_IP = Environment_Performance %>%
   group_by(country_text_id) %>% 
-  mutate_at(vars(ends_with("oecd_per_capita")), .funs = list(~na_interpol(.))) %>% 
-  mutate_at(vars(ends_with("wdi_per_capita")), .funs = list(~na_interpol(.))) %>% 
+  # mutate_at(vars(ends_with("oecd_per_capita")), .funs = list(~na_interpol(.))) %>% 
+  # mutate_at(vars(ends_with("wdi_per_capita")), .funs = list(~na_interpol(.))) %>% 
   ungroup()
 
 
-Environment_Performance_IP %>% 
-  group_by(year) %>% 
-  select_at(vars(ends_with("wdi_per_capita"))) %>% 
-  summarise_all(pMiss) %>% 
-  melt(id.vars="year") %>% 
-  ggplot(aes(x=year, y=value, fill=variable)) +
-  geom_bar(stat="identity", width=1) +
-  facet_wrap(variable~.) +
-  scale_y_continuous(breaks=seq(0,100, 10), limit=c(0,100))  +
-  scale_x_continuous(breaks=seq(1950,2020, 10)) +
-  theme_bw()  +
-  theme(axis.text.x = element_text(angle=90), legend.position = "bottom") +
-  ggtitle("Missings in Democracy Profile Sample - WDI (After Linear Interpolation)")
-
-Environment_Performance_IP %>% 
-  group_by(year) %>% 
-  select_at(vars(ends_with("oecd_per_capita"))) %>% 
-  summarise_all(pMiss) %>% 
-  melt(id.vars="year") %>% 
-  ggplot(aes(x=year, y=value, fill=variable)) +
-  geom_bar(stat="identity", width=1) +
-  facet_wrap(variable~.) +
-  scale_y_continuous(breaks=seq(0,100, 10), limit=c(0,100))  +
-  scale_x_continuous(breaks=seq(1950,2020, 10)) +
-  theme_bw()  +
-  theme(axis.text.x = element_text(angle=90), legend.position = "bottom") +
-  ggtitle("Missings in Democracy Profile Sample - OECD (After Linear Interpolation)")
+# Environment_Performance_IP %>% 
+#   group_by(year) %>% 
+#   select_at(vars(ends_with("wdi_per_capita"), ends_with("oecd_per_capita"))) %>% 
+#   summarise_all(pMiss) %>% 
+#   melt(id.vars="year") %>% 
+#   ggplot(aes(x=year, y=value, fill=variable)) +
+#   geom_bar(stat="identity", width=1) +
+#   facet_wrap(variable~.) +
+#   scale_y_continuous(breaks=seq(0,100, 10), limit=c(0,100))  +
+#   scale_x_continuous(breaks=seq(1950,2020, 10)) +
+#   theme_bw()  +
+#   theme(axis.text.x = element_text(angle=90), legend.position = "bottom") +
+#   ggtitle("Missings in Democracy Profile Sample -)")
 
 
 
@@ -129,59 +125,58 @@ Environment_Performance_IP %>%
   mutate_all(~round(.,2)) %>% 
   melt() 
 
-
 Environment_Performance_IP %>% 
-  select_at(vars(ends_with("oecd_per_capita"))) %>% 
+  select_at(vars(ends_with("oecd_per_capita"), ends_with("wdi_per_capita"))) %>% 
   melt() %>% 
   ggplot(aes(x=value)) + 
   geom_histogram()  +
-  facet_wrap(variable~., scales = "free") 
+  facet_wrap(variable~., scales = "free")  +
+  theme_bw() +
+  theme(legend.position = "none") +
+  scale_y_continuous(name=NULL)  +
+  scale_x_continuous(name=NULL) +
+  ggtitle("Raw Sample")
 
 
-Environment_Performance_IP %>% 
-  select_at(vars(ends_with("wdi_per_capita"))) %>% 
-  melt() %>% 
-  ggplot(aes(x=value)) + 
-  geom_histogram()  +
-  facet_wrap(variable~., scales = "free")
+
+
 
 ####
 
 
 Environment_Performance_IP_norm = Environment_Performance_IP  %>% 
-  select_at(vars(ends_with("oecd_per_capita"), ends_with("wdi_per_capita"))) %>%
-  mutate_all(funs(folded_ladder_fun(., plotting =T))) %>% 
+  select_at(vars(ends_with("oecd_per_capita"), ends_with("wdi_per_capita"))) %>% 
+  mutate_at(vars("greenhouse_wdi_per_capita",
+                 "co2_oecd_int_oecd_per_capita"), funs(trim(., 0.01, minimum=T))) %>%
+  mutate_all(funs(folded_ladder_fun(., plotting =F))) %>% 
   mutate_all(scale)
 
 
 
 Environment_Performance_IP_norm %>% 
-  select_at(vars(ends_with("oecd_per_capita"))) %>% 
+  select_at(vars(ends_with("oecd_per_capita"), ends_with("wdi_per_capita"))) %>% 
   melt() %>% 
   ggplot(aes(x=value)) + 
-  geom_histogram()  +
-  facet_wrap(variable~., scales = "free")
-
-
-Environment_Performance_IP_norm %>% 
-  select_at(vars(ends_with("wdi_per_capita"))) %>% 
-  melt() %>% 
-  ggplot(aes(x=value)) + 
-  geom_histogram()  +
-  facet_wrap(variable~., scales = "free")
+  geom_histogram()   +
+  facet_wrap(variable~., scales = "free") +
+  theme_bw()  +
+  theme(legend.position = "none") +
+  scale_y_continuous(name=NULL)  +
+  scale_x_continuous(name=NULL) +
+  ggtitle("Transformed Sample")
 
 
 ### NA Frame: OECD
 NA_frame_env_oecd = Environment_Performance_IP_norm %>% 
   select(-greenhouse_wdi_per_capita) %>% 
-  mutate(non_na_perc = rowSums(is.na(.)==F)/dim(.)[2]) %>% 
-  bind_cols(Environment_Performance %>%  select(country, country_text_id, year)) %>%
+  mutate_all(funs(is_na = ifelse(is.na(.)==T, 1,0))) %>% 
+  bind_cols(Environment_Performance %>%  select(country, country_text_id, year)) %>% 
   filter(year>=1950) %>% 
   group_by(country_text_id) %>% 
   tidyr::complete(country_text_id, year = min(year):max(year), fill = list(NA)) %>% 
   ungroup() %>% 
-  select(country_text_id, year, non_na_perc)
-  
+  select_at(vars(country_text_id, year, ends_with("is_na"))) %>% 
+  mutate(missing_SUM = rowSums(select(., matches("oecd"))))
 
 
 #### Factor Analysis: Transfer to MI

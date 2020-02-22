@@ -1,153 +1,98 @@
 # Economic Factor Analysis
 
-source("Analyse/Economy/eco_imputation.R")
-
-
-produce_fa_scores = function(mice_data, nr_imputations, nr_factors, variable_ending) {
-  
-  nr_rows = mice_data %>% 
-    filter(.imp==1) %>% 
-    dim()
-  
-  scores_data = data.frame(matrix(NA, nr_rows[1], nr_imputations)) %>% 
-    rename_all(funs(sub("X", "imp_", .)))
-  
-  
-  for (i in 1:nr_imputations) {
-    stack_data = mice_data %>% 
-      filter(.imp==i) %>% 
-      select_at(vars(ends_with(variable_ending)))
-    
-    # Extract Bartlett Factor Scores
-    fa_stack = fa(stack_data, nr_factors, rotate="promax", missing=F, fm="mle", scores="Bartlett")
-    scores_data[,i] = as.numeric(fa_stack$scores)
-  }
-  return(scores_data)
-}
-
-
-# produce_fa_scores_mi = function(mice_data, nr_immputations, nr_factors) {
-#   scores_data = data.frame(matrix(NA, dim(my_imputet_data[[1]])[1], nr_immputations)) %>% 
-#     rename_all(funs(sub("X", "imp_", .)))
-#   
-#   for (i in 1:nr_immputations) {
-#     stack_data = my_imputet_data[[i]] %>% 
-#       select_at(vars(ends_with("env"), -starts_with("missing"))) %>% 
-#       mutate_all(inverser)
-#     
-#     
-#     fa_stack = fa(stack_data, nr_factors, rotate="promax", missing=F, fm="mle")
-#     scores_data[,i] = as.numeric(fa_stack$scores)
-#   }
-#   return(scores_data)
-# }
-
+source("Analyse/Economy/eco_wdi_imputation.R")
+source("Setup/Sig_Tables.R")
 
 ### Inverse Scores
-
-fa_data_oecd_frame_mice_inv = fa_data_oecd_frame_mice %>% 
-  mutate_at(vars("Inflation_oecd_num_eco", "Interest_oecd_num_eco"), inverser)
-
-
-fa_data_oecd_frame_mice_inv = imputed_eco %>% 
-  select_at(vars(country_text_id, year_0, ends_with("eco"))) %>% 
-  mutate_at(vars("Inflation_oecd_num_eco", "Interest_oecd_num_eco"), inverser) %>% 
-  group_by(country_text_id, year_0) %>% 
+fa_data_wdi_frame_mice_inv = imputed_wdi_eco_vars %>% 
+  select_at(vars(imp, country_text_id, year, ends_with("_wdi_num_eco"), ends_with("_imf_num_eco"), ends_with("_pwt_num_eco"))) %>% 
+  mutate_at(vars("inflation_imf_num_eco", "unemployment_pr_imf_num_eco", "Balance_wdi_num_eco"), inverser) %>% 
+  #filter(imp  == 4) %>% 
+  select(-imp) %>% 
+  group_by(country_text_id, year) %>% 
   summarise_all(mean) %>% 
-  ungroup()
+  ungroup() %>% 
+  na.omit() 
 
+names(imputed_wdi_eco_vars)
 ### KOM-Test
-dim(fa_data_oecd_frame_mice_inv)
+dim(fa_data_wdi_frame_mice_inv)
 
-KMO(fa_data_oecd_frame_mice_inv %>% 
-      select_at(vars(ends_with("eco")))) 
-KMO(fa_data_oecd_frame_mice_inv %>% 
-      select_at(vars(ends_with("eco"), -"Unemployment_pr_oecd_num_eco", -"GDP_growth_oecd_num_eco", -"Invest_oecd_num_eco"))) 
-corrplot(cor(fa_data_oecd_frame_mice_inv %>% 
-      select_at(vars(ends_with("eco"))) , use="pairwise"), method="number")
+KMO(fa_data_wdi_frame_mice_inv %>% 
+      select_at(vars(ends_with("eco"))))
+KMO(fa_data_wdi_frame_mice_inv %>% 
+      select_at(vars(ends_with("eco"), -investment_wdi_num_eco, -Balance_wdi_num_eco))) 
+corrplot(cor(fa_data_wdi_frame_mice_inv %>% 
+               select_at(vars(ends_with("eco"))) , use="pairwise"), method="number")
 
 
 ### Factor Analysis
 
-
-fa_eco_data = fa_data_oecd_frame_mice_inv %>% 
-  select_at(vars(ends_with("eco"), -"Unemployment_pr_oecd_num_eco", -"GDP_growth_oecd_num_eco", -"Invest_oecd_num_eco"))
-
-# fa.parallel(fa_eco_data, fm="mle", n.iter=1000, quant=0.95, fa="fa",
-#             use="pairwise.complete.obs",
-#             main="Parallel Analysis Scree Plots for Environmental Performance")
+fa_eco_wdi_data = fa_data_wdi_frame_mice_inv %>% 
+  select_at(vars(ends_with("eco"), -investment_wdi_num_eco, -Balance_wdi_num_eco))
 
 par(mfrow=c(1,1))
-paran(na.omit(fa_eco_data), iterations=0, graph=T, cfa=T, centile=95)
-fa.parallel(fa_eco_data, fm="ml")
-vss(fa_eco_data, fm="mle", rotate="none")$map %>% 
+paran(na.omit(fa_eco_wdi_data), iterations=100, graph=T, cfa=T, centile=95)
+fa.parallel(fa_eco_wdi_data, fm="ml")
+vss(fa_eco_wdi_data, fm="mle", rotate="none")$map %>% 
   round(.,3)
-vss(fa_eco_data, fm="mle", rotate="none")$vss.stats$SRMR %>% 
+vss(fa_eco_wdi_data, fm="mle", rotate="none")$vss.stats$SRMR %>% 
   round(.,3)
 
 
-# 1 Factor
-fa_oecd_eco = fa(fa_eco_data, 1, rotate="promax", missing=F, fm="mle")
-fa.diagram(fa_oecd_eco, cut=0)
-fa_oecd_eco$loadings
+# Exploratory Factor Analysis
+fa_wdi_eco = fa(fa_eco_wdi_data, 2, rotate="oblimin", missing=F, fm="mle", scores="Bartlett")
+fa.diagram(fa_wdi_eco, cut=0)
+# pattern matrix
+fa_wdi_eco$loadings
+# structure matrix
+fa_wdi_eco$Structure
+
+fa_table(fa_wdi_eco)
 
 
-# Cronbachs Alpha
-alpha(as.matrix(fa_eco_data))
+# new_Data = fa_eco_wdi_data %>%
+#   summarise_all(funs(quantile(., prob=0.9))) %>%
+#   select(-unemployment_pr_imf_num_eco) %>%
+#   cbind(unemployment_pr_imf_num_eco = seq(-2, 2, length.out = 10))
+# new_Data = new_Data[names(fa_eco_wdi_data)]
+# # 
+# # 
+# new_Data = fa_data_wdi_frame_mice_inv %>%
+#   filter(year >= 2008, country_text_id=="GRC") %>%
+#   select_at(vars(ends_with("eco"), -investment_wdi_num_eco, -Balance_wdi_num_eco)) %>% 
+#   mutate(unemployment_pr_imf_num_eco = seq(2, -2, length.out = 10))
+# # 
+# predict(fa_wdi_eco, data=new_Data, old.data=fa_eco_wdi_data)
 
+
+# Reliability
+omega(as.matrix(fa_eco_wdi_data), nfactors=2, fm="mle", option="second")
 
 ## Calculate Factor Scores
-imputed_eco_inv = imputed_eco  %>% 
-  mutate_at(vars("Inflation_oecd_num_eco", "Interest_oecd_num_eco"), inverser) 
-
-# Testplot
-
-sample = c("AUS", "IND", "DEU", "SWE")
-imputed_eco_inv %>% 
-  select_at(vars(country_text_id, year_0, ends_with("_eco"))) %>% 
-  filter(country_text_id %in% sample) %>% 
-  group_by(country_text_id, year_0) %>% 
-  summarise_if(is.numeric, funs(mean = mean(.))) %>% 
-  melt(id.vars=c("country_text_id", "year_0")) %>% 
-  ggplot(aes(x=year_0, y=value, col=country_text_id)) + 
-  geom_line() +
-  #geom_errorbar(aes(ymin=lower, ymax=upper)) + 
-  facet_wrap(variable ~ .)
-
-##
-
-eco_scores = fa_data_oecd_frame_mice_inv %>% 
-  select(country_text_id, year) %>% 
-  bind_cols(produce_fa_scores(imputed_eco_inv %>% 
-                                select(-"Unemployment_pr_oecd_num_eco", -"Invest_oecd_num_eco", -"Balance_oecd_num_eco", -"GNI_capita_oecd_num_eco"), 10, 1, "eco"))
-
-
-fa_stack = fa(fa_eco_data, 1, rotate="promax", missing=F, fm="mle", scores="Bartlett")
-fa_data_oecd_frame_mice_inv$scores = as.numeric(fa_stack$scores)
-
-
-fa_oecd_eco_test = fa(imputed_eco_inv %>% 
-                        filter(.imp==1) %>% 
-                        select_at(vars(ends_with("eco"))) %>% 
-                        select(-"Unemployment_pr_oecd_num_eco", -"Invest_oecd_num_eco", -"Balance_oecd_num_eco", -"GNI_capita_oecd_num_eco"), 1,
-                      rotate="promax", missing=F, fm="mle")
+performance_wdi_eco = fa_data_wdi_frame_mice_inv %>% 
+  mutate(wealth_eco = scale(fa_wdi_eco$scores[,1])[,1],
+         productivity_eco = scale(fa_wdi_eco$scores[,2])[,1])
 
 
 ###
 
-samples = c("CAN","DEU", "USA", "SWE", "IND", "FIN", "DNK")
-samples = c("IND", "USA", "DNK")
+samples = c("DEU", "USA", "SWE", "IND", "FIN", "DNK")
+samples = c("DEU", "CHE", "BEL", "SWE")
+samples = c("BRA", "RUS", "CHE", "IND", "DEU")
+samples = c("GRC")
 
-fa_data_oecd_frame_mice_inv %>% 
+performance_wdi_eco %>% 
+  select_at(vars(country_text_id, year, wealth_eco, productivity_eco)) %>% 
   filter(country_text_id %in% samples) %>% 
-  melt(id.vars=c("country_text_id", "year_0")) %>% 
-  group_by(country_text_id, year_0) %>% 
-  summarise(mean_score = mean(value, na.rm=T)) %>% 
-  ggplot(aes(x=year_0, y=mean_score, col=country_text_id)) +
+  melt(id.vars=c("country_text_id", "year")) %>% 
+  ggplot(aes(x=year, y=value, col=country_text_id)) + 
   geom_line(size=1) +
-  theme_bw()
+  #geom_errorbar(aes(ymin=lower, ymax=upper)) + 
+  theme_bw() +
+  scale_y_continuous(name="Economic Performance")  +
+  scale_x_continuous(name=NULL, breaks=seq(1950,2020, 10)) +
+  facet_wrap(variable~.)
 
-
-write.csv(eco_scores, file="Datasets/performance_data/ImputetDatasets/eco_scores.csv", row.names = F, fileEncoding ="UTF-8")
-write.csv(imputed_eco_inv, file="Datasets/performance_data/ImputetDatasets/imputed_eco.csv", row.names = F, fileEncoding ="UTF-8")
+write.csv(performance_wdi_eco, file="Datasets/performance_data/ImputedDatasets/performance_eco.csv", row.names = F, fileEncoding ="UTF-8")
 

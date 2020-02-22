@@ -20,9 +20,9 @@ aux_vars_qoc = QoC_data %>%
          Renewable_oecd_pr_env_num_aux = oecd_rnewable_t1,
          
          psocial_exp_oecd_pr_soc_num_aux = oecd_socexpnd_t1a,
-         poverty_ds_num_aux = lis_pr9010,
-         
-         gini_pr_ds_num_aux =  wdi_gini,
+         # too small sample
+         # poverty_ds_num_aux = lis_pr9010,
+         # gini_pr_ds_num_aux =  wdi_gini,
          
          life_expectancy_eco_num_aux = wdi_lifexp,
          
@@ -32,7 +32,7 @@ aux_vars_qoc = QoC_data %>%
          ) %>%
   mutate(
     Renewable_wdi_pr_env_num_aux = Renewable_wdi_pr_env_num_aux/100,
-    gini_pr_ds_num_aux = gini_pr_ds_num_aux/100,
+    #gini_pr_ds_num_aux = gini_pr_ds_num_aux/100,
     psocial_exp_oecd_pr_soc_num_aux = psocial_exp_oecd_pr_soc_num_aux/100,
     ) %>% 
   mutate(
@@ -46,7 +46,7 @@ aux_vars_qoc = QoC_data %>%
   summarise_all(mean_NA) %>% 
   ungroup() %>% 
   mutate_at(vars("GDP_capita_wdi_gen_num_aux", 
-                 "poverty_ds_num_aux", 
+                 #"poverty_ds_num_aux", 
                  "life_expectancy_eco_num_aux",
                  "parties_dp_num_aux",
                  "pop_size_dp_num_aux"), funs(ladder_fun)) %>% 
@@ -69,11 +69,16 @@ aux_vars_qoc %>%
   facet_wrap(variable~., scales="free")
 
 # V-Dem Aux
-aux_vars_vdem = V_dem %>% 
+aux_vars_vdem = V_dem_all %>% 
   select(country_text_id, year,
-         educ_equal_vdem_gen_num_aux = educ_equal,
+         educ_equal_vdem_gen_num_aux = v2peedueq,
          health_vdem_soc_num_aux = v2pehealth,
          electoral_sys_vdem_dp_ord_aux = v2elparlel,
+         
+         universalism_ds_num_aux = v2dlunivl,
+         sc_civequality_ds_num_aux = v2clacjust,
+         sc_powequality_ds_num_aux = v2pepwrses,
+         
          v2x_elecreg
          ) %>% 
   group_by(country_text_id) %>%
@@ -110,7 +115,7 @@ aux_vars_dmx_env = dmx_data %>%
          freedom_dim_index_context_num_aux = freedom_dim_index_context,
          equality_dim_index_context_num_aux = equality_dim_index_context,
          control_dim_index_context_num_aux = control_dim_index_context,
-         classification_context,
+         classification_core,
   ) %>%
   mutate_at(vars(ends_with("_num_aux")), funs(scaler_perc)) %>% 
   left_join(V_dem %>%  select(country, country_text_id) %>%  distinct(), by=c("country")) %>% 

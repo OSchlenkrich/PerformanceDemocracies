@@ -30,6 +30,7 @@ source("Setup/Packages.R")
 source("Setup/Base_Functions.R")
 source("Setup/Plotting_Functions.R")
 source("Setup/Sig_Tables.R")
+source("Setup/LoadDatasets.R")
 
 
 # Load V-Dem Dataset and V-Dem Disaggregated Dataset #####
@@ -1145,7 +1146,9 @@ c_disagree %>%
 
 # Regression Setup ####
 # Create Independent Variables
-source("Setup/LoadDatasets.R")
+multiplechoice_values = c("v2elsnlfc", "v2elsnmrfc", "v2psbantar", "v2exrmhsol",
+                          "v2exctlhs", "v2exrmhgnp", "v2exctlhg", "v2regsupgroups", 
+                          "v2clrgstch", "v2clrgwkch", "v2csanmvch","v2exl_legitideolcr")
 
 vartype = vdem_ds %>% 
   select_at(vars(country_text_id, coder_id, year, historical_date, starts_with("v2"))) %>% 
@@ -1279,12 +1282,17 @@ vdem_caus = vdem_main %>%
          polrights_fh = e_fh_pr, 
          internalconf = e_miinterc,
          coups = e_coups) %>% 
-  mutate(polrights_rev_fh = 7 - as.numeric(polrights_fh)) %>% 
   group_by(country_text_id) %>% 
+  mutate(polrights_rev_fh = 7 - as.numeric(polrights_fh),
+         polrights_rev_fh_lag = dplyr::lag(polrights_rev_fh, 1),
+         polrights_rev_variability_fh = polrights_rev_fh- polrights_rev_fh_lag) %>% 
   summarise(polrights_rev_mean_fh = mean(polrights_rev_fh, na.rm=T),
-            polrights_rev_sd_fh = sd(polrights_rev_fh, na.rm=T),
+            polrights_rev_variability_fh = mean(abs(polrights_rev_variability_fh), na.rm=T),
             coups = sum(coups, na.rm=T)
-            )
+            ) %>% 
+  mutate(no_coups = max(coups, na.rm=T) - coups,
+         polrights_rev_variability_fh = max(polrights_rev_variability_fh, na.rm=T) - polrights_rev_variability_fh) %>% 
+  select(-coups)
 
 
 # Regression Setup: Number Coders ####
@@ -1365,6 +1373,25 @@ reg_data_caus = reg_data %>%
 hist(reg_data_caus$nr_coder)
 
 reg_data_caus %>% 
+  mutate(rate = nr_coder/years_counted) %>% 
+  group_by(country_text_id) %>% 
+  summarise(rate = mean(rate)) %>% 
+  mutate(rate = round(rate,0)) %>% 
+  group_by(rate) %>% 
+  summarise(nr_sum = n()) %>% 
+  ggplot(aes(x=rate, y = nr_sum)) +
+  geom_point() +
+  geom_line()
+
+reg_data_caus %>% 
+  mutate(rate = nr_coder/years_counted) %>% 
+  group_by(country_text_id) %>% 
+  summarise(rate = mean(rate)) %>% 
+  mutate(rate = round(rate,0)) %>% 
+  ungroup() %>% 
+  summarise(mean(rate), var(rate))
+
+reg_data_caus %>% 
   ungroup() %>% 
   select_if(is.numeric) %>% 
   cor(., use="pairwise") %>% 
@@ -1380,10 +1407,25 @@ summary(m0_noml_nc)
 
 # Null model with ML
 m0_nc <- glmmTMB(nr_coder ~ 1 + offset(log(years_counted)) + 
-                   (1|name), 
+                   (1|country_text_id), 
               family=truncated_nbinom1(link = "log"), 
               reg_data_caus)
 summary(m0_nc)
+
+data.frame(rate = predict(m0_nc, newdata = reg_data_caus %>%  mutate(years_counted = 1),
+        type = "response", offset=0)) %>% 
+  mutate(rate = round(rate, 0)) %>% 
+  group_by(rate) %>% 
+  summarise(nr_sum = n()) %>% 
+  ggplot(aes(x=rate, y = nr_sum)) +
+  geom_point() +
+  geom_line()
+
+data.frame(rate = predict(m0_nc, newdata = reg_data_caus %>%  mutate(years_counted = 1),
+                          type = "response", offset=0)) %>% 
+  mutate(rate = round(rate, 0)) %>% 
+  ungroup() %>% 
+  summarise(mean(rate), var(rate))
 
 # favors ML
 anova(m0_noml_nc,m0_nc)
@@ -1392,7 +1434,7 @@ anova(m0_noml_nc,m0_nc)
 m1_nc <- glmmTMB(nr_coder ~ 1 + offset(log(years_counted)) +
                    loggdp + 
                    primaryschool_wdi + 
-                   (1|name), 
+                   (1|country_text_id), 
                  family=truncated_nbinom1(link = "log"), 
                  reg_data_caus)
 summary(m1_nc)
@@ -1404,7 +1446,7 @@ m2_nc <- glmmTMB(nr_coder ~ 1 + offset(log(years_counted)) +
                    loggdp + 
                    primaryschool_wdi + 
                    popsize + 
-                   (1|name), 
+                   (1|country_text_id), 
                  family=truncated_nbinom1(link = "log"), 
                  reg_data_caus)
 summary(m2_nc)
@@ -1416,7 +1458,7 @@ m3_nc <- glmmTMB(nr_coder ~ 1 + offset(log(years_counted)) +
                    primaryschool_wdi + 
                    popsize + 
                    polrights_rev_mean_fh + I(polrights_rev_mean_fh^2) +
-                   (1|name), 
+                   (1|country_text_id), 
                  family=truncated_nbinom1(link = "log"), 
                  reg_data_caus)
 summary(m3_nc)
@@ -1428,9 +1470,9 @@ m4_nc <- glmmTMB(nr_coder ~ 1 + offset(log(years_counted)) +
                    primaryschool_wdi + 
                    popsize + 
                    polrights_rev_mean_fh + I(polrights_rev_mean_fh^2) +
-                   polrights_rev_sd_fh +
-                   coups +
-                   (1|name), 
+                   polrights_rev_variability_fh +
+                   no_coups +
+                   (1|country_text_id), 
                  family=truncated_nbinom1(link = "log"), 
                  reg_data_caus)
 summary(m4_nc)
@@ -1442,15 +1484,29 @@ m5_nc <- glmmTMB(nr_coder ~ 1 + offset(log(years_counted)) +
                 primaryschool_wdi + 
                 popsize + 
                 polrights_rev_mean_fh + I(polrights_rev_mean_fh^2) +
-                polrights_rev_sd_fh +
-                coups +
+                polrights_rev_variability_fh +
+                no_coups +
                 q_diff + 
                 nr_categories +
-                (1|name), 
+                (1|country_text_id), 
               family=truncated_nbinom1(link = "log"), 
               reg_data_caus)
 summary(m5_nc)
 r2(m5_nc)
+
+data.frame(rate = predict(m5_nc, newdata = reg_data_caus %>%  mutate(years_counted = 1),
+                          type = "response")) %>% 
+  bind_cols(reg_data_caus %>%  select(country_text_id)) %>% 
+  group_by(country_text_id) %>%
+  summarise(rate = mean(rate)) %>%
+  mutate(rate = round(rate,0)) %>% 
+  group_by(rate) %>% 
+  summarise(nr_sum = n()) %>% 
+  ggplot(aes(x=rate, y = nr_sum)) +
+  geom_point() +
+  geom_line() +
+  scale_x_continuous(breaks=seq(2,10,2))
+
 
 make_glmm_tables(m0_nc, m1_nc, m2_nc, m3_nc, m4_nc, m5_nc)
 
@@ -1494,7 +1550,7 @@ new_data = dmx_reg_vis %>%
   select(loggdp, primaryschool_wdi,
          popsize,
          polrights_rev_mean_fh, 
-         polrights_rev_sd_fh, coups,
+         polrights_rev_variability_fh, no_coups,
          nr_categories, q_diff) %>% 
   pivot_longer(cols=everything()) %>% 
   group_by(name) %>% 
@@ -1504,7 +1560,9 @@ new_data = dmx_reg_vis %>%
   pivot_longer(cols=starts_with("conf_"), names_to = "conf") %>% 
   pivot_wider(names_from = name, values_from = value) %>% 
   mutate(years_counted = 1,
-         name = NA)
+         name = NA,
+         q_diff = 0.459,
+         nr_categories = 5)
 
 predict(m5_nc, newdata = new_data, type="response", offset=0, 
         se.fit=F)
@@ -1512,6 +1570,9 @@ predict(m5_nc, newdata = new_data, type="response", offset=0,
 ### Regression 2: Nr Bridged/Lateral Coders ####
 
 reg_data_bridged = year_type_df %>% 
+  # after 2005: influx of bridge and lateral coders
+  # otherwise one would punish countries with long time series
+  filter(year >= 2005) %>% 
   mutate(bridged = if_else(coder_type == "LC" |  coder_type == "BLC", 1, 0)) %>% 
   group_by(name, year, country_text_id) %>% 
   summarise(times_bridged = sum(bridged))   %>% 
@@ -1521,8 +1582,25 @@ reg_data_bridged = year_type_df %>%
             years_counted = max(year_count)
             ) 
 
+reg_data_bridged %>% 
+  mutate(rate = times_bridged/years_counted) %>% 
+  group_by(country_text_id) %>% 
+  summarise(rate = mean(rate)) %>% 
+  mutate(rate = round(rate,0)) %>% 
+  group_by(rate) %>% 
+  summarise(nr_sum = n()) %>% 
+  ggplot(aes(x=rate, y = nr_sum)) +
+  geom_point() +
+  geom_line()
 
-hist(reg_data_bridged$times_bridged)
+reg_data_bridged %>% 
+  mutate(rate = times_bridged/years_counted) %>% 
+  group_by(country_text_id) %>% 
+  summarise(rate = mean(rate)) %>% 
+  mutate(rate = round(rate,0)) %>% 
+  ungroup() %>% 
+  summarise(mean(rate), var(rate))
+
 
 reg_data_bridged_caus = reg_data_bridged %>% 
   left_join(vdem_caus, by="country_text_id") %>% 
@@ -1545,11 +1623,24 @@ m0_noml_bc <- glmmTMB(times_bridged ~ 1 + offset(log(years_counted)),
 
 # Null model with ML
 m0_bc <- glmmTMB(times_bridged ~ 1 + offset(log(years_counted)) + 
-                   (1|name), 
+                   (1|country_text_id), 
               family=nbinom1(link = "log"), 
               reg_data_bridged_caus)
 summary(m0_bc)
 r2(m0_bc)
+
+data.frame(rate = predict(m0_bc, newdata = reg_data_bridged_caus %>%  mutate(years_counted = 1),
+                          type = "response")) %>% 
+  bind_cols(reg_data_bridged_caus %>%  select(country_text_id)) %>% 
+  group_by(country_text_id) %>%
+  summarise(rate = mean(rate)) %>%
+  mutate(rate = round(rate,0))  %>% 
+  group_by(rate) %>% 
+  summarise(nr_sum = n()) %>% 
+  ggplot(aes(x=rate, y = nr_sum)) +
+  geom_point() +
+  geom_line()
+
 
 #favors ML
 anova(m0_noml_bc,m0_bc)
@@ -1558,7 +1649,7 @@ anova(m0_noml_bc,m0_bc)
 m1_bc <- glmmTMB(times_bridged ~ 1 + offset(log(years_counted)) +
                 loggdp + 
                 primaryschool_wdi + 
-                (1|name), 
+                (1|country_text_id), 
               family=nbinom1(link = "log"), 
               reg_data_bridged_caus)
 summary(m1_bc)
@@ -1571,7 +1662,7 @@ m2_bc <- glmmTMB(times_bridged ~ 1 + offset(log(years_counted)) +
                    loggdp + 
                    primaryschool_wdi +
                    popsize +
-                   (1|name), 
+                   (1|country_text_id), 
                  family=nbinom1(link = "log"), 
                  reg_data_bridged_caus)
 summary(m2_bc)
@@ -1585,7 +1676,7 @@ m3_bc <- glmmTMB(times_bridged ~ 1 + offset(log(years_counted)) +
                 primaryschool_wdi +
                 popsize + 
                 polrights_rev_mean_fh + I(polrights_rev_mean_fh^2) +
-                (1|name),
+                (1|country_text_id),
               family=nbinom1(link = "log"), 
               reg_data_bridged_caus)
 summary(m3_bc)
@@ -1599,8 +1690,8 @@ m4_bc <- glmmTMB(times_bridged ~ 1 + offset(log(years_counted)) +
                 popsize + 
                 polrights_rev_mean_fh + I(polrights_rev_mean_fh^2) +
                 polrights_rev_sd_fh +
-                coups +
-                (1|name),
+                no_coups +
+                (1|country_text_id),
               family=nbinom1(link = "log"), 
               reg_data_bridged_caus)
 summary(m4_bc)
@@ -1613,16 +1704,29 @@ m5_bc <- glmmTMB(times_bridged ~ 1 + offset(log(years_counted)) +
                    primaryschool_wdi + 
                    popsize + 
                    polrights_rev_mean_fh + I(polrights_rev_mean_fh^2) +
-                   polrights_rev_sd_fh +
-                   coups +
+                   polrights_rev_variability_fh +
+                   no_coups +
                    q_diff + 
                    nr_categories +
-                   (1|name), 
+                   (1|country_text_id), 
                  family=nbinom1(link = "log"), 
                  reg_data_bridged_caus)
 summary(m5_bc)
 anova(m4_bc,m5_bc)
 r2(m5_bc)
+
+data.frame(rate = predict(m5_bc, newdata = data.frame(m5_bc$frame) %>%  mutate(years_counted = 1),
+                          type = "response")) %>% 
+  bind_cols(data.frame(m5_bc$frame) %>%  select(country_text_id)) %>% 
+  group_by(country_text_id) %>%
+  summarise(rate = mean(rate)) %>%
+  mutate(rate = round(rate,0))  %>% 
+  group_by(rate) %>% 
+  summarise(nr_sum = n()) %>% 
+  ggplot(aes(x=rate, y = nr_sum)) +
+  geom_point() +
+  geom_line()
+
 
 make_glmm_tables(m0_bc, m1_bc, m2_bc, m3_bc, m4_bc, m5_bc, rsquared=F)
 
@@ -1650,7 +1754,7 @@ new_data_bridge = dmx_reg_vis %>%
   select(loggdp, primaryschool_wdi,
          popsize,
          polrights_rev_mean_fh, 
-         polrights_rev_sd_fh, coups,
+         polrights_rev_variability_fh, no_coups,
          nr_categories, q_diff) %>% 
   pivot_longer(cols=everything()) %>% 
   group_by(name) %>% 
@@ -1660,7 +1764,9 @@ new_data_bridge = dmx_reg_vis %>%
   pivot_longer(cols=starts_with("conf_"), names_to = "conf") %>% 
   pivot_wider(names_from = name, values_from = value) %>% 
   mutate(years_counted = 1,
-         name = NA)
+         country_text_id = NA,
+         q_diff = 0.459,
+         nr_categories = 5)
 
 predict(m5_bc, newdata = new_data_bridge, type="response", offset=0, 
         se.fit=F)
@@ -1758,7 +1864,7 @@ m1_disagree <- glmmTMB(disagree ~ 1 +
                 coders_p_year +
                 primaryschool_wdi +
                 loggdp +
-                (1|name),
+                (1|country_text_id),
               family=gaussian, 
               disagree_reg)
 summary(m1_disagree)
@@ -1771,7 +1877,7 @@ m2_disagree <- glmmTMB(disagree ~ 1 +
                          loggdp +
                          primaryschool_wdi +
                          popsize +
-                         (1|name),
+                         (1|country_text_id),
                        family=gaussian, 
                        disagree_reg)
 summary(m2_disagree)
@@ -1785,7 +1891,7 @@ m3_disagree <- glmmTMB(disagree ~ 1 +
                          primaryschool_wdi +
                          popsize +
                          polrights_rev_mean_fh + I(polrights_rev_mean_fh^2) +
-                         (1|name),
+                         (1|country_text_id),
                        family=gaussian, 
                        disagree_reg)
 summary(m3_disagree)
@@ -1798,9 +1904,9 @@ m4_disagree <- glmmTMB(disagree ~ 1 +
                          primaryschool_wdi +
                          popsize +
                          polrights_rev_mean_fh + I(polrights_rev_mean_fh^2) +
-                         polrights_rev_sd_fh +
-                         coups +
-                         (1|name),
+                         polrights_rev_variability_fh +
+                         no_coups +
+                         (1|country_text_id),
                        family=gaussian, 
                        disagree_reg)
 summary(m4_disagree)
@@ -1814,10 +1920,10 @@ m5_disagree <- glmmTMB(disagree ~ 1 +
                          primaryschool_wdi +
                          popsize +
                          polrights_rev_mean_fh + I(polrights_rev_mean_fh^2) +
-                         polrights_rev_sd_fh +
-                         coups +
+                         polrights_rev_variability_fh +
+                         no_coups +
                          q_diff +
-                         (1|name),
+                         (1|country_text_id),
                        family=gaussian, 
                        disagree_reg)
 summary(m5_disagree)
@@ -1852,7 +1958,7 @@ new_data = dmx_reg_vis %>%
          loggdp, primaryschool_wdi,
          popsize,
          polrights_rev_mean_fh, 
-         polrights_rev_sd_fh, coups,
+         polrights_rev_variability_fh, no_coups,
          nr_categories, q_diff) %>% 
   pivot_longer(cols=everything()) %>% 
   group_by(name) %>% 
@@ -1861,7 +1967,9 @@ new_data = dmx_reg_vis %>%
             conf_upper = quantile(value, 0.75, na.rm=T)) %>% 
   pivot_longer(cols=starts_with("conf_"), names_to = "conf") %>% 
   pivot_wider(names_from = name, values_from = value) %>% 
-  mutate(name = NA)
+  mutate(country_text_id = NA,
+         q_diff = 0.486,
+         coders_p_year = 5.55)
 
 predict(m5_disagree, newdata = new_data, type="response", 
         se.fit=F)
