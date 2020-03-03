@@ -5,6 +5,11 @@ scale_this <- function(x){
   (x - mean(x, na.rm=TRUE)) / sd(x, na.rm=TRUE)
 }
 
+if_historic = function(x) {
+  historic = ifelse(any(x > 1920), 0, 1) 
+  return(historic)
+}
+
 get_type = function(x) {
   coded_more_1 = length(which(x > 1))
   coded1 = length(which(x == 1))
@@ -52,7 +57,42 @@ vdemcontent = fread("Datasets/VDem_content.csv", sep=";", header = T) %>%
 posterior_v2elfrfair = fread("unzip -p Datasets/v2elfrfair.10000.Z.sample.zip")
 
 
+# jureview
+Lijphart_ju = read.csv2("country_id_Lijphart.csv") %>% 
+  left_join(fread("Datasets/Lijphart.csv") %>%  rename(country_text_id = country) , by="country_text_id" ) %>% 
+  select( country,
+         index_of_judicial_review_1945_2010,
+         index_of_judicial_review_1981_2010)
+  
 
+p1 = V_dem_all %>% 
+  select(country, year, v2jureview) %>% 
+  filter(year >= 1945, year <= 2010) %>% 
+  group_by(country) %>% 
+  summarise(v2jureview_1945_2010 = mean(v2jureview, na.rm=T)) %>% 
+  left_join(Lijphart_ju, by="country") %>%  
+  na.omit() %>% 
+  ggplot(aes(x=v2jureview_1945_2010, y=index_of_judicial_review_1945_2010)) +
+  geom_point() +
+  geom_smooth(method=lm, se=F, col="black") +
+  stat_cor(method = "pearson", label.x = -1, label.y = 3) +
+  theme_bw()
+
+p2 = V_dem_all %>% 
+  select(country, year, v2jureview) %>% 
+  filter(year >= 1981, year <= 2010) %>% 
+  group_by(country) %>% 
+  summarise(v2jureview_1981_2010 = mean(v2jureview, na.rm=T)) %>% 
+  left_join(Lijphart_ju, by="country") %>%  
+  na.omit() %>% 
+  ggplot(aes(x=v2jureview_1981_2010, y=index_of_judicial_review_1981_2010)) +
+  geom_point() +
+  geom_smooth(method=lm, se=F, col="black") +
+  stat_cor(method = "pearson", label.x = -1, label.y = 3) +
+  theme_bw()
+
+grid.arrange(p1,p2)
+  
 ### Number of Variables per Section and per Coders per Section ----
 
 # Extract Variable Names from V-Dem Dataset
@@ -241,7 +281,6 @@ v2elfrfair_wide %>%
 # Absolute Numbers ####
 
 
-
 abs_coder_df =  vdem_main %>% 
   select_at(vars(country_name, year,  ends_with("_nr"))) %>%
   select_at(vars(country_name, year,  starts_with("v2"))) %>%
@@ -422,7 +461,29 @@ conf_rater_vdem %>%
   ggtitle("Average Confidence of Coders per section")
 
 
-### Value Change due to Coder Change ####
+### Multiple Choice and Percentage Variables ####
+
+#v2svstterr: scale direction
+vdem_ds %>% 
+  select(country, year, coder_id, v2svstterr) %>% 
+  filter(country == "Germany",
+         year >= 1900) %>% 
+  mutate(coder_id = as.factor(coder_id)) %>% 
+  ggplot(aes(x=year, y=v2svstterr, col=coder_id)) + 
+  geom_line(size=1.2)  + 
+  geom_point()  +
+  scale_x_continuous(breaks=seq(1900,2020, 20)) +
+  xlab("") +
+  theme_bw() +
+  theme(legend.position = "none")
+
+vdem_ds %>% 
+  select(country, year, coder_id, v2svstterr) %>% 
+  filter(country == "Germany",
+         year >= 1900) %>% 
+  top_n(1, -v2svstterr)
+
+
 # Multiple Choice
 multiplechoice_values = vdem_main %>% 
   select_at(vars(
@@ -477,23 +538,29 @@ multiplechoice_coders = vdem_main %>%
   group_by(year) %>% 
   summarise(mean_coder = mean(mean_coder, na.rm=T))
 
+# value_change_data_multiple = multiplechoice_values %>% 
+#   left_join(multiplechoice_coders, by="year") %>% 
+#   mutate(change_value = mean_perc  - dplyr::lag(mean_perc ,1),
+#          change_coder = (mean_coder / dplyr::lag(mean_coder,1)) - 1,
+#          change_coder = round(abs(change_coder),2)
+#   )
 
 multiplechoice_values %>% 
   left_join(multiplechoice_coders, by="year") %>% 
-  mutate(change_value = abs(scale_this(mean_perc  - dplyr::lag(mean_perc ,1))),
-         change_coder = abs(scale_this(mean_coder - dplyr::lag(mean_coder,1)))) %>%  
-  pivot_longer(cols=starts_with("change"), names_to = "varname") %>% 
-  ggplot(aes(x=year, y=value, linetype=varname)) +
+  mutate(change_value = abs(mean_perc  - dplyr::lag(mean_perc ,1)),
+         change_coder = (mean_coder / dplyr::lag(mean_coder,1)) - 1,
+         change_coder = abs(change_coder), 
+         sig_year = ifelse(change_coder > 0.05, year,NA), 
+         sig_value = ifelse(change_coder > 0.05, change_value,NA)
+         ) %>%  
+  ggplot(aes(x=year, y=change_value)) +
   geom_line(size=1) +
-  scale_x_continuous(breaks=seq(1900,2020, 20)) + 
-  theme_bw()
+  geom_point(aes(x=sig_year, y=sig_value), size=2, color="red") +
+  theme_bw() 
 
-value_change_data_multiple = multiplechoice_values %>% 
-  left_join(multiplechoice_coders, by="year") %>% 
-  mutate(change_value = abs(scale_this(mean_perc  - dplyr::lag(mean_perc ,1))),
-         change_coder = abs(scale_this(mean_coder - dplyr::lag(mean_coder,1)))) 
 
-# Measurement Model
+
+# Compare this to the variables subjected to the measurement model
 bootstrapped_vars = c("v2svstterr", "v2mefemjrn", "v2clsnlpct")
 measurement_model_mean = vdem_main %>% 
   select_at(vars(country_name, year,  starts_with("v2"))) %>%
@@ -577,31 +644,30 @@ measurement_model_coder = vdem_main %>%
 
 measurement_model_mean %>% 
   left_join(measurement_model_coder, by="year") %>% 
-  pivot_longer(cols=starts_with("mean_"), names_to = "varname") %>% 
-  ggplot(aes(x=year, y=value, linetype=varname)) +
+  mutate(change_value = abs(mean_year  - dplyr::lag(mean_year ,1)),
+         change_coder = (mean_coder / dplyr::lag(mean_coder,1)) - 1,
+         change_coder = abs(change_coder), 
+         sig_year = ifelse(change_coder > 0.05, year,NA), 
+         sig_value = ifelse(change_coder > 0.05, change_value,NA)
+  ) %>%  
+  ggplot(aes(x=year, y=change_value)) +
   geom_line(size=1) +
-  scale_x_continuous(breaks=seq(1900,2020, 20)) +
-  theme_bw() +
-  geom_vline(xintercept = 2012)
+  geom_point(aes(x=sig_year, y=sig_value), size=2, color="red") +
+  theme_bw() 
 
 
-measurement_model_mean %>% 
-  left_join(measurement_model_coder, by="year") %>% 
-  mutate(change_value = abs(scale_this(mean_year  - dplyr::lag(mean_year ,1))),
-         change_coder = abs(scale_this(mean_coder - dplyr::lag(mean_coder,1)))) %>% 
-  pivot_longer(cols=starts_with("change"), names_to = "varname") %>% 
-  ggplot(aes(x=year, y=value, linetype=varname)) +
-  geom_line(size=1) +
-  scale_x_continuous(breaks=seq(1900,2020, 20)) +
-  theme_bw()  
 
 value_change_data_measurement = measurement_model_mean %>% 
   left_join(measurement_model_coder, by="year") %>% 
-  mutate(change_value = abs((mean_year  - dplyr::lag(mean_year ,1))),
-         change_coder = ((mean_coder - dplyr::lag(mean_coder,1)))) 
+  mutate(change_value = mean_year  - dplyr::lag(mean_year ,1),
+           change_coder = (mean_coder / dplyr::lag(mean_coder,1)) - 1,
+           change_coder = round(abs(change_coder),2),
+         change_value = round(abs(change_value),4)
+  )
 
 
-### Expert Coders ####
+
+### !Expert Coders! ####
 
 vdem_vars = vdem_ds %>% 
   select_at(vars(country_text_id, coder_id, year, historical_date, starts_with("v2"))) %>% 
@@ -799,11 +865,7 @@ all_v2_coders %>%
   ungroup() %>% 
   arrange(-varspercoder)
 
-### Identify Historic/Bridge/Lateral Coder ####
-if_historic = function(x) {
-  historic = ifelse(any(x > 1920), 0, 1) 
-  return(historic)
-}
+### Identify Historic/Bridge/Lateral Coder
 
 historic_coders_df = vdem_vars  %>% 
   select(name, country_text_id, coder_id, year) %>%
@@ -935,32 +997,58 @@ year_type_df = vdem_ds %>%
   # select only C Variables
   filter(name %in% (length_varname %>% filter(codetype  == "C") %>% pull(varname))) 
 
-frame_df = year_type_df %>% 
-  group_by(year) %>% 
-  summarise(countries_year = n_distinct(country_text_id),
-            names_year = n_distinct(name))
 
-codertype_years = year_type_df %>% 
+
+year_type_df %>% 
   mutate(coder_type = as.factor(coder_type)) %>% 
   group_by(name, year, country_text_id, coder_type) %>%
   summarise(no = n())  %>% 
-  group_by(name, year, coder_type) %>% 
+  group_by(name,country_text_id, year, coder_type) %>% 
   summarise(sum_country = sum(no, na.rm=T)) %>% 
-  left_join(frame_df %>% select(-names_year), by="year") %>%
-  mutate(mean_country = sum_country / countries_year) %>% 
-  group_by(year, coder_type) %>% 
-  summarise(mean_year = mean(mean_country)) %>% 
+  group_by(name,country_text_id, year) %>% 
+  mutate(total_country = sum(sum_country)) %>% 
+  group_by(year,  coder_type) %>% 
+  summarise(mean_country = sum(sum_country, na.rm=T)) %>% 
   group_by(year) %>% 
-  mutate(total_year = sum(mean_year))
-
-codertype_years %>% 
-  ggplot(aes(x=year, y=mean_year, fill=coder_type)) +
+  mutate(total_country = sum(mean_country) ) %>% 
+  mutate(perc = mean_country/total_country) %>% 
+  left_join(mean_coder_df %>% 
+              group_by(year, country_name) %>% 
+              summarise(mean_country = mean(value, na.rm=T)) %>% 
+              group_by(year) %>% 
+              summarise(mean_coder = mean(mean_country, na.rm=T)), by ="year") %>% 
+  mutate(part = mean_coder * perc) %>% 
+  ggplot(aes(x=year, y=part, fill=coder_type)) +
   geom_area(size=1.1) +
   scale_y_continuous(breaks=seq(0,20, 2)) +
   scale_x_continuous(breaks=seq(1900,2020, 20)) +
   geom_hline(yintercept = 5) +
   theme_bw() +
   ggtitle("Number of Coders per codertype per year")
+
+
+t2 %>% 
+  left_join(t1, by=c("name", "country_text_id", "year")) %>% 
+  group_by(year,  coder_type) %>% 
+  summarise(mean_country = sum(sum_country, na.rm=T),
+            total_country = sum(total_country, na.rm=T)) %>% 
+  group_by(year) %>% 
+  mutate(total_country = sum(mean_country) ) %>% 
+  mutate(perc = mean_country/total_country) %>% 
+  left_join(mean_coder_df %>% 
+              group_by(year, country_name) %>% 
+              summarise(mean_country = mean(value, na.rm=T)) %>% 
+              group_by(year) %>% 
+              summarise(mean_coder = mean(mean_country, na.rm=T)), by ="year") %>% 
+  mutate(part = mean_coder * perc) %>% 
+  ggplot(aes(x=year, y=part, fill=coder_type)) +
+  geom_area(size=1.1) +
+  scale_y_continuous(breaks=seq(0,20, 2)) +
+  scale_x_continuous(breaks=seq(1900,2020, 20)) +
+  geom_hline(yintercept = 5) +
+  theme_bw() +
+  ggtitle("Number of Coders per codertype per year")
+
 
 
 # Which countries are bridged? ####
@@ -1145,7 +1233,7 @@ c_disagree %>%
 
 
 # Regression Setup ####
-# Create Independent Variables
+# Independent Variables ####
 multiplechoice_values = c("v2elsnlfc", "v2elsnmrfc", "v2psbantar", "v2exrmhsol",
                           "v2exctlhs", "v2exrmhgnp", "v2exctlhg", "v2regsupgroups", 
                           "v2clrgstch", "v2clrgwkch", "v2csanmvch","v2exl_legitideolcr")
@@ -1295,8 +1383,7 @@ vdem_caus = vdem_main %>%
   select(-coups)
 
 
-# Regression Setup: Number Coders ####
-# Create Dependent Variable
+# Dependent Variable ####
 
 reg_coder_df = vdem_main %>% 
   select_at(vars(country_text_id, year,  ends_with("_nr"))) %>%
@@ -1399,43 +1486,66 @@ reg_data_caus %>%
 
 # Analysis
 # Null model without ML
-m0_noml_nc <- glmmTMB(nr_coder ~ 1 + offset(log(years_counted)), 
+m0_noml_p <- glmmTMB(nr_coder ~ 1 + offset(log(years_counted)), 
               family=truncated_poisson(link = "log"), 
               reg_data_caus)
-summary(m0_noml_nc)
+summary(m0_noml_p)
 
+m0_noml_nb <- glmmTMB(nr_coder ~ 1 + offset(log(years_counted)), 
+                      family=truncated_nbinom2(link = "log"), 
+                      reg_data_caus)
+summary(m0_noml_nb)
 
-# Null model with ML
-m0_nc <- glmmTMB(nr_coder ~ 1 + offset(log(years_counted)) + 
-                   (1|country_text_id), 
-              family=truncated_nbinom1(link = "log"), 
+# Null model with ML: Poisson
+m0_p <- glmmTMB(nr_coder ~ 1 + offset(log(years_counted)) + 
+                   (1|name), 
+              family=truncated_poisson(link = "log"), 
               reg_data_caus)
-summary(m0_nc)
+summary(m0_p)
 
-data.frame(rate = predict(m0_nc, newdata = reg_data_caus %>%  mutate(years_counted = 1),
-        type = "response", offset=0)) %>% 
-  mutate(rate = round(rate, 0)) %>% 
-  group_by(rate) %>% 
-  summarise(nr_sum = n()) %>% 
-  ggplot(aes(x=rate, y = nr_sum)) +
-  geom_point() +
-  geom_line()
+# Null model with ML: Negative Binomial
+m0_nb <- glmmTMB(nr_coder ~ 1 + offset(log(years_counted)) + 
+                   (1|name), 
+                 family=truncated_nbinom2(link = "log"), 
+                 reg_data_caus)
+summary(m0_nb)
 
-data.frame(rate = predict(m0_nc, newdata = reg_data_caus %>%  mutate(years_counted = 1),
-                          type = "response", offset=0)) %>% 
-  mutate(rate = round(rate, 0)) %>% 
-  ungroup() %>% 
-  summarise(mean(rate), var(rate))
+# Null model with ML: genpois can handle udnerdispersion?
+# m0_qp <- glmmTMB(nr_coder ~ 1 + offset(log(years_counted)) +
+#                    (1|name), disp=~1,
+#                  family=truncated_genpois(link = "log"),
+#                  reg_data_caus)
+# summary(m0_qp)
 
-# favors ML
-anova(m0_noml_nc,m0_nc)
+
+# favors ML and nbinom
+anova(m0_noml_p,  m0_p, m0_noml_nb,m0_nb) %>% 
+   make_anova_table()
+
+
+# data.frame(rate = predict(m0_nc, newdata = reg_data_caus %>%  mutate(years_counted = 1),
+#         type = "response", offset=0)) %>% 
+#   mutate(rate = round(rate, 0)) %>% 
+#   group_by(rate) %>% 
+#   summarise(nr_sum = n()) %>% 
+#   ggplot(aes(x=rate, y = nr_sum)) +
+#   geom_point() +
+#   geom_line()
+# 
+# data.frame(rate = predict(m0_nc, newdata = reg_data_caus %>%  mutate(years_counted = 1),
+#                           type = "response", offset=0)) %>% 
+#   mutate(rate = round(rate, 0)) %>% 
+#   ungroup() %>% 
+#   summarise(mean(rate), var(rate))
+
+
 
 # Control + Modernization
 m1_nc <- glmmTMB(nr_coder ~ 1 + offset(log(years_counted)) +
                    loggdp + 
                    primaryschool_wdi + 
-                   (1|country_text_id), 
-                 family=truncated_nbinom1(link = "log"), 
+                   (1|name), 
+                 family=truncated_nbinom2(link = "log"), 
                  reg_data_caus)
 summary(m1_nc)
 r2(m1_nc)
@@ -1446,8 +1556,8 @@ m2_nc <- glmmTMB(nr_coder ~ 1 + offset(log(years_counted)) +
                    loggdp + 
                    primaryschool_wdi + 
                    popsize + 
-                   (1|country_text_id), 
-                 family=truncated_nbinom1(link = "log"), 
+                   (1|name), 
+                 family=truncated_nbinom2(link = "log"), 
                  reg_data_caus)
 summary(m2_nc)
 r2(m2_nc)
@@ -1458,8 +1568,8 @@ m3_nc <- glmmTMB(nr_coder ~ 1 + offset(log(years_counted)) +
                    primaryschool_wdi + 
                    popsize + 
                    polrights_rev_mean_fh + I(polrights_rev_mean_fh^2) +
-                   (1|country_text_id), 
-                 family=truncated_nbinom1(link = "log"), 
+                   (1|name), 
+                 family=truncated_nbinom2(link = "log"), 
                  reg_data_caus)
 summary(m3_nc)
 r2(m3_nc)
@@ -1472,8 +1582,8 @@ m4_nc <- glmmTMB(nr_coder ~ 1 + offset(log(years_counted)) +
                    polrights_rev_mean_fh + I(polrights_rev_mean_fh^2) +
                    polrights_rev_variability_fh +
                    no_coups +
-                   (1|country_text_id), 
-                 family=truncated_nbinom1(link = "log"), 
+                   (1|name), 
+                 family=truncated_nbinom2(link = "log"), 
                  reg_data_caus)
 summary(m4_nc)
 r2(m4_nc)
@@ -1484,13 +1594,16 @@ m5_nc <- glmmTMB(nr_coder ~ 1 + offset(log(years_counted)) +
                 primaryschool_wdi + 
                 popsize + 
                 polrights_rev_mean_fh + I(polrights_rev_mean_fh^2) +
-                polrights_rev_variability_fh +
+                #polrights_rev_variability_fh +
                 no_coups +
                 q_diff + 
                 nr_categories +
+                sections +
+                regions +
+                update +
                 (1|country_text_id), 
-              family=truncated_nbinom1(link = "log"), 
-              reg_data_caus)
+              family=truncated_nbinom2(link = "log"), 
+              reg_data_caus %>%  sample_n(5000))
 summary(m5_nc)
 r2(m5_nc)
 
@@ -1508,7 +1621,9 @@ data.frame(rate = predict(m5_nc, newdata = reg_data_caus %>%  mutate(years_count
   scale_x_continuous(breaks=seq(2,10,2))
 
 
-make_glmm_tables(m0_nc, m1_nc, m2_nc, m3_nc, m4_nc, m5_nc)
+make_glmm_tables(m0_nb, m1_nc, m2_nc, m3_nc, m4_nc, m5_nc)
+anova(m0_nb, m1_nc, m2_nc, m3_nc, m4_nc, m5_nc) %>% 
+  make_anova_table()
 
 # For R2
 # m6_nc <- glmmTMB(nr_coder ~ 1 + offset(log(years_counted)) +
@@ -1521,7 +1636,7 @@ make_glmm_tables(m0_nc, m1_nc, m2_nc, m3_nc, m4_nc, m5_nc)
 #                    q_diff + 
 #                    nr_categories +
 #                    (1|name), 
-#                  family=nbinom1(link = "log"), 
+#                  family=nbinom2(link = "log"), 
 #                  reg_data_caus)
 # summary(m6_nc)
 
@@ -1618,13 +1733,13 @@ reg_data_bridged_caus = reg_data_bridged %>%
 # Analysis
 # Null model without ML
 m0_noml_bc <- glmmTMB(times_bridged ~ 1 + offset(log(years_counted)), 
-              family=nbinom1(link = "log"), 
+              family=nbinom2(link = "log"), 
               reg_data_bridged_caus)
 
 # Null model with ML
 m0_bc <- glmmTMB(times_bridged ~ 1 + offset(log(years_counted)) + 
                    (1|country_text_id), 
-              family=nbinom1(link = "log"), 
+              family=nbinom2(link = "log"), 
               reg_data_bridged_caus)
 summary(m0_bc)
 r2(m0_bc)
@@ -1650,7 +1765,7 @@ m1_bc <- glmmTMB(times_bridged ~ 1 + offset(log(years_counted)) +
                 loggdp + 
                 primaryschool_wdi + 
                 (1|country_text_id), 
-              family=nbinom1(link = "log"), 
+              family=nbinom2(link = "log"), 
               reg_data_bridged_caus)
 summary(m1_bc)
 anova(m0_bc,m1_bc)
@@ -1663,7 +1778,7 @@ m2_bc <- glmmTMB(times_bridged ~ 1 + offset(log(years_counted)) +
                    primaryschool_wdi +
                    popsize +
                    (1|country_text_id), 
-                 family=nbinom1(link = "log"), 
+                 family=nbinom2(link = "log"), 
                  reg_data_bridged_caus)
 summary(m2_bc)
 anova(m1_bc,m2_bc)
@@ -1677,7 +1792,7 @@ m3_bc <- glmmTMB(times_bridged ~ 1 + offset(log(years_counted)) +
                 popsize + 
                 polrights_rev_mean_fh + I(polrights_rev_mean_fh^2) +
                 (1|country_text_id),
-              family=nbinom1(link = "log"), 
+              family=nbinom2(link = "log"), 
               reg_data_bridged_caus)
 summary(m3_bc)
 anova(m2_bc, m3_bc)
@@ -1692,7 +1807,7 @@ m4_bc <- glmmTMB(times_bridged ~ 1 + offset(log(years_counted)) +
                 polrights_rev_sd_fh +
                 no_coups +
                 (1|country_text_id),
-              family=nbinom1(link = "log"), 
+              family=nbinom2(link = "log"), 
               reg_data_bridged_caus)
 summary(m4_bc)
 anova(m3_bc,m4_bc)
@@ -1709,7 +1824,7 @@ m5_bc <- glmmTMB(times_bridged ~ 1 + offset(log(years_counted)) +
                    q_diff + 
                    nr_categories +
                    (1|country_text_id), 
-                 family=nbinom1(link = "log"), 
+                 family=nbinom2(link = "log"), 
                  reg_data_bridged_caus)
 summary(m5_bc)
 anova(m4_bc,m5_bc)
@@ -1975,4 +2090,110 @@ predict(m5_disagree, newdata = new_data, type="response",
         se.fit=F)
 
 
+# Empirical Inconsistencies ####
+# Territory
+vdem_ds %>% 
+  select(country, year, coder_id, v2svstterr) %>% 
+  filter(country == "Germany",
+         year >= 1900) %>% 
+  mutate(coder_id = as.factor(coder_id)) %>% 
+  ggplot(aes(x=year, y=v2svstterr, col=coder_id)) + 
+  geom_line(size=1.2)  + 
+  geom_point() +
+  xlab("") +
+  theme_bw() +
+  theme(legend.position = "none")
+
+vdem_ds %>% 
+  select(country, year, coder_id, v2svstterr) %>% 
+  filter(country == "Germany",
+         year >= 1900) %>% 
+  top_n(1, -v2svstterr)
+  
+  
+# MEBIAS
+vdem_ds %>% 
+  select(country, year, coder_id, v2mebias) %>% 
+  filter(country == "Germany",
+         year >= 1900) %>% 
+  mutate(coder_id = as.factor(coder_id),
+         v2mebias = as.factor(v2mebias)) %>% 
+  na.omit() %>% 
+  ggplot(aes(x=year, y=coder_id, col=v2mebias)) + 
+  #geom_line(size=1.2)  + 
+  geom_point(size=2)
+
+vdem_main %>% 
+  select(country = country_name, year, v2mebias, v2mebias_codehigh, v2mebias_codelow) %>% 
+  filter(country == "Germany",
+         year >= 1900) %>% 
+  ggplot(aes(x=year, y=v2mebias, ymax=v2mebias_codehigh, ymin=v2mebias_codelow)) + 
+  geom_line(size=1.2)  + 
+  geom_errorbar() +
+  geom_point()
+
+
+test = vdem_ds %>% 
+  select(country, year, coder_id, variable = v2clkill) %>% 
+  filter(year >= 1900) %>% 
+  group_by(country, coder_id, year) %>% 
+  arrange(variable) %>% 
+  slice(1) %>% 
+  ungroup() %>% 
+  arrange(year) %>% 
+  group_by(country, coder_id) %>% 
+  mutate(v2mebias_lag = dplyr::lag(variable, 1),
+         Difference = abs(variable - v2mebias_lag),
+         Difference = ifelse(Difference == 0, NA, Difference),
+         Difference = ifelse(Difference > 0, 1, Difference))  %>% 
+  ungroup() %>% 
+  mutate(coder_id = ifelse(is.na(variable) == T, NA, coder_id)) %>% 
+  group_by(country, year) %>% 
+  summarise(nr = n_distinct(coder_id, na.rm = T),
+            divergent = sum(Difference, na.rm = T)) %>% 
+  #filter(divergent == 1)
+  mutate( divergent = ifelse(divergent == 1, 1, 0))
+
+m2 = test %>% 
+  filter(divergent == 1, nr < 5) %>%
+  group_by(country) %>% 
+  summarise(summe = sum(divergent)) %>% 
+  filter(summe <= 3)
+  
+selected_country = "Austria"
+
+p1 = vdem_ds %>% 
+  select(country, year, coder_id, v2clkill) %>% 
+  filter(country == selected_country,
+         year >= 1900) %>% 
+  mutate(coder_id = as.factor(coder_id),
+         v2clkill = as.factor(v2clkill)) %>% 
+  na.omit() %>% 
+  ggplot(aes(x=year, y=coder_id, col=v2clkill)) + 
+  #geom_line(size=1.2)  + 
+  geom_point(size=2) 
+
+
+p2 = vdem_main %>% 
+  select(country = country_name, year, variable = v2clkill, var_high = v2clkill_codehigh, var_low = v2clkill_codelow) %>% 
+  filter(country == selected_country,
+         year >= 1900) %>% 
+  na.omit() %>% 
+  left_join(test, by=c("country", "year")) %>% 
+  ggplot(aes(x=year, y=variable, ymax=var_high, ymin=var_low)) + 
+  geom_line(size=1.2)  + 
+  geom_errorbar() +
+  geom_point(size=2.5, aes(col=as.factor(divergent))) 
+
+p3 = vdem_ds %>% 
+  select(country, year, coder_id, v2clkill_conf) %>% 
+  filter(country == selected_country,
+         year >= 1900)  %>% 
+  na.omit() %>% 
+  group_by(country, year) %>% 
+  summarise(conf = mean(v2clkill_conf, na.rm=T)) %>% 
+  ggplot(aes(x=year, y=conf)) + 
+  geom_line(size=1.2, aes(col="conf")) 
+
+grid::grid.draw(rbind(ggplotGrob(p1),ggplotGrob(p2),ggplotGrob(p3)))
 

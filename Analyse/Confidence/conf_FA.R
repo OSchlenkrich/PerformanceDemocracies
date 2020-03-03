@@ -1,6 +1,7 @@
 # Confidence Factor Analysis
 
 source("Analyse/Confidence/conf_variables_v2.R")
+source("Setup/Sig_Tables.R")
 
 
 
@@ -24,8 +25,9 @@ corrplot(cor(fa_data_conf_inv %>%
 
 fa_dataset = fa_data_conf_inv %>% 
   select_at(vars(starts_with("conf"))) %>% 
+  rename_all(funs(gsub("_ord_ivs", "", .))) %>% 
   as.data.frame()
-fa_dataset[] <- lapply(fa_dataset, function(x) { attributes(x) <- NULL; x })
+fa_dataset[] <- lapply(fa_dataset, function(x) { attributes(x) <- NULL; x }) 
 
 ### FA: Extract Factor Number ####
 par(mfrow=c(1,1))
@@ -35,22 +37,27 @@ vss(fa_dataset, fm="mle", rotate="none")$map %>%
   round(.,3)
 
 # VSS: 1 Factor
-# Parallel: 2 Factors
+# Parallel: 1 Factors
 
 # Factor Analysis
-# 2 factor solution: one factor is underidentified
-fa_2_solution = umxEFA(fa_dataset, 2, rotation="promax")
-loadings(fa_2_solution)
-plot(fa_2_solution)
-
 # 1 factor solution
-fa_solution = umxEFA(fa_dataset, 1, rotation="promax")
+fa_solution = umxEFA(fa_dataset, factors = "confidence", summary=T)
+
 loadings(fa_solution)
-plot(fa_solution)
+
+fa_table_umx(fa_solution, RMSEA = 0.066, TLI = 0.97)
+
+
+semPaths( semPlotModel(fa_solution), style="mx", 
+         intercepts=F, 
+         residuals=F, 
+         whatLabels="par", 
+         sizeMan = 12,
+         sizeLat= 15,
+         nCharNodes = 10, edge.label.cex = 1.2)
 
 # Cronbachs Alpha
 alpha(fa_dataset, check.keys=TRUE, n.iter=10)
-
 
 
 ## Calculate Factor Scores
@@ -59,22 +66,38 @@ conf_FIML_scores = umxFactorScores(fa_solution, type = "WeightedML", minManifest
 conf_scores = fa_data_conf_inv %>%
   dplyr::select(survey, country_text_id, weights, year_study) %>% 
   bind_cols(conf_FIML_scores) %>% 
-  rename(conf_index = F1,
+  rename(conf_index = confidence,
          year = year_study)
 
-###
+confidence_final = confidence_IVS %>% 
+  filter(classification_core == "Deficient Democracy" |  classification_core == "Working Democracy") %>%
+  dplyr::select(survey, country, country_text_id, regions, year = year_study, classification_core, cluster_label_1st) %>%
+  filter(year >= 1990) %>% 
+  bind_cols(conf_scores %>% dplyr::select(-survey)) %>% 
+  ungroup() 
 
-samples = c("CAN","DEU", "USA", "SWE", "IND", "FIN", "DNK")
 
-conf_scores %>% 
-  filter(country_text_id %in% samples) %>%
-  dplyr::select(-survey, -weights) %>% 
-  melt(id.vars = c("country_text_id", "year")) %>% 
+performance_pc = confidence_final %>% 
+  dplyr::select(country_text_id, weights, year, conf_index) %>%
   group_by(country_text_id, year) %>% 
-  #summarise(mean_score = weighted.mean(x = value, w=weights, na.rm=T)) %>% 
-  summarise(mean_score = mean(x = value, na.rm=T)) %>% 
-  ggplot(aes(x=year, y=mean_score, col=country_text_id)) +
+  summarise(conf_pc = weighted.mean( conf_index, weights, na.rm=T)) %>% 
+  ungroup() %>%  
+  left_join(dmx_trade_cluster %>%  dplyr::select(-country, -regions), 
+            by=c("country_text_id", "year"))
+
+
+samples = c("GBR","NZL", "SWE", "USA", "DEU", "FRA", "ZAF")
+
+performance_pc %>% 
+  filter(country_text_id %in% samples) %>% 
+  select_at(vars(country_text_id, year, matches("conf_pc"))) %>% 
+  melt(id.vars=c("country_text_id", "year")) %>% 
+  ggplot(aes(x=year, y=value, col=country_text_id)) +
   geom_line(size=1) +
-  theme_bw()
-
-
+  xlim(1990, 2020) +
+  #ylim(0,100) +
+  facet_wrap(variable ~ ., scales="free_y") +
+  theme_bw() 
+###
+write.csv(conf_scores, file="Datasets/performance_data/ImputedDatasets/conf_scores.csv", row.names = F, fileEncoding ="UTF-8")
+write.csv(performance_pc, file="Datasets/performance_data/ImputedDatasets/performance_pc.csv", row.names = F, fileEncoding ="UTF-8")

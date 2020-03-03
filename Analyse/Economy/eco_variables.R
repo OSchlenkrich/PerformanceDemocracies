@@ -47,7 +47,12 @@ imf_debt  = fread("Datasets/imf_globaldebt.csv", header = T) %>%
                               "Macedonia" = "North Macedonia",
                               "Russia" = "Russian Federation",
                               "Slovakia" = "Slovak Republic",
-                              "United States of America" = "United States")) %>% 
+                              "United States of America" = "United States",
+                              "Taiwan" = "Taiwan Province of China",
+                              "Sao Tome and Principe = São Tomé and Príncipe",
+                              "Ivory Coast"	= "Côte d'Ivoire",
+                              "Cape Verde" = "Cabo Verde",
+                              "The Gambia" = "Gambia, The")) %>% 
   group_by(country) %>% 
   #mutate(generaldebt_pr_imf = generaldebt_pr_imf- dplyr::lag(generaldebt_pr_imf, 1)) %>% 
   ungroup() %>% 
@@ -64,7 +69,12 @@ imf_interestpaid  = fread("Datasets/imf_interestpaid.csv", header = T) %>%
                               "Macedonia" = "North Macedonia",
                               "Russia" = "Russian Federation",
                               "Slovakia" = "Slovak Republic",
-                              "United States of America" = "United States")) %>% 
+                              "United States of America" = "United States",
+                              "Taiwan" = "Taiwan Province of China",
+                              "Sao Tome and Principe = São Tomé and Príncipe",
+                              "Ivory Coast"	= "Côte d'Ivoire",
+                              "Cape Verde" = "Cabo Verde",
+                              "The Gambia" = "Gambia, The")) %>% 
   group_by(country) %>% 
   #mutate(generaldebt_pr_imf = generaldebt_pr_imf- dplyr::lag(generaldebt_pr_imf, 1)) %>% 
   ungroup() %>% 
@@ -82,7 +92,12 @@ imf_primarybalance  = fread("Datasets/imf_primarybalance.csv", header = T) %>%
                               "Macedonia" = "North Macedonia",
                               "Russia" = "Russian Federation",
                               "Slovakia" = "Slovak Republic",
-                              "United States of America" = "United States")) %>% 
+                              "United States of America" = "United States",
+                              "Taiwan" = "Taiwan Province of China",
+                              "Sao Tome and Principe = São Tomé and Príncipe",
+                              "Ivory Coast"	= "Côte d'Ivoire",
+                              "Cape Verde" = "Cabo Verde",
+                              "The Gambia" = "Gambia, The")) %>% 
   group_by(country) %>% 
   #mutate(generaldebt_pr_imf = generaldebt_pr_imf- dplyr::lag(generaldebt_pr_imf, 1)) %>% 
   ungroup() %>% 
@@ -100,14 +115,19 @@ imf_unempl= fread("Datasets/imf_unemployment.csv", header = T) %>%
                               "Macedonia" = "North Macedonia",
                               "Russia" = "Russian Federation",
                               "Slovakia" = "Slovak Republic",
-                              "United States of America" = "United States")) %>% 
+                              "United States of America" = "United States",
+                              "Taiwan" = "Taiwan Province of China",
+                              "Sao Tome and Principe = São Tomé and Príncipe",
+                              "Ivory Coast"	= "Côte d'Ivoire",
+                              "Cape Verde" = "Cabo Verde",
+                              "The Gambia" = "Gambia, The")) %>% 
   group_by(country) %>% 
   #mutate(generaldebt_pr_imf = generaldebt_pr_imf- dplyr::lag(generaldebt_pr_imf, 1)) %>% 
   ungroup() %>% 
   left_join(V_dem %>%  select(country, country_text_id) %>%  distinct(), by=c("country")) %>% 
   select(-country)
 
-imf_gdpppp= fread("Datasets/imf_gdpcapitappp.csv", header = T) %>% 
+imf_gdpppp= fread("Datasets/imf_gdpcapitappp.csv", header = T, encoding = "UTF-8") %>% 
   pivot_longer(cols=-"country", names_to = "year", values_to = "gdp_cap_ppp_imf") %>% 
   mutate(year = as.numeric(year),
          #unemployment_imf = unemployment_imf/100,
@@ -117,7 +137,12 @@ imf_gdpppp= fread("Datasets/imf_gdpcapitappp.csv", header = T) %>%
                               "Macedonia" = "North Macedonia",
                               "Russia" = "Russian Federation",
                               "Slovakia" = "Slovak Republic",
-                              "United States of America" = "United States")) %>% 
+                              "United States of America" = "United States",
+                              "Taiwan" = "Taiwan Province of China",
+                              "Sao Tome and Principe = São Tomé and Príncipe",
+                              "Ivory Coast"	= "Côte d'Ivoire",
+                              "Cape Verde" = "Cabo Verde",
+                              "The Gambia" = "Gambia, The")) %>% 
   group_by(country) %>% 
   #mutate(generaldebt_pr_imf = generaldebt_pr_imf- dplyr::lag(generaldebt_pr_imf, 1)) %>% 
   ungroup() %>% 
@@ -134,7 +159,12 @@ imf_inflation= fread("Datasets/imf_inflation.csv", header = T) %>%
                               "Macedonia" = "North Macedonia",
                               "Russia" = "Russian Federation",
                               "Slovakia" = "Slovak Republic",
-                              "United States of America" = "United States")) %>% 
+                              "United States of America" = "United States",
+                              "Taiwan" = "Taiwan Province of China",
+                              "Sao Tome and Principe = São Tomé and Príncipe",
+                              "Ivory Coast"	= "Côte d'Ivoire",
+                              "Cape Verde" = "Cabo Verde",
+                              "The Gambia" = "Gambia, The")) %>% 
   group_by(country) %>% 
   #mutate(generaldebt_pr_imf = generaldebt_pr_imf- dplyr::lag(generaldebt_pr_imf, 1)) %>% 
   ungroup() %>% 
@@ -150,7 +180,12 @@ imf_gdp= fread("Datasets/imf_gdpppp.csv", header = T) %>%
                               "Macedonia" = "North Macedonia",
                               "Russia" = "Russian Federation",
                               "Slovakia" = "Slovak Republic",
-                              "United States of America" = "United States")) %>% 
+                              "United States of America" = "United States",
+                              "Taiwan" = "Taiwan Province of China",
+                              "Sao Tome and Principe = São Tomé and Príncipe",
+                              "Ivory Coast"	= "Côte d'Ivoire",
+                              "Cape Verde" = "Cabo Verde",
+                              "The Gambia" = "Gambia, The")) %>% 
   group_by(country) %>% 
   ungroup() %>% 
   left_join(V_dem %>%  select(country, country_text_id) %>%  distinct(), by=c("country")) %>% 
@@ -169,7 +204,12 @@ Economy_Perfomance = QoC_data %>%
          # realgdp_pwt = pwt_rgdp
   )  %>% 
   
-  filter_if(is.double, any_vars(!is.na(.)))  %>%
+  filter_if(is.double, any_vars(!is.na(.)))  %>% 
+  group_by(country_text_id) %>% 
+  filter(year >= 1950) %>% 
+  tidyr::complete(country_text_id, year = 1950:2017, fill = list(NA)) %>% 
+  ungroup() %>% 
+  
   # add IMF source
   left_join(WB_current, by=c("country_text_id", "year")) %>% 
   # left_join(imf_debt, by=c("country_text_id", "year")) %>%  
@@ -192,10 +232,6 @@ Economy_Perfomance = QoC_data %>%
   # mutate_at(vars(matches("_pr_")), funs(./100)) %>% 
   # Contra Deflation 
   mutate_at(vars(starts_with("Inflation")), funs(abs(.))) %>% 
-  group_by(country_text_id) %>% 
-  filter(year >= 1950) %>% 
-  tidyr::complete(country_text_id, year = 1950:2017, fill = list(NA)) %>% 
-  ungroup() %>% 
   
   filter(country_text_id %in% unique(dmx_trade_cluster$country_text_id)) %>% 
   left_join(dmx_trade_cluster %>%  select(-country, -regions), by=c("country_text_id", "year"))  %>%
@@ -327,4 +363,5 @@ fa_data_eco_frame = Economy_Perfomance_IP_norm %>%
   bind_cols(Economy_Perfomance %>%  select(country, country_text_id, year)) %>% 
   select_at(vars(country, country_text_id, year, ends_with("wdi"), ends_with("imf"), ends_with("pwt"))) %>% 
   right_join(NA_frame_oecd, by=c("country_text_id", "year"))
+
 

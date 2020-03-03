@@ -56,6 +56,19 @@ fa_oecd_ds$Structure
 fa_table(fa_oecd_ds)
 
 
+model_plot = semPaths( semPlotModel(factanal(fa_ds_data, 1)), style="mx", 
+          intercepts=F, 
+          residuals=F, 
+          whatLabels="par", 
+          sizeMan = 12,
+          sizeLat= 15,
+          nCharNodes = 10, edge.label.cex = 1.2,
+          DoNotPlot=T)
+
+model_plot$graphAttributes$Nodes$labels["Factor1"] = "PubSafe"
+plot(model_plot)
+
+
 # Reliability
 omega(as.matrix(fa_ds_data), nfactors=1, fm="mle", option="second")
 alpha(as.matrix(fa_ds_data))
@@ -86,5 +99,4 @@ performance_ds %>%
   facet_wrap(variable~.)
 
 
-write.csv(ds_scores, file="Datasets/performance_data/ImputetDatasets/ds_scores.csv", row.names = F, fileEncoding ="UTF-8")
-write.csv(imputed_ds_inv, file="Datasets/performance_data/ImputetDatasets/imputed_ds.csv", row.names = F, fileEncoding ="UTF-8")
+write.csv(performance_ds, file="Datasets/performance_data/ImputedDatasets/performance_ds.csv", row.names = F, fileEncoding ="UTF-8")

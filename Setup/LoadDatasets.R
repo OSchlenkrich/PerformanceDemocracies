@@ -3,6 +3,8 @@
 # VDEM ----
 V_dem_all = fread("unzip -p C:/RTest/V-Dem-CY+Others-v8.zip", encoding = "UTF-8") %>% 
   rename(country = country_name)
+V_dem_all_v9 = fread("unzip -p C:/RTest/V-Dem-CY-Full+Others-v9.zip", encoding = "UTF-8") %>% 
+  rename(country = country_name)
 
 V_dem = fread("unzip -p C:/RTest/V-Dem-CY+Others-v8.zip", encoding = "UTF-8") %>% 
   dplyr::select(country = country_name, country_text_id, year, 

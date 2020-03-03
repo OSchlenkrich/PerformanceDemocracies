@@ -299,7 +299,7 @@ folded_ladder_fun = function(x, plotting = F) {
 }
 
 
-na_interpol2 = function(x,maxgap) {
+na_interpol2 = function(x,maxgap = 2) {
   if (length(na.omit(x)) >= 2) {
     y = na_interpolation(x,  option = "linear", maxgap = maxgap)
     return(y)

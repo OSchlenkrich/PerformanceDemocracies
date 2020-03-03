@@ -9,6 +9,7 @@ if (exists("oecd_air_data") == F) {
   oecd_air_data = get_dataset("AIR_EMISSIONS")
 }
 
+
 oecd_co2 = oecd_ghg_data %>% 
   filter(POL %in% c("CO2", "CH4", "N2O", "GHG"),
          VAR == "TOTAL") %>% 
@@ -16,6 +17,8 @@ oecd_co2 = oecd_ghg_data %>%
   mutate(year = as.numeric(year)) %>% 
   pivot_wider(values_from = obsValue, names_from = POL) %>% 
   rename(CO2_ugdp_oecd = CO2, CH4_ugdp_oecd = CH4, N2O_ugdp_oecd = N2O, GHG_ugdp_oecd = GHG)
+
+
 
 
 oecd_air = oecd_air_data %>% 
@@ -35,7 +38,12 @@ imf_gdp= fread("Datasets/imf_gdpppp.csv", header = T) %>%
                               "Macedonia" = "North Macedonia",
                               "Russia" = "Russian Federation",
                               "Slovakia" = "Slovak Republic",
-                              "United States of America" = "United States")) %>% 
+                              "United States of America" = "United States",
+                              "Taiwan" = "Taiwan Province of China",
+                              "Sao Tome and Principe = São Tomé and Príncipe",
+                              "Ivory Coast"	= "Côte d'Ivoire",
+                              "Cape Verde" = "Cabo Verde",
+                              "The Gambia" = "Gambia, The")) %>% 
   group_by(country) %>% 
   ungroup() %>% 
   left_join(V_dem %>%  select(country, country_text_id) %>%  distinct(), by=c("country")) %>% 
@@ -74,6 +82,9 @@ Environment_Performance = QoC_data %>%
   
   #Senegal has a negative number
   mutate(greenhouse_ugdp_wdi = abs(greenhouse_ugdp_wdi)) %>% 
+  # Iceland's water abstraction rises from 267.8157 to 2551.7594	in 5 years. This does not make sense
+  mutate(water_ugdp_oecd = ifelse(country_text_id == "ISL" & year >= 2010, NA, water_ugdp_oecd)) %>% 
+  
   
   filter(country_text_id %in% unique(dmx_trade_cluster$country_text_id)) %>% 
  
@@ -215,9 +226,11 @@ fa_data_oecd_frame = Environment_Performance_IP_norm %>%
 # WDI
 fa_data_wdi_frame = Environment_Performance_IP_norm %>% 
   bind_cols(Environment_Performance %>%  select(country, country_text_id, year)) %>% 
-  select_at(vars(country, country_text_id, year, ends_with("wdi"))) %>% 
-  rename(environment_wdi_index = greenhouse_ugdp_wdi) %>% 
-  mutate(environment_wdi_index = inverser(environment_wdi_index))
+  select_at(vars(country_text_id, year, ends_with("wdi"))) %>% 
+  rename(air_wdi_env = greenhouse_ugdp_wdi) %>% 
+  mutate(air_wdi_env = inverser(air_wdi_env))
 
+
+write.csv(fa_data_wdi_frame, file="Datasets/performance_data/ImputedDatasets/performance_wdi_env.csv", row.names = F, fileEncoding ="UTF-8")
 
 

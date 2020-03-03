@@ -36,8 +36,7 @@ paran(na.omit(fa_eco_wdi_data), iterations=100, graph=T, cfa=T, centile=95)
 fa.parallel(fa_eco_wdi_data, fm="ml")
 vss(fa_eco_wdi_data, fm="mle", rotate="none")$map %>% 
   round(.,3)
-vss(fa_eco_wdi_data, fm="mle", rotate="none")$vss.stats$SRMR %>% 
-  round(.,3)
+vss(fa_eco_wdi_data, fm="mle", rotate="none")
 
 
 # Exploratory Factor Analysis
@@ -67,7 +66,7 @@ fa_table(fa_wdi_eco)
 
 
 # Reliability
-omega(as.matrix(fa_eco_wdi_data), nfactors=2, fm="mle", option="second")
+omega(as.matrix(fa_eco_wdi_data), nfactors=2, fm="mle")
 
 ## Calculate Factor Scores
 performance_wdi_eco = fa_data_wdi_frame_mice_inv %>% 
@@ -80,7 +79,7 @@ performance_wdi_eco = fa_data_wdi_frame_mice_inv %>%
 samples = c("DEU", "USA", "SWE", "IND", "FIN", "DNK")
 samples = c("DEU", "CHE", "BEL", "SWE")
 samples = c("BRA", "RUS", "CHE", "IND", "DEU")
-samples = c("GRC")
+samples = c("DEU", "TWN")
 
 performance_wdi_eco %>% 
   select_at(vars(country_text_id, year, wealth_eco, productivity_eco)) %>% 

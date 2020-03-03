@@ -308,7 +308,6 @@ make_table_diri = function(..., oddsRatios = F) {
 # my_table = make_table_diri(m1, m2, m3, m4, m5, m6, m7)
 
 # Factor Table
-
 fa_table = function(fa_model) {
   my_omega = omega(fa_model$r, nfactors=fa_model$factors, fm="mle", option="second", plot=F)
   
@@ -363,3 +362,77 @@ fa_table = function(fa_model) {
     sprinkle_print_method("html")
   return(fa_table)
 }
+
+
+
+# Factor Table UMX
+fa_table_umx = function(fa_solution, RMSEA, TLI) {
+  
+  loadings_umx = loadings(fa_solution)
+  
+  
+  dust_df = data.frame(varnames = row.names(loadings_umx),
+                       F1 = unclass(loadings_umx[,1]), 
+                       h2 = (unclass(loadings_umx[,1]^2)), row.names = NULL) %>% 
+    mutate(varnames = gsub("_ord_ivs", "", varnames)) %>%
+    arrange(-.[,2]) %>% 
+    mutate_if(is.numeric, funs(round(.,3)))  %>% 
+    mutate(h2 = as.character(h2)) %>% 
+    mutate_if(is.numeric, funs(ifelse(abs(.) > 0.3, paste("<b>", ., sep=""), .)))
+  
+  
+  dust_sub_df = data.frame(fitmeasure = "Proportion var:", value = sum(loadings_umx^2)/length(loadings_umx)) %>%
+    bind_rows(data.frame(fitmeasure = "RMSEA:", value = RMSEA) ) %>% 
+    bind_rows(data.frame(fitmeasure = "TLI:", value = TLI)) %>%
+    bind_rows(data.frame(fitmeasure = "alpha", value = alpha(fa_solution$data$observed, check.keys=TRUE, n.iter=10)$total$std.alpha)) %>% 
+    mutate_if(is.numeric, funs(round(.,3))) 
+  
+  dust_sub_df = dust_sub_df %>%
+    mutate(X = NA)
+  
+  dust_sub_df = data.frame(dust_sub_df)
+  
+  fa_table = dust(dust_df)  %>% 
+    redust(dust_sub_df, part="foot")  %>%
+    sprinkle_colnames(h2 = "h<sup>2") %>% 
+    #borders
+    sprinkle(rows = 1, border = "top", border_color = "black", border_thickness=2) %>%
+    sprinkle(rows=1, border = "top", part = "foot", border_thickness=2)  %>%
+    # font size
+    sprinkle(font_size = 10, font_size_units = "pt", part="head") %>% 
+    sprinkle(font_size = 9, font_size_units = "pt", part="body") %>% 
+    sprinkle(font_size = 9, font_size_units = "pt", part="foot") %>% 
+    sprinkle_na_string(na_string = "") %>% 
+    sprinkle_na_string(na_string = "", part="foot") %>% 
+    
+    sprinkle_print_method("html")
+  return(fa_table)
+}
+
+
+# Anova Table
+make_anova_table = function(anova_output) {
+  anova_table = data.frame(models = rownames(anova_output), anova_output, row.names = NULL) %>% 
+    bind_cols("sig" = ifelse(anova_output$`Pr(>Chisq)` < 0.001, "***", 
+                             ifelse(anova_output$`Pr(>Chisq)` < 0.01, "**",
+                                    ifelse(anova_output$`Pr(>Chisq)` < 0.05, "*",
+                                           ifelse(anova_output$`Pr(>Chisq)` < 0.1, "+", ""))))
+    ) %>% 
+    mutate_if(is.numeric, funs(round(.,2))) %>%
+    mutate(sig = ifelse(is.na(sig) == F, paste(Pr..Chisq., sig), NA)) %>% 
+    select(-logLik, -Chi.Df, -Pr..Chisq.) %>% 
+    dust() %>%
+    #rename Columns
+    sprinkle_colnames(models = "Model", Df = "df",  Chisq = "Chi-Square", sig = "Sig." ) %>% 
+    sprinkle(border = c("right", "left", "bottom", "top"), part=c("head"))%>%   
+    sprinkle(border = c("right", "left", "bottom","top")) %>% 
+    sprinkle(rows = 1, border = "top",  border_thickness=2) %>%
+    
+    # font size
+    sprinkle(font_size = 10, font_size_units = "pt", part="head") %>% 
+    sprinkle(font_size = 9, font_size_units = "pt", part="body") %>% 
+    # na values
+    sprinkle_na_string(na_string = "") %>% 
+    sprinkle_print_method("html")
+  return(anova_table)  
+} 

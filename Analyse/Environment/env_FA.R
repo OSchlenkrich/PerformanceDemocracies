@@ -36,8 +36,7 @@ fa.parallel(fa_env_data, fm="mle", n.iter=100, quant=0.95, fa="fa",
 
 vss(fa_env_data, fm="mle", rotate="none")$map %>% 
   round(.,3)
-vss(fa_env_data, fm="mle", rotate="none")$vss.stats$SRMR %>% 
-  round(.,3)
+vss(fa_env_data, fm="mle", rotate="none") 
 
 # Factor Analysis
 fa_oecd_env = fa(fa_env_data,2, rotate="oblimin", missing=F, fm="mle", scores = "Bartlett")
@@ -51,12 +50,29 @@ fa_oecd_env$loadings
 
 fa_table(fa_oecd_env)
 
+
+# model_plot = semPaths( semPlotModel(factanal(fa_env_data, 2, rotation = "promax")), 
+#                        intercepts=F, 
+#                        residuals=F, 
+#                        whatLabels="par",
+#                        curvePivot = TRUE,
+#                        sizeMan = 12,
+#                        sizeLat= 15,
+#                        nCharNodes = 10, edge.label.cex = 1.2,
+#                        DoNotPlot=T)
+# 
+# model_plot$graphAttributes$Nodes$labels["Factor1"] = "air_env"
+# model_plot$graphAttributes$Nodes$labels["Factor2"] = "abstraction_env"
+# 
+# plot(model_plot)
+
+
 # Reliability Score
-omega(fa_env_data, 1)
+omega(fa_env_data, 2)
 
 
 ## Calculate Factor Scores
-performance_env_scores = fa_data_oecd_frame_mice_inv %>% 
+performance_env = fa_data_oecd_frame_mice_inv %>% 
   mutate(air_env = scale(fa_oecd_env$scores[,1])[,1],
          abstraction_env = scale(fa_oecd_env$scores[,2])[,1]
          )
@@ -66,9 +82,9 @@ performance_env_scores = fa_data_oecd_frame_mice_inv %>%
 samples = c("CAN","DEU", "USA", "SWE", "IND", "FIN", "DNK")
 samples = c("BRA", "RUS", "CHE", "IND", "DEU", "AUS")
 
-samples = c("BRA", "USA", "CHE", "SWE", "DEU")
+samples = c("ISL", "USA", "CHE", "SWE", "DEU")
 
-performance_env_scores %>% 
+performance_env %>% 
   select_at(vars(country_text_id, year, air_env, abstraction_env)) %>% 
   filter(country_text_id %in% samples) %>% 
   melt(id.vars=c("country_text_id", "year")) %>% 
@@ -81,5 +97,5 @@ performance_env_scores %>%
   facet_wrap(variable~.)
 
 
-write.csv(performance_env_scores, file="Datasets/performance_data/ImputedDatasets/performance_env_scores.csv", row.names = F, fileEncoding ="UTF-8")
+write.csv(performance_env, file="Datasets/performance_data/ImputedDatasets/performance_env.csv", row.names = F, fileEncoding ="UTF-8")
 

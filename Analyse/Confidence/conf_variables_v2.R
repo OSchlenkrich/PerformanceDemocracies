@@ -90,6 +90,8 @@ confidence_IVS = IVS %>%
 
 
 ##### NA-Plots ####
+
+
 # each study year - and + three years
 # vars are not missing since 1990
 confidence_IVS %>%
@@ -126,7 +128,7 @@ confidence_IVS %>%
   geom_bar(stat="identity", width=1) +
   facet_wrap(variable~.) +
   scale_y_continuous(breaks=seq(0,100, 10), limit=c(0,100))  +
-  scale_x_continuous(breaks=seq(1950,2020, 10), limits=c(1990, 2020)) +
+  scale_x_continuous(breaks=seq(1950,2020, 10), limits=c(1980, 2020)) +
   theme_bw()  +
   theme(axis.text.x = element_text(angle=90), legend.position = "bottom") +
   ggtitle("Missings in Democracy Profile Sample - IVS (WVS/EVS)")
@@ -261,8 +263,9 @@ confidence_IVS_norm = confidence_IVS %>%
 fa_data_conf_frame = confidence_IVS_norm %>% 
   select_at(vars(ends_with("_ivs"))) %>% 
   mutate(non_na_perc = rowSums(is.na(.)==F)/dim(.)[2]) %>% 
-  bind_cols(confidence_IVS %>%  dplyr::select(survey, country, country_text_id, weights, year_study)) %>% 
-  dplyr::select(survey, country, country_text_id, weights, year_study, everything()) %>% 
-  filter(year_study >= 1990)
+  bind_cols(confidence_IVS %>%  dplyr::select(survey, country, country_text_id, weights, year_study, classification_core)) %>% 
+  filter(classification_core == "Deficient Democracy" |  classification_core == "Working Democracy") %>% 
+  dplyr::select(survey, country, country_text_id, weights, year_study, everything(), -classification_core) %>% 
+  filter(year_study >= 1990) 
 
 
