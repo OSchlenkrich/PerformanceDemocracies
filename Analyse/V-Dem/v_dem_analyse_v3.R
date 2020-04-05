@@ -1164,7 +1164,7 @@ c_disagree = vdem_ds %>%
   na.omit()  %>%
   filter(name %in% vartype$name ) %>%
   filter(name %in% (length_varname %>% filter(codetype  == "C") %>% pull(varname))) %>% 
-  filter(name %!in% multiplechoice_values )%>% 
+  filter(name %!in% multiplechoice_values ) %>% 
   group_by(name, country_text_id, year) %>% 
   summarise(disagree = sd(value))
 
@@ -1173,9 +1173,10 @@ c_disagree %>%
   group_by(year) %>% 
   summarise(disagree = mean(disagree, na.rm = T)) %>% 
   ggplot(aes(x=year, y=disagree)) +
-  geom_line() +
+  geom_line(size=1) +
   theme(legend.position = "none") +
   scale_x_continuous(breaks=seq(1900,2020, 20)) +
+  xlab("") +
   theme_bw()  
 
 c_disagree %>% 
@@ -1230,6 +1231,40 @@ c_disagree %>%
   theme(legend.position = "none") +
   theme_bw() +
   ggtitle("Only Indicators with 5 answer categories")
+
+
+# disareement between historic and other coder types
+
+hc_vs_other = year_type_df %>%
+  #filter(name == "v2csantimv") %>% 
+  filter(name %in% vartype$name ) %>%
+  filter(name %in% (length_varname %>% filter(codetype  == "C") %>% pull(varname))) %>% 
+  filter(name %!in% multiplechoice_values ) %>% 
+  mutate(CC_coder = ifelse(coder_type == "CC", "CC", NA),
+         #year = floor(year/10) * 10
+         ) %>%
+  #na.omit() %>% 
+  group_by(name, year, country_text_id, coder_type) %>% 
+  mutate(mean_CC = mean(value, na.rm=T),
+         mean_CC = ifelse(CC_coder == "CC", mean_CC, NA)) %>% 
+  group_by(name, year, country_text_id)  %>% 
+  mutate(mean_CC = mean(mean_CC, na.rm=T)) %>% 
+  ungroup() %>% 
+  mutate(difference = value - mean_CC) %>% 
+  group_by(name, year, country_text_id, coder_type) %>% 
+  summarise(difference_mean = mean(difference, na.rm=T)) 
+  
+hc_vs_other %>% 
+  group_by(year, coder_type ) %>% 
+  summarise(mean_value = mean(difference_mean, na.rm=T)) %>%  
+  ggplot(aes(x=year, y=mean_value, col=coder_type )) + 
+  geom_line() +
+  geom_point(aes(shape=coder_type ), size=1.7) +
+  scale_y_continuous(breaks=seq(0,4,0.2)) +
+  scale_color_grey(start = 0.1, end = 0.7) +
+  scale_x_continuous(breaks=seq(1900,2020, 20)) +
+  xlab("") +
+  theme_bw()
 
 
 # Regression Setup ####
@@ -2102,6 +2137,7 @@ vdem_ds %>%
   geom_point() +
   xlab("") +
   theme_bw() +
+  scale_color_grey() +
   theme(legend.position = "none")
 
 vdem_ds %>% 

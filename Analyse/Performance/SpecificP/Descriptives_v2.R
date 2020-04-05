@@ -210,6 +210,7 @@ development_plot = function(variable, title, OECD=F, position="top") {
     geom_line(size=1) +
     geom_point() +
     geom_errorbar() +
+    geom_rect(xmin = 2007, xmax=2008, ymin=100, ymax=0, alpha=0.01) +
     stat_cor(aes(label = ..r.label..), label.y.npc= position) +
     ylim(0,100) +
     xlab("") +
@@ -315,6 +316,29 @@ performance_all %>%
   theme_bw() +
   theme(axis.text.x = element_text(angle=90), legend.position = "none") +
   ggtitle("Missings in Democracy Profile Sample")
+
+# OECD sample
+performance_all  %>% 
+  left_join(OECD_member, by="country_text_id") %>% 
+  filter( OECD_founder == 1) %>% 
+  group_by(year) %>% 
+  select_at(vars(ends_with("_eco"), 
+                 ends_with("_env"), 
+                 ends_with("_ga"), 
+                 ends_with("_soc"), 
+                 ends_with("_ds"), 
+                 ends_with("_pc"))) %>% 
+  summarise_all(funs(1-pMiss_01(.))) %>% 
+  melt(id.vars="year") %>% 
+  ggplot(aes(x=year, y=value, fill=variable)) +
+  geom_bar(stat="identity", width=1) +
+  facet_wrap(variable~.) +
+  scale_y_continuous(name=NULL, breaks=seq(0,1, 0.25), limit=c(0,1), labels=percent)  +
+  scale_x_continuous(name=NULL, breaks=seq(1950,2020, 10)) + 
+  scale_fill_grey(start = 0.4, end = 0.4) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle=90), legend.position = "none") +
+  ggtitle("Missings in Democracy Profile Sample (OECD founder)")
 
 
 # ECONOMY ####

@@ -12,7 +12,7 @@ fa_data_conf_inv = fa_data_conf_frame %>%
   mutate_at(vars(starts_with("conf")), funs(max(., na.rm=T) - .)) %>% 
   select_at(vars(survey, country, country_text_id, weights, year_study, starts_with("conf")))
 
-### KOM-Test: Remove Pension_t_GI_num_soc
+### KOM-Test
 dim(fa_data_conf_inv)
 
 KMO(fa_data_conf_inv %>% 
@@ -22,9 +22,9 @@ corrplot(cor(fa_data_conf_inv %>%
            select_at(vars(starts_with("conf"))) , use="pairwise", method="spearman"))
 
 ### Create Dataset
-
+# exclude confidence in judiciary due to better RMSEA
 fa_dataset = fa_data_conf_inv %>% 
-  select_at(vars(starts_with("conf"))) %>% 
+  select_at(vars(starts_with("conf"), -conf_judiciary_ord_ivs)) %>% 
   rename_all(funs(gsub("_ord_ivs", "", .))) %>% 
   as.data.frame()
 fa_dataset[] <- lapply(fa_dataset, function(x) { attributes(x) <- NULL; x }) 

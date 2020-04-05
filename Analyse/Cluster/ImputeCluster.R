@@ -165,7 +165,6 @@ imputed_trade %>%
   geom_errorbar(aes(ymin=lower, ymax=upper))
 
 
-
 # Create Dataset to Cluster: Average over Imputations and Create Indices
 dmx_data_trade = imputed_trade %>% 
   select_at(vars(country_text_id, year_0, ends_with("trade_off"))) %>% 
@@ -185,7 +184,9 @@ dmx_data_trade = imputed_trade %>%
     rule_settlement_inst_index_trade_off = (rule_settlement_freedom_trade_off * rule_settlement_equality_trade_off * rule_settlement_control_trade_off)^(1/3),
     total_index_trade_off = (freedom_dim_index_trade_off * equality_dim_index_trade_off * control_dim_index_trade_off)^(1/3)
   ) %>% 
-  dplyr::select_at(vars(country, country_text_id, year, regions, classification_core, na_count, matches("dim_index_trade_off"))) %>% 
-  rename(freedom = freedom_dim_index_trade_off,
-         equality = equality_dim_index_trade_off,
-         control = control_dim_index_trade_off) 
+  dplyr::select_at(vars(country, country_text_id, year, regions, classification_core, na_count, matches("trade_off"))) 
+  # rename(freedom = freedom_dim_index_trade_off,
+  #        equality = equality_dim_index_trade_off,
+  #        control = control_dim_index_trade_off) 
+
+write.csv(dmx_data_trade, file="Datasets/performance_data/ImputedDatasets/dmx_data_trade.csv", row.names = F, fileEncoding ="UTF-8")

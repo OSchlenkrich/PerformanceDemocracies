@@ -39,10 +39,15 @@ performance_pc = fread("Datasets/performance_data/ImputedDatasets/performance_pc
 
 # Combine all Datasets ####
 
+
 performance_all = V_dem %>%
   select(country, country_text_id, year) %>%
   filter(year >= 1950) %>%
   filter(country_text_id %in% unique(dmx_trade_cluster$country_text_id)) %>%
+  # include regions and classfications
+  left_join(dmx_data %>%
+              select(country_text_id, year, regions, classification_core, classification_context), by=c("country_text_id", "year")) %>%
+  
   left_join(performance_eco %>%
               select(country_text_id, year, wealth_eco, productivity_eco), by=c("country_text_id", "year")) %>%
   left_join(performance_env %>%

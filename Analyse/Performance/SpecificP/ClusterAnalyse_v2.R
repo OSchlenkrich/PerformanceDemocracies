@@ -15,7 +15,22 @@ localMaxima <- function(x) {
   }
   y
 }
-
+which.peaks <- function(x,partial=TRUE,decreasing=FALSE){
+  if (decreasing){
+    if (partial){
+      which(diff(c(FALSE,diff(x)>0,TRUE))>0)
+    }else {
+      which(diff(diff(x)>0)>0)+1
+    }
+  }else {
+    if (partial){
+      which(diff(c(TRUE,diff(x)>=0,FALSE))<0)
+    }else {
+      which(diff(diff(x)>=0)<0)+1
+    }
+  }
+}
+which.peaks(x, decreasing = T)
 
 scale_this <- function(x){
   (x - mean(x, na.rm=TRUE)) / sd(x, na.rm=TRUE)
@@ -98,7 +113,7 @@ make_fit_indices = function(method="kmeans", nruns = 10) {
     fit_table$PH_fi[k-1] = cl_stats$pearsongamma
     # minimum value of index = best cluster solution 
     #fit_table$cdbw_fi[k-1] = cdbw(cluster_data, cluster_solution)$cdbw
-    #fit_table$DB2_fi[k-1] = index.DB(cluster_data, cluster_solution)$DB
+   # fit_table$DB2_fi[k-1] = index.DB(cluster_data, cluster_solution)$DB
     
   }
   return(fit_table) 
@@ -128,8 +143,12 @@ plot_countries_overtime = function(No_countries = 5) {
   
   levels(plotted_country$country_text_id) <- gsub(" ", "\n", levels(plotted_country$country_text_id))
   
+  gap_years = unique(plotted_country$year)[order(unique(plotted_country$year))]
+  
+  gap_years = gap_years[2] - gap_years[1]
+  
   p1 = ggplot(plotted_country, aes(x=year,  y=y, fill=value)) + 
-    geom_rect(aes(xmin=year, xmax = year + 10, ymin=0, ymax=1)) + 
+    geom_rect(aes(xmin=year, xmax = year + gap_years, ymin=0, ymax=1)) + 
     facet_wrap(country_text_id~. , nrow=length(selected_countries), strip.position="left") + 
     theme_bw() +
     scale_fill_brewer(name="Cluster", type="qual", palette="Paired") +
@@ -149,9 +168,9 @@ performance_cluster_data = performance_all %>%
   filter(year >= 1990) %>% 
   select(country_text_id, year, 
          wealth_eco,
-         #productivity_eco,
+         productivity_eco,
          air_env,
-         #abstraction_env,
+         abstraction_env,
          #GA_ccp_ga,
          eco_inequal_soc,
          soc_inequal_soc,
@@ -222,9 +241,10 @@ fit_table_pam %>%
   sprinkle(cols = c(2,3,4), border = "left", border_color = "black", part=c("body")) %>%
   
   # LocalMaxima = BOLD
-  sprinkle(rows = localMaxima(fit_table_pam$CH_fi), cols=2, bold=T) %>%
-  sprinkle(rows = localMaxima(fit_table_pam$PH_fi), cols=3, bold=T) %>%
-  sprinkle(rows = localMaxima(fit_table_pam$ASW_fi), cols=4, bold=T) %>%
+  sprinkle(rows = which.peaks(fit_table_pam$CH_fi), cols=2, bold=T) %>%
+  #sprinkle(rows = which.peaks(fit_table_pam$DB2_fi, decreasing = T), cols=3, bold=T) %>%
+  sprinkle(rows = which.peaks(fit_table_pam$PH_fi), cols=3, bold=T) %>% 
+  sprinkle(rows = which.peaks(fit_table_pam$ASW_fi), cols=4, bold=T) %>%
 
   # font size
   sprinkle(font_size = 11, font_size_units = "pt", part="head") %>% 
@@ -325,11 +345,6 @@ p4_2 = performance_data_noNAS %>%
 grid.arrange(p4_1, p4_2)
 
 
-test = performance_data_noNAS %>%
-  mutate(cluster = pam_4$clustering)
-
-
-
 # 5 Cluster Solution ####
 
 pam_5 = pam(cluster_data, 5)
@@ -367,10 +382,6 @@ p5_2 = performance_data_noNAS %>%
   ggtitle("Boxplot")
 
 grid.arrange(p5_1, p5_2)
-
-
-test = performance_data_noNAS %>%
-  mutate(cluster = pam_5$clustering)
 
 
 
@@ -414,9 +425,6 @@ p7_2 = performance_data_noNAS %>%
 grid.arrange(p7_1, p7_2)
 
 
-
-test = performance_data_noNAS %>%
-  mutate(cluster = pam_7$clustering)
 
 # 9 Cluster Solution ####
 
@@ -473,20 +481,22 @@ complete_cluster %>%
 
 # Development over Time ####
 
-cluster_time = performance_data_noNAS %>%
-  mutate(cluster5 = as.factor(pam_5$clustering),
-         cluster5 = fct_recode(cluster5,
-            "acepsw"=  "1",
-            "ACEPSW" = "4",
-            "ACePsW" = "3",
-            "high equality" = "2",
-            "aCepsw" = "5"
-         )) 
+pam_time = pam(cluster_data, 8)
 
-sample = c("NZL", "GBR", "USA", "SWE", "CHE", "DEU", "BRA")
+
+cluster_time = performance_data_noNAS %>%
+  mutate(cluster5 = as.factor(pam_time$clustering),
+         # cluster5 = fct_recode(cluster5,
+         #    "acepsw"=  "1",
+         #    "ACEPSW" = "4",
+         #    "ACePsW" = "3",
+         #    "high equality" = "2",
+         #    "aCepsw" = "5")
+         ) 
+
+sample = c("GBR", "USA", "SWE", "CHE", "DEU", "GRC", "BRA", "CZE")
 plot_countries_overtime(sample)
 plot_countries_overtime(5)
-
 
 
 plot_types_N = cluster_time %>%
