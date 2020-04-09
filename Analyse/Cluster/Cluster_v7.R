@@ -6,7 +6,8 @@ source("Setup/LoadDatasets.R")
 library(fpc)
 library(fclust)
 library(clusterSim)
-library(pixiedust)
+library(tidyr)
+
 
 
 # Imputation ####
@@ -238,365 +239,340 @@ cluster_data = dmx_data_trade %>%
   ungroup() %>% 
   select(mean_dim, freedom, equality, control) %>% 
   mutate_all(funs(uv = (. - min(.))/(max(.)-min(.)))) %>% 
-  mutate(mean_dim = mean_dim * 0.5) %>% 
+  mutate(mean_dim_uv = mean_dim_uv * 0.5) %>% 
   select_at(vars(ends_with("_uv"))) %>% 
-  sample_frac(0.33)
+  select(-mean_dim_uv)
 
 cluster_data_dist = dist(cluster_data, method = "euclidean")
 
 
-# MDS ####
-library(smacof)
+# Cluster Benchmark ####
 
-mds_obj = mds(cluster_data_dist)
-plot(mds_obj, plot.type = "confplot")
-permtest(mds_obj, nrep=100)
+interface_FKM = function(data, k, method) {
+  fanny_results = FKM(X = data, k, maxit=1400, stand=0, RS=2)
+  hc_classes = as.integer(fanny_results$clus[,1])
+  print(fanny_results$iter)
+  #hc_classes = fanny_results$clustering
+  
+  cluster_sol = matrix(hc_classes, nrow=length(hc_classes), ncol=k)
+  
+  clusterlist =list()
+  
+  for (kk in 1:k) {
+    clusterlist[[kk]] = if_else(cluster_sol[,kk]==kk, T, F)
+  }
+  
+  make_list = list(
+    result = hc_classes,
+    nc=k,
+    clusterlist = clusterlist, 
+    partition=hc_classes,
+    clustermethod="FKM"
+  )
+  
+  return(make_list)
+}
+
+interface_FKMmed = function(data, k, method) {
+
+  fanny_results = FKM.med(X = data, k, maxit=30, stand=0, RS=2)
+  hc_classes = as.integer(fanny_results$clus[,1])
+  print(fanny_results$iter)
+  #hc_classes = fanny_results$clustering
+  
+  cluster_sol = matrix(hc_classes, nrow=length(hc_classes), ncol=k)
+  
+  clusterlist =list()
+  
+  for (kk in 1:k) {
+    clusterlist[[kk]] = if_else(cluster_sol[,kk]==kk, T, F)
+  }
+  
+  make_list = list(
+    result = hc_classes,
+    nc=k,
+    clusterlist = clusterlist, 
+    partition=hc_classes,
+    clustermethod="FKMmed"
+  )
+  
+  return(make_list)
+}
+
 
 clustermethodpars <- list()
+clustermethodpars[[5]] <- list()
+clustermethodpars[[5]]$method <- "average"
 clustermethodpars[[1]] <- list()
-clustermethodpars[[1]]$ads <- "euclidean"
-test = clusterbenchstats(cluster_data, G=3:10, 
+clustermethodpars[[1]]$method <- ""
+clustermethodpars[[2]] <- list()
+clustermethodpars[[2]]$method <- ""
+
+distmethod <- c(F,F,F,F,F)
+
+methodname <- c("FKM","FKM.med", "kmeans", "pam", "average")
+set.seed(1234)
+my_data = cluster_data %>%  sample_frac(0.66)
+benchmark_results = clusterbenchstats(my_data, G=2:10, 
                          diss = F,
-                  clustermethod =  "pamkCBI",
-                  clustermethodpars = "",
+                  clustermethod =  c("interface_FKM", "interface_FKMmed", "kmeansCBI", "pamkCBI", "hclustCBI"),
+                  clustermethodpars = clustermethodpars,
+                  distmethod = distmethod,
+                  methodnames = methodname,
                   scaling=F,
-                  multicore = F,
-                  cores = 5,
-                  nnruns = 10,
-                  fnruns = 10,
-                  avenruns = 10,
-                  kmruns = 10,
-                  trace = T)
-test$qstat
-print(test$qstat,aggregate=TRUE,weights=c(1,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0))
-test$qstat$statistics[5]
+                  multicore = T,
+                  cores = 10,
+                  nnruns = 50,
+                  fnruns = 00,
+                  avenruns = 00,
+                  kmruns = 50,
+                  useallg = F)
 
-test$qstat[[1]]
-test$qstat[[2]]
-plot(test$qstat)
+# save(benchmark_results, file = "Analyse/Cluster/RObjects/benchmark_results_nomean.Rdata")
+# write.csv(my_data, "Analyse/Cluster/RObjects//bench_data_nomean.csv", fileEncoding = "UTF-8")
 
-# Cluster Analysis ####
+allG_calibrated = cgrestandard(benchmark_results$stat, benchmark_results$sim, 2:10,percentage=F,
+             useallmethods = T, useallg = T, benchmark_results$cm$othernc)
 
-fit_table_fkmeans = make_fit_indices(data = cluster_data, 
-                                   method="fkmeans", 
-                                   nruns = 10, 
-                                   dist_measure = "euclidean")
+print(allG_calibrated,
+      aggregate=TRUE,
+      weights=c(1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0))
 
-fit_table_fanny = make_fit_indices(data = cluster_data, 
-                                   method="fanny", 
-                                   nruns = 10, 
-                                   dist_measure = "euclidean")
-fit_table_clara = make_fit_indices(data = cluster_data, 
-                                   method="clara", 
-                                   nruns = 10, 
-                                   dist_measure = "euclidean")
+# Extract Fits ####
+# Use average-within % pearson gamma
+poled_results = benchmark_results
+for (i in 1:5) {
+  for (ii in 2:10) {
+    poled_results$sstat[[i]][[ii]]$sindex = poled_results$sstat[[i]][[ii]]$sindex * -1
+  }
+}
 
+aggregated_indizes = print(poled_results$sstat,
+                           aggregate=TRUE,
+                           weights=c(1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0))
 
-#Pixiedust Table
-table_model = fit_table_fkmeans
-table_model %>% 
-  pivot_longer(cols=ends_with("_fi")) %>%
-  mutate(value = round(value, 3)) %>% 
-  mutate(name = gsub("_fi","",name)) %>% 
-  pivot_wider(names_from = name, values_from = value) %>% 
-  select(-method) %>% 
-  dust() %>% 
-  sprinkle(rows = c(1), border = "top", border_color = "black", part=c("body"), border_thickness = 2) %>%
-  sprinkle(cols = c(2,3,4), border = "left", border_color = "black", part=c("head")) %>%
-  sprinkle(cols = c(2,3,4), border = "left", border_color = "black", part=c("body")) %>%
-  
-  # LocalMaxima = BOLD
-  sprinkle(rows = which.peaks(table_model$CH_fi), cols=2, bold=T) %>%
-  sprinkle(rows = which.peaks(table_model$DB2_fi, decreasing = T), cols=3, bold=T) %>%
-  sprinkle(rows = which.peaks(table_model$pG_fi), cols=4, bold=T) %>% 
-  sprinkle(rows = which.peaks(table_model$DI1_fi), cols=5, bold=T) %>%
-  sprinkle(rows = which.peaks(table_model$DI2_fi), cols=6, bold=T) %>%
-  sprinkle(rows = which.peaks(table_model$ASW_fi), cols=7, bold=T) %>%
-  sprinkle(rows = which.peaks(table_model$cdbw_fi, decreasing = T), cols=8, bold=T) %>%
-  # sprinkle(rows = which.peaks(table_model$PE_fi, decreasing = T), cols=9, bold=T) %>%
-  # sprinkle(rows = which.peaks(table_model$XB_fi, decreasing = T), cols=10, bold=T) %>%
-  
-  # font size
-  sprinkle(font_size = 11, font_size_units = "pt", part="head") %>% 
-  sprinkle(font_size = 10, font_size_units = "pt", part="body") %>% 
-  # NAs
-  sprinkle_na_string(na_string = "") %>% 
-  sprinkle_print_method("html")
+bench_results_df = as.data.frame(do.call(rbind, poled_results$sstat[[1]])) %>% 
+  mutate_all(funs(unlist)) %>% 
+  mutate(method = "FKM",
+         cluster = 1:10,
+         nr = "Solution",
+         aggregate = c(NA, unlist(aggregated_indizes[1,-1]))) %>% 
+  bind_rows(as.data.frame(do.call(rbind, poled_results$sstat[[2]])) %>% 
+              mutate_all(funs(unlist)) %>% 
+              mutate(method = "FKM.med",
+                     cluster = 1:10,
+                     nr = "Solution",
+                     aggregate = c(NA, unlist(aggregated_indizes[2,-1])))) %>% 
+  bind_rows(as.data.frame(do.call(rbind, poled_results$sstat[[3]])) %>% 
+              mutate_all(funs(unlist)) %>% 
+              mutate(method = "kmeans",
+                     cluster = 1:10,
+                     nr = "Solution",
+                     aggregate = c(NA, unlist(aggregated_indizes[3,-1]))) ) %>% 
+  bind_rows(as.data.frame(do.call(rbind, poled_results$sstat[[4]])) %>% 
+              mutate_all(funs(unlist)) %>% 
+              mutate(method = "pam",
+                     cluster = 1:10,
+                     nr = "Solution",
+                     aggregate = c(NA, unlist(aggregated_indizes[4,-1]))) ) %>% 
+  bind_rows(as.data.frame(do.call(rbind, poled_results$sstat[[5]])) %>% 
+              mutate_all(funs(unlist)) %>% 
+              mutate(method = "average",
+                     cluster = 1:10,
+                     nr = "Solution",
+                     aggregate = c(NA, unlist(aggregated_indizes[5,-1]))) ) %>% 
+  na.omit()
 
-# Lineplot
-fit_table_fkmed %>% 
-  pivot_longer(cols=ends_with("_fi")) %>%
-  mutate(name = gsub("_fi","",name)) %>% 
-  ggplot(aes(x=clusters, y=value, grp=name)) +
-  geom_point() +
+# Extract Simulation ####
+sim_df = as.data.frame(do.call(rbind, benchmark_results$sim$km)) %>% 
+  mutate(cluster = rep(2:10, each = 50),
+         nr = rep(1:50, 9),
+         nr = as.factor(nr),
+         method = "simkm") %>% 
+  bind_rows(as.data.frame(do.call(rbind, benchmark_results$sim$nn)) %>% 
+              mutate(cluster = rep(2:10, each = 50),
+                     nr = rep(1:50, 9),
+                     nr = as.factor(nr),
+                     method = "simnn"))
+
+# Analyse
+a1 = bench_results_df %>% 
+  #filter(method!="average", method!="kmeans", method!="pam") %>% 
+  ggplot(aes(x=cluster, y=aggregate, col=method, shape=method)) +
   geom_line() +
-  scale_x_continuous(breaks=seq(1,100, 1)) +
-  facet_wrap(name ~ ., scales="free_y") +
+  geom_point() +
+  scale_x_continuous(breaks = seq(2,10,1)) +
+  geom_hline(yintercept = 0) +
+  theme_bw()
+a2 = bench_results_df %>% 
+  #filter(method!="average", method!="kmeans", method!="pam") %>% 
+  ggplot(aes(x=cluster, y=avewithin, col=method, shape=method)) +
+  geom_line() +
+  geom_point() +
+  scale_x_continuous(breaks = seq(2,10,1)) +
+  geom_hline(yintercept = 0) +
+  theme_bw()
+a3 = bench_results_df %>% 
+  #filter(method!="average", method!="kmeans", method!="pam") %>% 
+  ggplot(aes(x=cluster, y=pearsongamma, col=method, shape=method)) +
+  geom_line() +
+  geom_point() +
+  scale_x_continuous(breaks = seq(2,10,1)) +
+  geom_hline(yintercept = 0) +
+  theme_bw()
+a4 = bench_results_df %>% 
+  #filter(method!="average", method!="kmeans", method!="pam") %>% 
+  ggplot(aes(x=cluster, y=asw, col=method, shape=method)) +
+  geom_line() +
+  geom_point() +
+  scale_x_continuous(breaks = seq(2,10,1)) +
+  geom_hline(yintercept = 0) +
   theme_bw()
 
-
-fanny7 = fanny(cluster_data_dist, k = 6, memb.exp=1.5)
-fkmeans7 = FKM(cluster_data, RS=10, k=3)
-clara7 = clara(cluster_data, k = 3)
-clara7 = pam(cluster_data, k = 5)
-
-cluster = data.frame(cluster = as.factor(fkmeans7$clus[,1]))
-cluster = data.frame(cluster = as.factor(fanny7$clustering))
-cluster = data.frame(cluster = as.factor(clara7$clustering))
-
-cluster.stats(d = cluster_data_dist, clustering = as.numeric(cluster$cluster))
-
-data.frame(predict(prcomp(cluster_data))[,1:2]) %>% 
-  bind_cols(cluster) %>% 
-  ggplot(aes(x=PC1, y=PC2, col=cluster, shape=cluster)) +
-  geom_point() 
+grid.arrange(a1,a2,a3,a4)
 
 
-test = dmx_data_trade %>%
-  select(country, year,
-         freedom = freedom_dim_index_trade_off,
-         equality = equality_dim_index_trade_off,
-         control = control_dim_index_trade_off) %>%
-  bind_cols(cluster) %>% 
-  bind_cols(data.frame(fanny7$membership))
+cboot_FKM_3 <- clusterboot(my_data,B=100,bootmethod=
+                          c("boot"),clustermethod=interface_FKM,
+                        k=3, seed=15555)
+print(cboot_FKM_3)
+# save(cboot_FKM_3, file = "Analyse/Cluster/RObjects/cboot_FKM_3_nomean.Rdata")
 
 
-dmx_data_trade %>%
-  bind_cols(data.frame(mds_obj$conf)) %>% 
-  mutate(cluster = as.factor(cluster)) %>%
-  mutate(label = paste(country_text_id, "\n",cluster)) %>%
-  rename("Dimension 1" = D1, "Dimension 2" = D2) %>% 
-  ggplot(aes(x=`Dimension 1`, y=`Dimension 2`, label=label, col=cluster, labels=label)) +
-  geom_text(size=3) +
-  #scale_color_grey(start = 0, end = 0.65) +
-  theme_bw() +
-  theme(legend.position = "none") +
-  ggtitle("MDS-Plot with Clusters")
+cboot_FKMmed_3 <- clusterboot(my_data,B=100,bootmethod=
+                          c("boot"),clustermethod=interface_FKMmed,
+                        distances = F,
+                        k=3, seed=15555)
+print(cboot_FKMmed_3)
+# save(cboot_FKMmed_3, file = "Analyse/Cluster/RObjects/cboot_FKMmed_3_nomean.Rdata")
 
 
-dmx_data_trade %>%
+cboot_FKMmed_6 <- clusterboot(my_data,B=100,bootmethod=
+                          c("boot"),clustermethod=interface_FKMmed,
+                        distances = F,
+                        k=6, seed=15555)
+print(cboot_FKMmed_6)
+# save(cboot_FKMmed_6, file = "Analyse/Cluster/RObjects/cboot_FKMmed_6_nomean.Rdata")
+
+# Cluster the Whole Dataset ####
+FKM_3 = FKM(X = cluster_data, 3, maxit=1400, stand=0, RS=2)
+FKMmed_3 = FKM.med(X = cluster_data, 3, maxit=30, stand=0, RS=2, index="SIL.F")
+FKMmed_6 = FKM.med(X = cluster_data, 6, maxit=30, stand=0, RS=2, index="SIL.F")
+
+# save(FKM_3, file = "Analyse/Cluster/RObjects/FKM_3_nomean.Rdata")
+# save(FKMmed_3, file = "Analyse/Cluster/RObjects/FKMmed_3_nomean.Rdata")
+# save(FKMmed_6, file = "Analyse/Cluster/RObjects/FKMmed_6_nomean.Rdata")
+
+
+# Visualize Cluster Solutions ####
+
+FKM_3_plot = data.frame(predict(prcomp(cluster_data))[,1:2]) %>%  
+  bind_cols(data.frame(Cluster = FKM_3$clus[,1])) %>% 
+  ggplot(aes(x=PC1, y=PC2, col=as.factor(Cluster))) +
+  geom_point() +
+  ggtitle("PAM 3")
+
+fkmmed_3_plot = data.frame(predict(prcomp(cluster_data))[,1:2]) %>% 
+  bind_cols(data.frame(Cluster = FKMmed_3$clus[,1])) %>% 
+  ggplot(aes(x=PC1, y=PC2, col=as.factor(Cluster))) +
+  geom_point() +
+  ggtitle("FKMmed 3")
+
+fkmmed_6_plot = data.frame(predict(prcomp(cluster_data))[,1:2]) %>% 
+  bind_cols(data.frame(Cluster = FKMmed_6$clus[,1])) %>% 
+  ggplot(aes(x=PC1, y=PC2, col=as.factor(Cluster))) +
+  geom_point() +
+  ggtitle("FKMmed 6")
+
+grid.arrange(FKM_3_plot, fkmmed_3_plot, fkmmed_6_plot)
+
+# With Clusterboot
+data.frame(predict(prcomp(my_data))[,1:2]) %>% 
+  bind_cols(data.frame(Cluster = cboot_FKMmed_6$partition)) %>% 
+  ggplot(aes(x=PC1, y=PC2, col=as.factor(Cluster))) +
+  geom_point() +
+  ggtitle("FKMmed 6")
+
+#
+
+
+FKM_3_dim_plot = dmx_data_trade %>%
   rename(freedom = freedom_dim_index_trade_off,
          equality = equality_dim_index_trade_off,
          control = control_dim_index_trade_off) %>%
-  bind_cols(cluster) %>% 
+  bind_cols(data.frame(Cluster = as.factor(FKM_3$clus[,1]))) %>% 
   pivot_longer(cols=c("freedom", "equality", "control")) %>% 
   mutate(name = fct_relevel(name, "freedom","equality","control")) %>% 
-  ggplot(aes(x=cluster, y=value, fill=name))+
-  geom_boxplot()
+  ggplot(aes(x=Cluster, y=value, fill=name))+
+  geom_boxplot() +
+  theme_bw()
 
-
-
-###
-library(mvtnorm)
-
-resultsfinal = data.frame()
-for (i in 1:100) {
-  print(paste("iter", i))
-
-  sample = rmvnorm(dim(cluster_data)[1], mean = colMeans(cluster_data), sigma = cov(cluster_data))
-  results = data.frame(method = "clara", clusters = 2:10, ASW_fi = rep(NA, 9))
-  #results = make_fit_indices(data = sample, method="clara", nruns = 10)
-  for (k in 2:10) {
-    clara_obj = clara(sample, k=k, pamLike=T, samples=1000, metric="euclidean")
-    results$ASW_fi[k-1] = clara_obj$silinfo$avg.width
-  }
-  results = results %>% 
-    cbind(data.frame(sample = i))
-  
-  resultsfinal = resultsfinal %>% 
-    bind_rows(results)
-}
-
-results = data.frame(method = "clara", clusters = 2:10, ASW_fi = rep(NA, 9))
-#results = make_fit_indices(data = sample, method="clara", nruns = 10)
-for (k in 2:10) {
-  clara_obj = clara(cluster_data, k=k, pamLike=T, samples=1000, metric="euclidean")
-  results$ASW_fi[k-1] = clara_obj$silinfo$avg.width
-}
-
-#fit_table_fkmed = make_fit_indices(data = cluster_data, method="clara", nruns = 10)
-
-
-resultsfinal %>% 
-  group_by(clusters) %>% 
-  summarise(median = quantile(ASW_fi, probs=0.5),
-            lower = quantile(ASW_fi, probs=0.025),
-            higher = quantile(ASW_fi, probs=0.975),
-  ) %>% 
-  ggplot(aes(x=clusters, y=median, ymin=lower, ymax=higher)) +
-  geom_line() +
-  geom_errorbar() +
-  geom_line(inherit.aes = F, data=results, aes(x=clusters, y=ASW_fi), color="red")
-
-resultsfinal %>% 
-  ggplot(aes(x=clusters, y=ASW_fi, grp=as.factor(sample))) +
-  geom_line() +
-  geom_line(inherit.aes = F, data=results, aes(x=clusters, y=ASW_fi), color="red")
-
-fkm_2 = FKM.med(cluster_data, RS =1, 2)
-fkm_5 = FKM.med(cluster_data, RS =1, 5)
-fkm_6 = FKM.med(cluster_data, RS =1, 6)
-fkm_8 = clara(cluster_data, k=3, pamLike=T, samples=1000, metric="euclidean")
-fkm_6 = pam(cluster_data, RS =1, 4)
-
-# fkm_2 = pam(cluster_data, 4)
-dmx_data_trade %>%
-  mutate(cluster = as.factor(fkm_8$clustering)) %>% 
+fkmmed_3_dim_plot = dmx_data_trade %>%
+  rename(freedom = freedom_dim_index_trade_off,
+         equality = equality_dim_index_trade_off,
+         control = control_dim_index_trade_off) %>%
+  bind_cols(data.frame(Cluster = as.factor(FKMmed_3$clus[,1]))) %>% 
   pivot_longer(cols=c("freedom", "equality", "control")) %>% 
   mutate(name = fct_relevel(name, "freedom","equality","control")) %>% 
-  ggplot(aes(x=cluster, y=value, fill=name))+
-  geom_boxplot()
+  ggplot(aes(x=Cluster, y=value, fill=name))+
+  geom_boxplot() +
+  theme_bw()
 
-table(fkm_8$clustering)
+fkmmed_6_dim_plot = dmx_data_trade %>%
+  rename(freedom = freedom_dim_index_trade_off,
+         equality = equality_dim_index_trade_off,
+         control = control_dim_index_trade_off) %>%
+  bind_cols(data.frame(Cluster = as.factor(FKMmed_6$clus[,1]))) %>% 
+  pivot_longer(cols=c("freedom", "equality", "control")) %>% 
+  mutate(name = fct_relevel(name, "freedom","equality","control")) %>% 
+  ggplot(aes(x=Cluster, y=value, fill=name))+
+  geom_boxplot() +
+  theme_bw()
 
-test = dmx_data_trade %>%
-  mutate(cluster = as.factor(pamk(cluster_data_dist, krange=5, diss=T, usepam=F)$pamobject$clustering)) 
-
-# outlier detection
-correlation_distance_out = as.dist(1-cor(t(dmx_trade_dimension_unequal %>% dplyr::select(freedom, equality, control))))
-hc_outlier = hclust(correlation_distance_out, "single")
-plot(hc_outlier, label=F)
-nr_cuts_out = 1
-
-table(stats::cutree(hc_outlier, nr_cuts_out))
-
-hc_out_color=color_branches(as.dendrogram(hc_outlier),k=nr_cuts_out) 
-hc_out_color %>% set("labels_cex", 0.001) %>% set("branches_lwd", 2) %>% plot(main = "HC - Single Linkage (Correlation Distance)")
+grid.arrange(FKM_3_dim_plot, fkmmed_3_dim_plot, fkmmed_6_dim_plot)
 
 
+# Create Dataset ####
 
-dmx_trade_dimension_unequal_w_outlier = dmx_trade_dimension_unequal %>% 
-  dplyr::select(country, year, regions, classification_core, freedom, equality, control) %>% 
-  mutate(outlier = stats::cutree(hc_outlier, nr_cuts_out)) %>%
-  filter(outlier == 1)
-dmx_trade_dimension_unequal_outlier = dmx_trade_dimension_unequal %>% 
-  dplyr::select(country, year, regions, classification_core, freedom, equality, control) %>% 
-  mutate(outlier = stats::cutree(hc_outlier, nr_cuts_out)) %>%
-  filter(outlier !=1)
-
-##
-
-# DIANA Clustering
-correlation_distance = as.dist(1-cor(t(dmx_trade_dimension_unequal_w_outlier %>% dplyr::select(freedom, equality, control))))
-dim(dmx_trade_dimension_unequal_w_outlier)
-
-hc1 = diana(correlation_distance, diss=T)
-hc1_color=color_branches(as.dendrogram(hc1),k=4) 
-hc1_color %>% set("labels_cex", 0.001) %>% set("branches_lwd", 2) %>% plot(main = "DIANA (Correlation Distance)")
-
-
-# Three or Four Clusters
-hc_classes = stats::cutree(hc1, 4)
-table(hc_classes)
-
-
-# Boxplot
-boxplot_dim(dmx_trade_dimension_unequal_w_outlier, hc_classes, "A: DIANA (4 Clusters)") + 
-  geom_vline(xintercept = 1.5) + geom_vline(xintercept = 2.5) + geom_vline(xintercept = 3.5)
-
-# Some Validation
-# Silhouette
-sil_hc1 = silhouette(hc_classes, correlation_distance)
-plot_silhoutte(sil_hc1, "DIANA")
-
-
-# Six Clusters
-hc_classes_6 = stats::cutree(hc1, 6)
-table(hc_classes_6)
-
-
-# Boxplot
-boxplot_dim(dmx_trade_dimension_unequal_w_outlier, hc_classes_6, "A: DIANA (5 Clusters)") + 
-  geom_vline(xintercept = 1.5) + geom_vline(xintercept = 2.5) + geom_vline(xintercept = 3.5)
-
-# Silhouette
-sil_hc16 = silhouette(hc_classes_6, correlation_distance)
-plot_silhoutte(sil_hc16, "DIANA")
-
-## Validation ----
-
-hclust_average = hclust(correlation_distance, "average")
-hclust_average_classes = stats::cutree(hclust_average, 4)
-adjustedRandIndex(hc_classes, hclust_average_classes)
-
-boxplot_dim(dmx_trade_dimension_unequal_w_outlier, hclust_average_classes, "A: HClust - average linkage (4 Clusters)") + 
-  geom_vline(xintercept = 1.5) + geom_vline(xintercept = 2.5) + geom_vline(xintercept = 3.5)
-
-
-# pam as best solutions
-# extract medoids from DIANA
-DIANA_med = dmx_trade_dimension_unequal_w_outlier %>% 
-  mutate(DIANA_class = hc_classes) %>% 
-  group_by(DIANA_class) %>% 
-  summarise(freedom_med = mean(freedom), equality_med = mean(equality), control_med = mean(control)) %>% 
-  right_join(dmx_trade_dimension_unequal_w_outlier %>%  mutate(DIANA_class = hc_classes, row_id = row_number()), by="DIANA_class") %>% 
-  mutate(diff_f = abs(freedom - freedom_med),
-         diff_e = abs(equality - equality_med),
-         diff_c = abs(control - control_med),
-         difference = diff_f + diff_e + diff_c
-  ) %>% 
-  group_by(DIANA_class) %>% 
-  arrange(difference) %>% 
-  slice(1)
-
-
-pam_cluster = fanny(correlation_distance, 4, diss=T, iniMem.p = unmap(hc_classes))$clustering
-fanny_every = fanny(correlation_distance, 4, diss=T, iniMem.p = unmap(hc_classes))
-
-adjustedRandIndex(hc_classes, pam_cluster)
-adjustedRandIndex(hclust_average_classes, pam_cluster)
-
-boxplot_dim(dmx_trade_dimension_unequal_w_outlier, pam_cluster, "A: FANNY (4 Clusters)") + 
-  geom_vline(xintercept = 1.5) + geom_vline(xintercept = 2.5) + geom_vline(xintercept = 3.5)
-
-sil_hc1 = silhouette(pam_cluster, correlation_distance)
-plot_silhoutte(sil_hc1, "FANNY", c("fEC", "fEc", "FeC", "Fec"))
-
-
-
-# Robustness ----
-# all Jaccards: > 0.95
-# robust_cluster = clusterboot(correlation_distance, B=100, bootmethod=c("boot", "subset"),
-#                              clustermethod=interface_diana, k=4, seed=1234)
-# print(robust_cluster)
-
-
-
-# Create Dataset
-
-dmx_trade_cluster = dmx_trade_dimension_unequal_w_outlier %>% 
-                                mutate(cluster_1st = pam_cluster) %>% 
-                                bind_cols(data.frame(fanny_every$membership)) %>% 
-                                dplyr::select(-outlier) %>% 
-  mutate(cluster_label_1st = as.factor(cluster_1st),
-         cluster_label_1st = fct_recode(cluster_label_1st, 
-                                    "fEC" = "1", # egalitarian + control
-                                    "fEc" = "2", # egalitarian 
-                                    "FeC" = "3", # liberal + control
-                                    "Fec" = "4", # liberal
-                                   # "FEC" = "5", # balanced
-         ),
-         cluster_label_1st = fct_relevel(cluster_label_1st,
-                                     "Fec",
-                                     "fEc",
-                                     "FeC",
-                                     "fEC",
-                                     #"FEC"
-         )
-  )   %>% 
+dmx_trade_cluster = dmx_data_trade %>%
+  rename(freedom = freedom_dim_index_trade_off,
+         equality = equality_dim_index_trade_off,
+         control = control_dim_index_trade_off) %>% 
+  bind_cols(data.frame(FKM_3_cluster = as.factor(FKM_3$clus[,1]))) %>% 
+  bind_cols(data.frame(FKMmed_3_cluster = as.factor(FKMmed_3$clus[,1]))) %>% 
+  bind_cols(data.frame(FKMmed_6_cluster = as.factor(FKMmed_6$clus[,1]))) %>% 
+  mutate(
+         FKM_3_cluster = as.factor(FKM_3_cluster),
+         FKMmed_3_cluster = as.factor(FKMmed_3_cluster),
+         FKMmed_6_cluster = as.factor(FKMmed_6_cluster),
+         
+         FKM_3_cluster = fct_recode(FKM_3_cluster, 
+                                    "FeC" = "1",  
+                                    "fEc" = "2",  
+                                    "fEC" = "3"),
+         FKM_3_cluster = fct_relevel(FKM_3_cluster,
+                                     "fEc"),
+         FKMmed_3_cluster = fct_recode(FKMmed_3_cluster, 
+                                    "fEc" = "1",
+                                    "fEC" = "2", 
+                                    "FeC" = "3"),
+         FKMmed_3_cluster = fct_relevel(FKMmed_3_cluster,
+                                    "fEc"),
+         FKMmed_6_cluster = fct_recode(FKMmed_6_cluster, 
+                                    "FEC" = "1",
+                                    "FEc" = "2", 
+                                    "fEc" = "3", 
+                                    "fEC" = "4", 
+                                    "FeC" = "5", 
+                                    "Fec" = "6"),
+         FKMmed_6_cluster = fct_relevel(FKMmed_6_cluster,
+                                     "fEc"),
+         ) %>% 
   left_join(V_dem %>% select(country, year, country_text_id), by=c("country", "year")) %>%
   left_join(dmx_data_trade %>% select(country, year, na_count), by=c("country", "year")) %>%
   select(country, country_text_id, year, regions, na_count, everything())
 
 
-
-# prop.table(table(dmx_trade_cluster$classification_context,  dmx_trade_cluster$cluster_label_1st), 2)
-# Boxplot
-
-
-boxplot_dim(dmx_trade_cluster, dmx_trade_cluster$cluster_label_1st, "5 Clusters") + 
-  geom_vline(xintercept = 1.5) + geom_vline(xintercept = 2.5) + geom_vline(xintercept = 3.5) +
-  geom_vline(xintercept = 4.5) 
 
 
 # Basic information about clusters:
