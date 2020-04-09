@@ -94,9 +94,9 @@ plot_random_countries_dim_improved = function(complete_data_dimensions, No_count
     filter(country %in% selected_countries) %>%
     filter(year >= 1945) %>% 
     mutate(country = fct_relevel(country, No_countries)) %>% 
-    melt(id.vars=c("country", "year"), measure.vars="cluster_label_1st") %>% 
+    melt(id.vars=c("country", "year"), measure.vars="FKMmed_6_cluster") %>% 
     mutate(value = as.factor(value),
-           value = fct_relevel(value, levels(dmx_trade_cluster$cluster_label_1st))) %>% 
+           value = fct_relevel(value, levels(dmx_trade_cluster$FKMmed_6_cluster))) %>% 
     mutate(y=1)
   
   levels(plotted_country$country) <- gsub(" ", "\n", levels(plotted_country$country))
