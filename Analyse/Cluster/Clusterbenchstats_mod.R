@@ -43,8 +43,7 @@ cqcluster.stats_mod <- function (d = NULL, clustering, alt.clustering = NULL,
                                  cvstan=sqrt(length(clustering)))
   # dk=5, doweight=0.25,    
 {
-  print("Here")
-  
+
   lweight <- function(x,md)
     (x<md)*(-x/md+1)
   
@@ -1453,6 +1452,7 @@ randomclustersim <- function(datadist,datanp=NULL,npstats=FALSE,
   out$avenruns <- avenruns
   out$kmruns <- kmruns
   for (g in G){
+    print(paste("G:", g))
     #    out$nn[[g]] <- out$km[[g]] <- data.frame()
     if (multicore){
       if (nnruns>0)
