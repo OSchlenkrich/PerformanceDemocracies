@@ -583,6 +583,16 @@ save(cboot_FKMmed_6, file = "Analyse/Cluster/RObjects/cboot_FKMmed_6_nomean.Rdat
 load(file = "Analyse/Cluster/RObjects/cboot_FKMmed_6_nomean.Rdata")
 print(cboot_FKMmed_6)
 
+
+mytest = nselectboot(cluster_data,
+                     B=50,
+                     distances=F,
+                     clustermethod=kmeansCBI,
+                     classification="centroid",
+                     krange=2:10,
+                     count=T)
+
+
 # Cluster the Whole Dataset ####
 
 
@@ -598,21 +608,6 @@ load((file = "Analyse/Cluster/RObjects/FKM_3_nomean.Rdata"))
 load((file = "Analyse/Cluster/RObjects/FKM_4_nomean.Rdata"))
 load((file = "Analyse/Cluster/RObjects/FKM_5_nomean.Rdata"))
 load((file = "Analyse/Cluster/RObjects/FKM_6_nomean.Rdata"))
-
-FKMmed_3 = FKM.med(X = cluster_data, 3, maxit=30, stand=0, RS=2, index="SIL.F", seed=1234)
-FKMmed_4 = FKM.med(X = cluster_data, 4, maxit=30, stand=0, RS=2, index="SIL.F", seed=1234)
-FKMmed_5 = FKM.med(X = cluster_data, 5, maxit=30, stand=0, RS=2, index="SIL.F", seed=1234)
-FKMmed_6 = FKM.med(X = cluster_data, 6, maxit=30, stand=0, RS=2, index="SIL.F", seed=1234)
-# save(FKMmed_3, file = "Analyse/Cluster/RObjects/FKMmed_3_nomean.Rdata")
-# save(FKMmed_4, file = "Analyse/Cluster/RObjects/FKMmed_4_nomean.Rdata")
-# save(FKMmed_5, file = "Analyse/Cluster/RObjects/FKMmed_5_nomean.Rdata")
-# save(FKMmed_6, file = "Analyse/Cluster/RObjects/FKMmed_6_nomean.Rdata")
-
-load((file = "Analyse/Cluster/RObjects/FKMmed_3_nomean.Rdata"))
-load((file = "Analyse/Cluster/RObjects/FKMmed_4_nomean.Rdata"))
-load((file = "Analyse/Cluster/RObjects/FKMmed_5_nomean.Rdata"))
-load((file = "Analyse/Cluster/RObjects/FKMmed_6_nomean.Rdata"))
-
 
 
 # Visualize Cluster Solutions ####
@@ -644,34 +639,6 @@ FKM_6_plot = data.frame(predict(prcomp(cluster_data))[,1:2]) %>%
 
 grid.arrange(FKM_3_plot, FKM_4_plot, FKM_5_plot, FKM_6_plot)
 
-# FKM.med
-fkmmed_3_plot = data.frame(predict(prcomp(cluster_data))[,1:2]) %>% 
-  bind_cols(data.frame(Cluster = FKMmed_3$clus[,1])) %>% 
-  ggplot(aes(x=PC1, y=PC2, col=as.factor(Cluster))) +
-  geom_point() +
-  ggtitle("FKMmed 3")
-
-fkmmed_4_plot = data.frame(predict(prcomp(cluster_data))[,1:2]) %>% 
-  bind_cols(data.frame(Cluster = FKMmed_4$clus[,1])) %>% 
-  ggplot(aes(x=PC1, y=PC2, col=as.factor(Cluster))) +
-  geom_point() +
-  ggtitle("FKMmed 4")
-
-fkmmed_5_plot = data.frame(predict(prcomp(cluster_data))[,1:2]) %>% 
-  bind_cols(data.frame(Cluster = FKMmed_5$clus[,1])) %>% 
-  ggplot(aes(x=PC1, y=PC2, col=as.factor(Cluster))) +
-  geom_point() +
-  ggtitle("FKMmed 5")
-
-fkmmed_6_plot = data.frame(predict(prcomp(cluster_data))[,1:2]) %>% 
-  bind_cols(data.frame(Cluster = FKMmed_6$clus[,1])) %>% 
-  ggplot(aes(x=PC1, y=PC2, col=as.factor(Cluster))) +
-  geom_point() +
-  ggtitle("FKMmed 6")
-
-grid.arrange(fkmmed_3_plot, fkmmed_4_plot, fkmmed_5_plot, fkmmed_6_plot)
-
-
 
 # Compare to Clusterboot
 data.frame(predict(prcomp(my_data))[,1:2]) %>% 
@@ -686,18 +653,9 @@ data.frame(predict(prcomp(my_data))[,1:2]) %>%
   geom_point() +
   ggtitle("FKM 6")
 
-data.frame(predict(prcomp(my_data))[,1:2]) %>% 
-  bind_cols(data.frame(Cluster = cboot_FKMmed_5$partition)) %>% 
-  ggplot(aes(x=PC1, y=PC2, col=as.factor(Cluster))) +
-  geom_point() +
-  ggtitle("FKMmed 5")
-data.frame(predict(prcomp(my_data))[,1:2]) %>% 
-  bind_cols(data.frame(Cluster = cboot_FKMmed_6$partition)) %>% 
-  ggplot(aes(x=PC1, y=PC2, col=as.factor(Cluster))) +
-  geom_point() +
-  ggtitle("FKMmed 6")
-
 #
+
+
 
 FKM_3_dim_plot = dmx_data_trade %>%
   rename(freedom = freedom_dim_index_trade_off,
@@ -749,58 +707,6 @@ FKM_6_dim_plot = dmx_data_trade %>%
   ggtitle("FKM 6")
 
 grid.arrange(FKM_3_dim_plot, FKM_4_dim_plot, FKM_5_dim_plot, FKM_6_dim_plot, nrow=4)
-
-#FKM.med
-
-fkmmed_3_dim_plot = dmx_data_trade %>%
-  rename(freedom = freedom_dim_index_trade_off,
-         equality = equality_dim_index_trade_off,
-         control = control_dim_index_trade_off) %>%
-  bind_cols(data.frame(Cluster = as.factor(FKMmed_3$clus[,1]))) %>% 
-  pivot_longer(cols=c("freedom", "equality", "control")) %>% 
-  mutate(name = fct_relevel(name, "freedom","equality","control")) %>% 
-  ggplot(aes(x=Cluster, y=value, fill=name))+
-  geom_boxplot() +
-  theme_bw() +
-  ggtitle("FKMmed 3")
-
-fkmmed_4_dim_plot = dmx_data_trade %>%
-  rename(freedom = freedom_dim_index_trade_off,
-         equality = equality_dim_index_trade_off,
-         control = control_dim_index_trade_off) %>%
-  bind_cols(data.frame(Cluster = as.factor(FKMmed_4$clus[,1]))) %>% 
-  pivot_longer(cols=c("freedom", "equality", "control")) %>% 
-  mutate(name = fct_relevel(name, "freedom","equality","control")) %>% 
-  ggplot(aes(x=Cluster, y=value, fill=name))+
-  geom_boxplot() +
-  theme_bw() +
-  ggtitle("FKMmed 4")
-
-fkmmed_5_dim_plot = dmx_data_trade %>%
-  rename(freedom = freedom_dim_index_trade_off,
-         equality = equality_dim_index_trade_off,
-         control = control_dim_index_trade_off) %>%
-  bind_cols(data.frame(Cluster = as.factor(FKMmed_5$clus[,1]))) %>% 
-  pivot_longer(cols=c("freedom", "equality", "control")) %>% 
-  mutate(name = fct_relevel(name, "freedom","equality","control")) %>% 
-  ggplot(aes(x=Cluster, y=value, fill=name))+
-  geom_boxplot() +
-  theme_bw() +
-  ggtitle("FKMmed 5")
-
-fkmmed_6_dim_plot = dmx_data_trade %>%
-  rename(freedom = freedom_dim_index_trade_off,
-         equality = equality_dim_index_trade_off,
-         control = control_dim_index_trade_off) %>%
-  bind_cols(data.frame(Cluster = as.factor(FKMmed_6$clus[,1]))) %>% 
-  pivot_longer(cols=c("freedom", "equality", "control")) %>% 
-  mutate(name = fct_relevel(name, "freedom","equality","control")) %>% 
-  ggplot(aes(x=Cluster, y=value, fill=name))+
-  geom_boxplot() +
-  theme_bw() +
-  ggtitle("FKMmed 6")
-
-grid.arrange(fkmmed_3_dim_plot, fkmmed_4_dim_plot, fkmmed_5_dim_plot, fkmmed_6_dim_plot, nrow=4)
 
 
 # Create Dataset ####
