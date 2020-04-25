@@ -427,6 +427,60 @@ a4 = bench_results_df %>%
 
 grid.arrange(a1,a2,a3,a4)
 
+# No Calibration ####
+
+bench_results_df_nc = as.data.frame(do.call(rbind, benchmark_results$stat[[1]])) %>% 
+  mutate_all(funs(unlist)) %>% 
+  mutate(method = "FKM",
+         cluster = 1:10,
+         nr = "Solution") %>% 
+  bind_rows(as.data.frame(do.call(rbind, benchmark_results$stat[[2]])) %>% 
+              mutate_all(funs(unlist)) %>% 
+              mutate(method = "kmeans",
+                     cluster = 1:10,
+                     nr = "Solution")) %>% 
+  bind_rows(as.data.frame(do.call(rbind, benchmark_results$stat[[3]])) %>% 
+              mutate_all(funs(unlist)) %>% 
+              mutate(method = "pam",
+                     cluster = 1:10,
+                     nr = "Solution") ) %>% 
+  bind_rows(as.data.frame(do.call(rbind, benchmark_results$stat[[4]])) %>% 
+              mutate_all(funs(unlist)) %>% 
+              mutate(method = "average",
+                     cluster = 1:10,
+                     nr = "Solution") )  
+
+# Analyse
+a1 = bench_results_df_nc %>% 
+  #filter(method!="average", method!="kmeans", method!="pam") %>%
+  filter(method!="FKM.med") %>% 
+  ggplot(aes(x=cluster, y=asw, col=method, shape=method)) +
+  geom_line() +
+  geom_point() +
+  scale_x_continuous(breaks = seq(2,10,1)) +
+  geom_hline(yintercept = 0) +
+  theme_bw()
+a2 = bench_results_df_nc %>% 
+  #filter(method!="average", method!="kmeans", method!="pam") %>% 
+  filter(method!="FKM.med") %>% 
+  ggplot(aes(x=cluster, y=avewithin, col=method, shape=method)) +
+  geom_line() +
+  geom_point() +
+  scale_x_continuous(breaks = seq(2,10,1)) +
+  geom_hline(yintercept = 0) +
+  theme_bw()
+a3 = bench_results_df_nc %>% 
+  #filter(method!="average", method!="kmeans", method!="pam") %>% 
+  filter(method!="FKM.med") %>% 
+  ggplot(aes(x=cluster, y=pearsongamma, col=method, shape=method)) +
+  geom_line() +
+  geom_point() +
+  scale_x_continuous(breaks = seq(2,10,1)) +
+  geom_hline(yintercept = 0) +
+  theme_bw()
+
+grid.arrange(a1,a2,a3)
+
 
 # All K ####
 
@@ -536,8 +590,27 @@ cboot_FKM_6 <- clusterboot(cluster_data,B=50,bootmethod=
 load(file = "Analyse/Cluster/RObjects/cboot_FKM_6_nomean_nomed.Rdata")
 print(cboot_FKM_6)
 
-# Cluster the Whole Dataset ####
+# PAM
 
+cboot_PAM_3 <- clusterboot(cluster_data,B=50,bootmethod=
+                             c("boot"),clustermethod=pamkCBI,
+                           k=3, seed=15555)
+cboot_PAM_3
+cboot_PAM_4 <- clusterboot(cluster_data,B=50,bootmethod=
+                             c("boot"),clustermethod=pamkCBI,
+                           k=4, seed=15555)
+cboot_PAM_4
+cboot_PAM_5 <- clusterboot(cluster_data,B=50,bootmethod=
+                             c("boot"),clustermethod=pamkCBI,
+                           k=5, seed=15555)
+cboot_PAM_5
+cboot_PAM_6 <- clusterboot(cluster_data,B=50,bootmethod=
+                             c("boot"),clustermethod=pamkCBI,
+                           k=6, seed=15555)
+cboot_PAM_6
+
+
+# Cluster the Whole Dataset ####
 
 FKM_3 = FKM(X = cluster_data, 3, maxit=1400, stand=0, RS=30, seed=1234)
 FKM_4 = FKM(X = cluster_data, 4, maxit=1400, stand=0, RS=30, seed=1234)
@@ -551,7 +624,6 @@ load((file = "Analyse/Cluster/RObjects/FKM_3_nomean_nomed.Rdata"))
 load((file = "Analyse/Cluster/RObjects/FKM_4_nomean_nomed.Rdata"))
 load((file = "Analyse/Cluster/RObjects/FKM_5_nomean_nomed.Rdata"))
 load((file = "Analyse/Cluster/RObjects/FKM_6_nomean_nomed.Rdata"))
-
 
 # Visualize Cluster Solutions ####
 
@@ -650,6 +722,56 @@ FKM_6_dim_plot = dmx_data_trade %>%
 
 grid.arrange(FKM_3_dim_plot, FKM_4_dim_plot, FKM_5_dim_plot, FKM_6_dim_plot, nrow=4)
 
+PAM_3_dim_plot = dmx_data_trade %>%
+  rename(freedom = freedom_dim_index_trade_off,
+         equality = equality_dim_index_trade_off,
+         control = control_dim_index_trade_off) %>%
+  bind_cols(data.frame(Cluster = as.factor(cboot_PAM_3$partition))) %>% 
+  pivot_longer(cols=c("freedom", "equality", "control")) %>% 
+  mutate(name = fct_relevel(name, "freedom","equality","control")) %>% 
+  ggplot(aes(x=Cluster, y=value, fill=name))+
+  geom_boxplot() +
+  theme_bw() +
+  ggtitle("FKM 3")
+
+PAM_4_dim_plot = dmx_data_trade %>%
+  rename(freedom = freedom_dim_index_trade_off,
+         equality = equality_dim_index_trade_off,
+         control = control_dim_index_trade_off) %>%
+  bind_cols(data.frame(Cluster = as.factor(cboot_PAM_4$partition))) %>% 
+  pivot_longer(cols=c("freedom", "equality", "control")) %>% 
+  mutate(name = fct_relevel(name, "freedom","equality","control")) %>% 
+  ggplot(aes(x=Cluster, y=value, fill=name))+
+  geom_boxplot() +
+  theme_bw() +
+  ggtitle("FKM 4")
+
+PAM_5_dim_plot = dmx_data_trade %>%
+  rename(freedom = freedom_dim_index_trade_off,
+         equality = equality_dim_index_trade_off,
+         control = control_dim_index_trade_off) %>%
+  bind_cols(data.frame(Cluster = as.factor(cboot_PAM_5$partition))) %>% 
+  pivot_longer(cols=c("freedom", "equality", "control")) %>% 
+  mutate(name = fct_relevel(name, "freedom","equality","control")) %>% 
+  ggplot(aes(x=Cluster, y=value, fill=name))+
+  geom_boxplot() +
+  theme_bw() +
+  ggtitle("FKM 5")
+
+
+PAM_6_dim_plot = dmx_data_trade %>%
+  rename(freedom = freedom_dim_index_trade_off,
+         equality = equality_dim_index_trade_off,
+         control = control_dim_index_trade_off) %>%
+  bind_cols(data.frame(Cluster = as.factor(cboot_PAM_6$partition))) %>% 
+  pivot_longer(cols=c("freedom", "equality", "control")) %>% 
+  mutate(name = fct_relevel(name, "freedom","equality","control")) %>% 
+  ggplot(aes(x=Cluster, y=value, fill=name))+
+  geom_boxplot() + 
+  theme_bw() +
+  ggtitle("FKM 6")
+
+grid.arrange(PAM_3_dim_plot, PAM_4_dim_plot, PAM_5_dim_plot, PAM_6_dim_plot, nrow=4)
 
 # Create Dataset ####
 
@@ -739,6 +861,18 @@ lab_FKM_3_dim_plot = dmx_trade_cluster %>%
   geom_boxplot() +
   theme_bw()
 
+lab_FKM_4_dim_plot = dmx_trade_cluster %>%
+  pivot_longer(cols=c("freedom", "equality", "control")) %>% 
+  mutate(name = fct_relevel(name, "freedom","equality","control")) %>% 
+  ggplot(aes(x=FKM_4_cluster, y=value, fill=name))+
+  geom_boxplot() +
+  theme_bw()
+lab_FKM_5_dim_plot = dmx_trade_cluster %>%
+  pivot_longer(cols=c("freedom", "equality", "control")) %>% 
+  mutate(name = fct_relevel(name, "freedom","equality","control")) %>% 
+  ggplot(aes(x=FKM_5_cluster, y=value, fill=name)) +
+  geom_boxplot() +
+  theme_bw()
 lab_FKM_6_dim_plot = dmx_trade_cluster %>%
   pivot_longer(cols=c("freedom", "equality", "control")) %>% 
   mutate(name = fct_relevel(name, "freedom","equality","control")) %>% 
@@ -746,22 +880,12 @@ lab_FKM_6_dim_plot = dmx_trade_cluster %>%
   geom_boxplot() +
   theme_bw()
 
-lab_fkmmed_3_dim_plot = dmx_trade_cluster %>%
-  pivot_longer(cols=c("freedom", "equality", "control")) %>% 
-  mutate(name = fct_relevel(name, "freedom","equality","control")) %>% 
-  ggplot(aes(x=FKMmed_3_cluster, y=value, fill=name))+
-  geom_boxplot() +
-  theme_bw()
 
-lab_fkmmed_6_dim_plot = dmx_trade_cluster %>%
-  pivot_longer(cols=c("freedom", "equality", "control")) %>% 
-  mutate(name = fct_relevel(name, "freedom","equality","control")) %>% 
-  ggplot(aes(x=FKMmed_6_cluster, y=value, fill=name))+
-  geom_boxplot() +
-  theme_bw()
 
-grid.arrange(lab_FKM_3_dim_plot, lab_FKM_6_dim_plot, lab_fkmmed_3_dim_plot, lab_fkmmed_6_dim_plot, nrow=4)
+grid.arrange(lab_FKM_3_dim_plot, lab_FKM_4_dim_plot, lab_FKM_5_dim_plot, lab_FKM_6_dim_plot, nrow=4)
 
+# CSV Save
+write.csv(dmx_trade_cluster, file="Datasets/performance_data/dmx_trade_cluster_v8.csv", row.names = F, fileEncoding ="UTF-8")
 
 
 # Basic information about clusters:

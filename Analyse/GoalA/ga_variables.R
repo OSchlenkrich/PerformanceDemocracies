@@ -4,13 +4,17 @@ source("Setup/Packages.R")
 source("Setup/Base_Functions.R")
 source("Setup/Plotting_Functions.R")
 
+scaler_perc = function(x)  {
+  0.005 + 0.99 * x
+}
+
 
 dmx_trade_cluster_ccp = dmx_trade_cluster %>% 
   left_join(V_dem %>% select(country_text_id, year, COWcode), by=c("country_text_id", "year")) %>% 
   mutate(COWcode = if_else(COWcode == 255, as.integer(260), COWcode))
 
 
-# Create Dataset
+# Create Dataset ####
 ccp = fread("C:/RTest/ccp_csv.csv") %>% 
   as_tibble() %>% 
   select(systid, COWcode = cowcode, country, year)
@@ -112,17 +116,16 @@ AR_dmx_norm %>%
   geom_histogram()  +
   facet_wrap(variable~., scales = "free")
 
-
-# Index
+# Index ####
 performance_ga = AR_dmx_norm %>%
   select_at(vars(country, country_text_id, regions, year, classification_core,
-                 starts_with("arate"), starts_with("warate"))) %>% 
+                 starts_with("arate"), starts_with("warate"), systid_ccp = systid)) %>% 
   #mutate_at(vars(starts_with("arate"), starts_with("warate")), ~EPI_fun(.)) %>% 
   rename(GA_ccp_ga = arate_ccp,
          GA_lutz_ga = arate_lutz,
   )
 
-# Descriptives
+# Descriptives ####
 
 samples = c("GBR","NZL", "SWE", "USA", "DEU", "FRA")
 samples = c("DEU", "CHE", "BEL", "SWE", "GRC")

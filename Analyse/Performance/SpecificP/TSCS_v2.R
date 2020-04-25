@@ -1,6 +1,7 @@
 source("Analyse/CreateDatasets.R")
 
 # Setup ####
+library(tidybayes)
 library(brms)
 options(mc.cores = parallel::detectCores())
 scale_this = function(x) {
@@ -15,6 +16,45 @@ first_DF = function(x) {
 prior_tscs <- c(set_prior("normal(0,10)", class = "b"),
                 set_prior("cauchy(0,5)", class = "sd")
 )
+
+getall_contrasts_GA = function(model_GA) {
+  brms_df = model_GA %>% 
+    tidy_draws() %>% 
+    select_at(vars(Intercept_FEC = matches("Intercept"), matches("b_FKM"))) %>% 
+    as.data.frame()
+  NamesofCols = colnames(brms_df) %>% 
+    gsub(".*_","",.)
+
+  colnames(brms_df) = NamesofCols
+
+  coef_list = list()
+  coef_list[[1]] = brms_df 
+  colnames(coef_list[[1]])[1] = "InterceptFEC"  
+
+  for (i in 2:5) {
+    # intercept
+    coef_list[[i]] = brms_df %>%  
+      mutate(!!paste("Intercept", NamesofCols[i], sep="") := .[[1]] + .[[i]]) %>% 
+      mutate_at(vars(-matches("Intercept", ignore.case = F), 
+                     -matches("FEC", ignore.case = F)), 
+                funs(. - brms_df[,i])) %>% 
+      mutate(FEC = 0 - brms_df[,i])
+    
+  }
+  for (i in 1:5) {
+    coef_list[[i]] = coef_list[[i]] %>% 
+      summarise_all(funs(mean, l95CI = quantile(., prob=0.025), u95CI = quantile(., prob=0.975)), predicate="p") %>% 
+      pivot_longer(cols=everything()) %>% 
+      separate("name", c("var","stat"))%>% 
+      spread(stat, value) %>% 
+      mutate(model = paste("Intercept", NamesofCols[i], sep=""))
+  }
+  
+  final_values = do.call(rbind.data.frame, coef_list) %>% 
+    arrange(model)
+  return(final_values)
+}
+
 
 # Create Datasets ####
 
@@ -85,7 +125,7 @@ tscs_data = performance_all %>%
   arrange(country_text_id, year) 
 
 
-# ADAPTATION ####
+# ECONOMY ####
 
 # Multiple Imputation ####
 mice_data = as.data.frame(tscs_data) %>%
@@ -133,7 +173,7 @@ mice_data %>%
   scale_x_continuous(name=NULL, breaks=seq(1950,2020, 10)) + 
   theme_bw()  +
   theme(axis.text.x = element_text(angle=90), legend.position = "none") +
-  ggtitle("Missings in TSCS Economy - Environmental")
+  ggtitle("Missings in TSCS Economy - Economy")
 
 
 # corrplot
@@ -164,8 +204,6 @@ a.out <- amelia(mice_data,
 a.out
 
 
-
-# ECONOMY ####
 wealth_list = list()
 
 for (i in 1:5) {
@@ -315,7 +353,10 @@ wealth_mod2 = brm_multiple(
     # gini_wdi_num_ctl_df + gini_wdi_num_ctl_lag +
     
     # main independent variable
-    as.factor(cluster_mode) +
+    FKM_5_mb_FEC_wi + FKM_5_mb_FEC_wi_lag + FKM_5_mb_FEC_bw +
+    FKM_5_mb_Fec_wi + FKM_5_mb_Fec_wi_lag + FKM_5_mb_Fec_bw + 
+    FKM_5_mb_FeC_wi + FKM_5_mb_FeC_wi_lag + FKM_5_mb_FeC_bw + 
+    FKM_5_mb_fEC_wi + FKM_5_mb_fEC_wi_lag + FKM_5_mb_fEC_bw +
     (1|country_text_id) + (1|year_0),
   data = wealth_list, family = gaussian(),
   prior = prior_tscs,
@@ -404,7 +445,10 @@ prod_mod1 = brm_multiple(
     # gini_wdi_num_ctl_df + gini_wdi_num_ctl_lag +
     
     # main independent variable
-    as.factor(cluster_mode) +
+    FKM_5_mb_FEC_wi + FKM_5_mb_FEC_wi_lag + FKM_5_mb_FEC_bw +
+    FKM_5_mb_Fec_wi + FKM_5_mb_Fec_wi_lag + FKM_5_mb_Fec_bw + 
+    FKM_5_mb_FeC_wi + FKM_5_mb_FeC_wi_lag + FKM_5_mb_FeC_bw + 
+    FKM_5_mb_fEC_wi + FKM_5_mb_fEC_wi_lag + FKM_5_mb_fEC_bw +
     (1|country_text_id) + (1|year_0),
   data = wealth_list, family = gaussian(),
   prior = prior_tscs,
@@ -416,36 +460,144 @@ prior_summary(prod_mod1)
 
 
 
-# Environment ####
-env_tscs = tscs_data %>% 
-  filter(year != 2017) %>% 
-  group_by(country_text_id) %>% 
-  mutate(air_env_lag = dplyr::lag(air_env, 1),
-         air_env_df = first_DF(air_env),
-         abstraction_env_lag = dplyr::lag(abstraction_env, 1),
-         abstraction_env_df = first_DF(abstraction_env),
-         cluster_label_1st_lag = dplyr::lag(cluster_label_1st, 1),
-         wealth_eco_ctl_df = first_DF(wealth_eco),
-         wealth_eco_ctl_lag = dplyr::lag(wealth_eco,1))   %>% 
+# ENVIRONMENT ####
+# Multiple Imputation ####
+mice_data_env = as.data.frame(tscs_data) %>%
+  select_at(vars(country_text_id, year,
+                 matches("_mb_"),
+                 ends_with("env"), 
+                 ends_with("ctl"), 
+                 eco_inequal_soc_num_ctl = eco_inequal_soc,
+                 classification_core)) %>% 
+  
+  # filter NAs
+  filter(is.na(air_env) == F)   %>% 
+  
+  mutate(year_0 = year - min(year),
+         classification_core = ifelse(classification_core == "Deficient Democracy", 1, 0)) %>% 
+  
+  select(-year) %>% 
   ungroup() %>% 
   # scaling
-  mutate_at(vars(ends_with("num_ctl")), funs(scale_this(.))) %>% 
-  
-  group_by(country_text_id) %>%
-  mutate_at(vars(ends_with("ctl")), funs(lag = dplyr::lag(.,1))) %>% 
-  mutate_at(vars(ends_with("ctl")), funs(lag2 = dplyr::lag(.,2)))%>% 
-  
-  mutate_at(vars(ends_with("ctl")), funs(df = first_DF(.)))  %>% 
-  select_at(vars(country, country_text_id, year, cluster_label_1st, matches("env"), matches("ctl"), -matches("index"))) %>% 
-  ungroup() 
+  mutate_at(vars(ends_with("num_ctl")), funs(scale_this(.)))  %>% 
+  # leads and lags for better predicition
+  group_by(country_text_id) %>% 
+  mutate_at(vars(ends_with("num_ctl")), funs(
+    "lag"= dplyr::lag(.,1),
+    "lag2"= dplyr::lag(.,2),
+    "lag3"= dplyr::lag(.,3),
+    "lead"= dplyr::lead(.,1),
+    "lead2"= dplyr::lead(.,2),
+    "lead3"= dplyr::lead(.,3))
+  ) %>%
+  ungroup() %>% 
+  select(country_text_id, year_0, everything())
+
+mice_data_env[] <- lapply(mice_data_env, function(x) { attributes(x) <- NULL; x })
+
+mice_data_env %>% 
+  select_at(vars(-matches("lag"),-matches("lead"))) %>% 
+  group_by(year_0) %>% 
+  summarise_all(pMiss_01) %>% 
+  melt(id.vars="year_0") %>% 
+  ggplot(aes(x=year_0, y=value, fill=variable)) +
+  geom_bar(stat="identity", width=1) +
+  facet_wrap(variable~.) +
+  scale_y_continuous(name=NULL, breaks=seq(0,1, 0.25), limit=c(0,1), labels=percent)  +
+  scale_x_continuous(name=NULL, breaks=seq(1950,2020, 10)) + 
+  theme_bw()  +
+  theme(axis.text.x = element_text(angle=90), legend.position = "none") +
+  ggtitle("Missings in TSCS Economy - Environmental")
 
 
-env_tscs %>% 
-  group_by(year) %>% 
+# corrplot
+corrplot(cor(mice_data_env %>% 
+               select_if(is.numeric) %>% 
+               select_at(vars(-matches("lag"),-matches("lead"))), use="pairwise"))
+
+
+# Imputation
+# includes: FE, Polynomial
+
+nr_imputations = 10
+nr_cores = 10
+
+a.out_env <- amelia(mice_data_env, 
+                m = nr_imputations, 
+                ts = "year_0", 
+                cs = "country_text_id", 
+                noms=c("classification_core"), 
+                polytime = 1,
+                intercs = T,
+                p2s = 2,
+                parallel = "snow",
+                ncpus	= nr_cores,
+                empri = .05*nrow(mice_data_env)
+)
+
+a.out_env
+
+
+env_list = list()
+
+for (i in 1:2) {
+  env_list[[i]]  = a.out_env$imputations[[i]] %>% 
+    select_at(vars(-matches("lag"),-matches("lead"))) %>% 
+    # filter(year != 2017) %>% 
+    group_by(country_text_id) %>% 
+    mutate(
+      air_env_lag = dplyr::lag(air_env, 1),
+      air_env_df = first_DF(air_env),
+      
+      abstraction_env_lag = dplyr::lag(abstraction_env, 1),
+      abstraction_env_df = first_DF(abstraction_env),
+      
+      classification_core_num_ctl = classification_core,
+    )  %>% 
+    ungroup()  %>% 
+    mutate(
+      # cabinet_cpds_num_ctl = cabinet_cpds_ord_ctl,
+      # cabinet_cpds_ord_ctl = fct_recode(as.factor(cabinet_cpds_ord_ctl), 
+      #                                   "H_RW" = "1", 
+      #                                   "D_RW" = "2", 
+      #                                   "B" = "3", 
+      #                                   "D_SD" = "4", 
+      #                                   "H_SD" = "5"),
+    ) %>% 
+    
+    group_by(country_text_id) %>%
+    # within effect
+    mutate_at(vars(ends_with("num_ctl")), funs(wi = . - mean(., na.rm=T))) %>%
+    mutate_at(vars(ends_with("num_ctl_wi")), funs(lag = dplyr::lag(.,1))) %>% 
+    mutate_at(vars(ends_with("num_ctl_wi")), funs(df = first_DF(.)))  %>%
+    
+    mutate_at(vars(starts_with("FKM_")), funs(wi = . - mean(., na.rm=T))) %>%
+    mutate_at(vars(starts_with("FKM_")), funs(lag = dplyr::lag(.,1))) %>% 
+    mutate_at(vars(starts_with("FKM_")), funs(df = first_DF(.)))  %>%
+    
+    #between effect
+    mutate_at(vars(ends_with("num_ctl")), funs(bw = mean(., na.rm=T))) %>% 
+    mutate_at(vars(starts_with("FKM_")), funs(bw = mean(., na.rm=T))) %>% 
+    
+    mutate(mb_bw_sum = FKM_5_mb_FEC_bw + FKM_5_mb_fEc_bw + FKM_5_mb_Fec_bw + FKM_5_mb_FeC_bw + FKM_5_mb_fEC_bw) %>%
+    mutate_at(vars(ends_with("_bw")), funs(./mb_bw_sum)) %>%
+    
+    select_at(vars(country_text_id, year_0, 
+                   starts_with("FKM_5"),
+                   matches("env"), 
+                   matches("ctl"), 
+                   -matches("index"))
+    ) %>% 
+    ungroup()   %>% 
+    as.data.frame() 
+}
+
+env_list[[1]] %>% 
+  group_by(year_0) %>% 
   select_at(vars(ends_with("ctl"), ends_with("env"))) %>% 
   summarise_all(pMiss_01) %>% 
-  melt(id.vars="year") %>% 
-  ggplot(aes(x=year, y=value, fill=variable)) +
+  melt(id.vars="year_0") %>% 
+  ggplot(aes(x=year_0, y=value, fill=variable)) +
   geom_bar(stat="identity", width=1) +
   facet_wrap(variable~.) +
   scale_y_continuous(name=NULL, breaks=seq(0,1, 0.25), limit=c(0,1), labels=percent)  +
@@ -456,152 +608,359 @@ env_tscs %>%
 
 
 # corrplot
-corrplot(cor(env_tscs %>% 
+corrplot(cor(env_list[[1]] %>% 
                select_if(is.numeric) %>% 
-               select_at(vars(-matches("df"),-matches("lag"))), use="pairwise"), method="number")
+               select_at(vars(-matches("lag"),
+                              -matches("lead"),
+                              -ends_with("ctl"))), use="pairwise"), method="number")
 
 
-ggplot(env_tscs, aes(x=air_env, y=green_vt_cpds_num_ctl)) +
-  geom_point()
-ggplot(env_tscs, aes(x=green_plt_cpds_num_ctl, y=green_vt_cpds_num_ctl)) +
-  geom_point()
-
-
-
-
-env_mod1 <- brm(
-  air_env_df ~ 1 + 
+# Air Quality ####
+# ADL
+my_data = env_list[[1]] %>%  sample_n(250)
+air_env_mod2 = brm(
+  air_env ~ 1 + 
     # path dependence
     air_env_lag +
-
+    
     #economic modernization
-    pop_over65_wdi_num_ctl_df + pop_over65_wdi_num_ctl_lag + 
-    wealth_eco_ctl_df + wealth_eco_ctl_lag +
-
-    green_vt_cpds_num_ctl_df + green_vt_cpds_num_ctl_lag + green_vt_cpds_num_ctl_lag2 +
+    # pop_over65_wdi_num_ctl_wi + pop_over65_wdi_num_ctl_wi_lag + pop_over65_wdi_num_ctl_bw + 
     
     # Parties
-    # green_plt_cpds_num_ctl_df + green_plt_cpds_num_ctl_lag +
-    #socdem_plt_cpds_num_ctl_df + socdem_plt_cpds_num_ctl_lag +
-    #liberal_plt_cpds_num_ctl_df + liberal_plt_cpds_num_ctl_lag +
+    cabinet_cpds_num_ctl_wi + cabinet_cpds_num_ctl_wi_lag + cabinet_cpds_num_ctl_bw + 
     
     #PRT
-    unions_vi_num_ctl_df + unions_vi_num_ctl_lag +
+    unions_vi_num_ctl_wi + unions_vi_num_ctl_wi_lag + unions_vi_num_ctl_bw +
+    
+    # formal institutions
+    cbi_w_cbi_num_ctl_wi + cbi_w_cbi_num_ctl_wi_lag + cbi_w_cbi_num_ctl_bw +
+    
+    # informal institutions
+    classification_core_num_ctl_wi + classification_core_num_ctl_wi_lag + classification_core_num_ctl_bw +
+    corruption_vdem_num_ctl_wi + corruption_vdem_num_ctl_wi_lag + corruption_vdem_num_ctl_bw +
     
     # international factors
-    trade_wdi_num_ctl_df + trade_wdi_num_ctl_lag +
+    trade_wdi_num_ctl_wi + trade_wdi_num_ctl_wi_lag + trade_wdi_num_ctl_bw +
     
     # ideosyncratic factors
     # gini_wdi_num_ctl_df + gini_wdi_num_ctl_lag +
     
     # main independent variable
-    cluster_label_1st +
-    (1|country) + (1|year),
-  data = env_tscs, family = gaussian(),
+    FKM_5_mb_fEc_wi + FKM_5_mb_fEc_wi_lag + FKM_5_mb_fEc_bw +
+    FKM_5_mb_Fec_wi + FKM_5_mb_Fec_wi_lag + FKM_5_mb_Fec_bw + 
+    FKM_5_mb_FeC_wi + FKM_5_mb_FeC_wi_lag + FKM_5_mb_FeC_bw + 
+    FKM_5_mb_fEC_wi + FKM_5_mb_fEC_wi_lag + FKM_5_mb_fEC_bw +
+    (1|country_text_id) + (1|year_0),
+  data = my_data, family = gaussian(),
   prior = prior_tscs,
-  warmup = 2000, iter = 10000
+  warmup = 2000, iter = 8000,
+  control = list(adapt_delta = 0.90), 
+  chains = 6
 )
-summary(env_mod1, prob = .95)
-prior_summary(env_mod1, data = eco_tscs, family = gaussian())
+summary(air_env_mod1, prob = .95)
 
 
-env_mod2 <- brm(
-  abstraction_env_df ~ 1 + 
+prior_summary(air_env_mod1, data = eco_tscs, family = gaussian())
+
+# Abstraction ####
+# ADL
+abst_env_mod1 = brm_multiple(
+  abstraction_env ~ 1 + 
     # path dependence
     abstraction_env_lag +
-    year +
     
     #economic modernization
-    pop_over65_wdi_num_ctl_df + pop_over65_wdi_num_ctl_lag + 
-    wealth_eco_ctl_df + wealth_eco_ctl_lag +
-    
-    #green_vt_cpds_num_ctl_df + green_vt_cpds_num_ctl_lag +
+    # pop_over65_wdi_num_ctl_wi + pop_over65_wdi_num_ctl_wi_lag + pop_over65_wdi_num_ctl_bw + 
     
     # Parties
-    green_plt_cpds_num_ctl_df + green_plt_cpds_num_ctl_lag +
-    #socdem_plt_cpds_num_ctl_df + socdem_plt_cpds_num_ctl_lag +
-    #liberal_plt_cpds_num_ctl_df + liberal_plt_cpds_num_ctl_lag +
+    cabinet_cpds_num_ctl_wi + cabinet_cpds_num_ctl_wi_lag + cabinet_cpds_num_ctl_bw + 
     
     #PRT
-    unions_vi_num_ctl_df + unions_vi_num_ctl_lag +
+    unions_vi_num_ctl_wi + unions_vi_num_ctl_wi_lag + unions_vi_num_ctl_bw +
+    
+    # formal institutions
+    cbi_w_cbi_num_ctl_wi + cbi_w_cbi_num_ctl_wi_lag + cbi_w_cbi_num_ctl_bw +
+    
+    # informal institutions
+    classification_core_num_ctl_wi + classification_core_num_ctl_wi_lag + classification_core_num_ctl_bw +
+    corruption_vdem_num_ctl_wi + corruption_vdem_num_ctl_wi_lag + corruption_vdem_num_ctl_bw +
     
     # international factors
-    trade_wdi_num_ctl_df + trade_wdi_num_ctl_lag +
+    trade_wdi_num_ctl_wi + trade_wdi_num_ctl_wi_lag + trade_wdi_num_ctl_bw +
     
     # ideosyncratic factors
     # gini_wdi_num_ctl_df + gini_wdi_num_ctl_lag +
     
     # main independent variable
-    cluster_label_1st +
-    (1|country) + (1|year),
-  data = env_tscs, family = gaussian(),
-  #prior = prior3,
-  warmup = 2000, iter = 10000
+    FKM_5_mb_FEC_wi + FKM_5_mb_FEC_wi_lag + FKM_5_mb_FEC_bw +
+    FKM_5_mb_Fec_wi + FKM_5_mb_Fec_wi_lag + FKM_5_mb_Fec_bw + 
+    FKM_5_mb_FeC_wi + FKM_5_mb_FeC_wi_lag + FKM_5_mb_FeC_bw + 
+    FKM_5_mb_fEC_wi + FKM_5_mb_fEC_wi_lag + FKM_5_mb_fEC_bw +
+    (1|country_text_id) + (1|year_0),
+  data = env_list, family = gaussian(),
+  prior = prior_tscs,
+  warmup = 2000, iter = 8000,
+  control = list(adapt_delta = 0.90), 
+  chains = 6
 )
-summary(env_mod2, prob = .95)
+
+summary(abst_env_mod1, prob = .95)
+prior_summary(abst_env_mod1, data = eco_tscs, family = gaussian())
+which(abst_env_mod1$rhats[2,]>1.05)
+
 
 # GOAL ATTAINMENT ####
+# Lutz ####
+# Control Variables: Length and Age of Constitution
+ccp_ctl = fread("C:/RTest/ccp_csv.csv") %>% 
+  as_tibble() %>% 
+  select(systid_ccp = systid, length_const_num_ctl = length, age_const_num_ctl = systyear) %>% 
+  group_by(systid_ccp) %>% 
+  summarise_all(mean, na.rm=T) 
 
-tscs_data_GA = tscs_data %>% 
-  left_join(AR_dmx %>% select(country_text_id, year, systid, GA_raw_ccp = arate_ccp, GA_raw_lutz = arate_lutz),
-            by=c("country_text_id", "year"))
 
-hist(tscs_data_GA$GA_raw_ccp)
-hist(tscs_data_GA$GA_raw_lutz)
-hist(tscs_data$GA_lutz_ga)
-hist(tscs_data$GA_ccp_ga)
+tscs_data_GA_Lutz = tscs_data %>% 
+  left_join(ccp_ctl, by="systid_ccp") %>% 
+  select_at(vars(country_text_id, year,
+                 starts_with("FKM_5"),
+                 GA_lutz_ga,
+                 -FKM_5_cluster,
+                 cabinet_cpds_num_ctl,
+                 wealth_eco_num_ctl = wealth_eco,
+                 length_const_num_ctl,
+                 age_const_num_ctl,
+                 classification_core_num_ctl = classification_core)
+  ) %>% 
+  mutate(classification_core_num_ctl = ifelse(classification_core_num_ctl == "Deficient Democracy", 1,0 )) %>% 
+  
+  # Filter NAs Lutz
+  filter(is.na(GA_lutz_ga) == F) %>% 
+  
+  # Calculate Between Values
+  group_by(country_text_id) %>% 
+  mutate_at(vars(starts_with("FKM_5")), funs(bw = mean(., na.rm=T))) %>% 
+  ungroup() %>% 
+  
+  # Mean Summarize all Values
+  group_by(country_text_id) %>% 
+  summarise_at(vars(-year), funs(mean(., na.rm=T))) %>%
+  ungroup() %>% 
+  
+  # Transform Values to range between 0 and 1
+  mutate(mb_sum = FKM_5_mb_FEC + FKM_5_mb_fEc + FKM_5_mb_Fec + FKM_5_mb_FeC + FKM_5_mb_fEC) %>% 
+  mutate_at(vars(matches("_mb_"), -matches("bw")), funs(./mb_sum)) %>%
+  select(-mb_sum) %>% 
+  
+  # Compute LogRatios
+  mutate(FKM_5_mb_Fec_FEC = log(FKM_5_mb_Fec/FKM_5_mb_FEC),
+         FKM_5_mb_fEc_FEC = log(FKM_5_mb_fEc/FKM_5_mb_FEC),
+         FKM_5_mb_FeC_FEC = log(FKM_5_mb_FeC/FKM_5_mb_FEC),
+         FKM_5_mb_fEC_FEC = log(FKM_5_mb_fEC/FKM_5_mb_FEC),
+         FKM_5_mb_Fec_fEC = log(FKM_5_mb_Fec/FKM_5_mb_fEC),
+         FKM_5_mb_fEc_fEC = log(FKM_5_mb_fEc/FKM_5_mb_fEC),
+         FKM_5_mb_FeC_fEC = log(FKM_5_mb_FeC/FKM_5_mb_fEC),
+         FKM_5_mb_FEC_fEC = log(FKM_5_mb_FEC/FKM_5_mb_fEC),
+         
+         FKM_5_mb_Fec_FeC = log(FKM_5_mb_Fec/FKM_5_mb_FeC),
+         FKM_5_mb_fEc_FeC = log(FKM_5_mb_fEc/FKM_5_mb_FeC),
+         
+  ) %>% 
+  
+  # scaling
+  mutate_at(vars(ends_with("num_ctl")), funs(scale_this(.))) 
 
-prior_GA <- c(set_prior("normal(0,10)", class = "b"),
-                set_prior("cauchy(0,5)", class = "sd")
-)
+# Multiple Imputation ####
+tscs_data_GA_Lutz[] <- lapply(tscs_data_GA_Lutz, function(x) { attributes(x) <- NULL; x })
 
-test = tscs_data_GA %>%     
-  select_at(vars(country_text_id, year,systid,
-                                    starts_with("FKM_5"),
-                                    starts_with("GA"), 
-                                    #matches("ctl"), 
-                                    -matches("index"))
-            ) %>%  
-  group_by(country_text_id, systid) %>% 
-  summarise_at(vars(-year), funs(mean(., na.rm=T))) %>% 
-  filter(is.na(systid) == F) %>% 
-  ungroup()
+md.pattern(tscs_data_GA_Lutz)
 
 # corrplot
-corrplot(cor(test %>% 
+corrplot(cor(tscs_data_GA_Lutz %>% 
+               select_if(is.numeric) %>% 
+               select_at(vars(-matches("lag"),-matches("lead"))), use="pairwise"))
+
+
+# Imputation
+# includes: FE, Polynomial
+
+impus = 2
+
+a.out_Lutz <- mice(tscs_data_GA_Lutz, m = impus)
+
+
+# not exactly normally distributed...
+hist(complete(a.out_Lutz, 1)$GA_lutz_ga)
+
+# corrplot
+corrplot(cor(complete(a.out_Lutz, 1) %>% 
                select_if(is.numeric) %>% 
                select_at(vars(-matches("df"),-matches("lag"))), use="pairwise"), method="number")
+
+
+
+# Regression ####
+prior_GA_lutz <- c(set_prior("normal(0,10)", class = "b"))
+
+# Model Gaussian
+GA_mod_lutz_gauss = brm_multiple(
+  GA_lutz_ga ~ -1 + 
+    wealth_eco_num_ctl + 
+    
+    cabinet_cpds_num_ctl + 
+    
+    classification_core_num_ctl +
+    
+    # institutional factors
+    length_const_num_ctl +
+    age_const_num_ctl +
+    
+    #FKM_5_mb_Fec_FEC + FKM_5_mb_fEc_FEC + FKM_5_mb_FeC_FEC + FKM_5_mb_fEC_FEC +
+    FKM_5_mb_Fec_fEC + FKM_5_mb_fEc_fEC + FKM_5_mb_FeC_fEC + FKM_5_mb_FEC_fEC,
+  family=gaussian(),
+  a.out_Lutz,
+  prior = prior_GA_lutz,
+  warmup = 2000, iter = 8000,
+  #control = list(adapt_delta = 0.90), 
+  chains = 6)
+
+summary(GA_mod_lutz_gauss, prob = .95)
+
+
+pp_check(GA_mod_lutz_gauss, nsamples=50)
+
+
+results_demtype = getall_contrasts_GA(GA_mod_lutz_gauss)
+
+
+conditional_effects(GA_mod_lutz_gauss)
+
+Scenario1 = data.frame(
+  wealth_eco_num_ctl = mean(complete(a.out_Lutz)$wealth_eco_num_ctl),
+  cabinet_cpds_num_ctl = mean(complete(a.out_Lutz)$cabinet_cpds_num_ctl),
+  classification_core_num_ctl  = mean(complete(a.out_Lutz)$classification_core_num_ctl),
+  length_const_num_ctl = mean(complete(a.out_Lutz)$length_const_num_ctl),
+  age_const_num_ctl = mean(complete(a.out_Lutz)$age_const_num_ctl),
+  FKM_5_mb_fEC = seq(0,1, length.out = 10),
+  FKM_5_mb_Fec = 0,
+  FKM_5_mb_fEc= 0,
+  FKM_5_mb_FeC = 0
+)
+Scenario2 = data.frame(
+  wealth_eco_num_ctl = mean(complete(a.out_Lutz)$wealth_eco_num_ctl),
+  cabinet_cpds_num_ctl = mean(complete(a.out_Lutz)$cabinet_cpds_num_ctl),
+  classification_core_num_ctl  = mean(complete(a.out_Lutz)$classification_core_num_ctl),
+  length_const_num_ctl = mean(complete(a.out_Lutz)$length_const_num_ctl),
+  age_const_num_ctl = mean(complete(a.out_Lutz)$age_const_num_ctl),
+  FKM_5_mb_fEC = mean(complete(a.out_Lutz)$FKM_5_mb_fEC),
+  FKM_5_mb_Fec = seq(0,1, length.out = 10),
+  FKM_5_mb_fEc= seq(0,1, length.out = 10),
+  FKM_5_mb_FeC = mean(complete(a.out_Lutz)$FKM_5_mb_FeC)
+)
+Scenario3 = data.frame(
+  wealth_eco_num_ctl = mean(complete(a.out_Lutz)$wealth_eco_num_ctl),
+  cabinet_cpds_num_ctl = mean(complete(a.out_Lutz)$cabinet_cpds_num_ctl),
+  classification_core_num_ctl  = mean(complete(a.out_Lutz)$classification_core_num_ctl),
+  FKM_5_mb_fEC = 0,
+  FKM_5_mb_Fec = 0,
+  FKM_5_mb_fEc= seq(0,1, length.out = 10),
+  FKM_5_mb_FeC = 0
+)
+Scenario4 = data.frame(
+  wealth_eco_num_ctl = mean(complete(a.out_Lutz)$wealth_eco_num_ctl),
+  cabinet_cpds_num_ctl = mean(complete(a.out_Lutz)$cabinet_cpds_num_ctl),
+  classification_core_num_ctl  = mean(complete(a.out_Lutz)$classification_core_num_ctl),
+  FKM_5_mb_fEC = 0,
+  FKM_5_mb_Fec = 0,
+  FKM_5_mb_fEc= 0,
+  FKM_5_mb_FeC = seq(0,1, length.out = 10)
+)
+
+data.frame(fitted(GA_mod_lutz_gauss, newdata=Scenario2)) %>% 
+  mutate(profile = "Fec",
+         values = Scenario2$FKM_5_mb_Fec)
+
+prediction_GA_Lutz = data.frame(predict(GA_mod_lutz_gauss, newdata=Scenario1))%>% 
+  mutate(profile = "fEC",
+         values = Scenario1$FKM_5_mb_fEC) %>% 
+  bind_rows(data.frame(predict(GA_mod_lutz_gauss, newdata=Scenario2)) %>% 
+              mutate(profile = "Fec",
+                     values = Scenario2$FKM_5_mb_Fec)) %>% 
+  bind_rows(data.frame(predict(GA_mod_lutz_gauss, newdata=Scenario3)) %>% 
+              mutate(profile = "fEc",
+                     values = Scenario3$FKM_5_mb_fEc)) %>% 
+  bind_rows(data.frame(predict(GA_mod_lutz_gauss, newdata=Scenario4)) %>% 
+              mutate(profile = "FeC",
+                     values = Scenario4$FKM_5_mb_FeC))
+
+
+prediction_GA_Lutz %>% 
+  ggplot(aes(x=values, y=Estimate, col=profile, fill=profile)) +
+  geom_line() +
+  geom_ribbon(aes(ymin=Q2.5, ymax=Q97.5), alpha=0.5) +
+  facet_wrap(profile~.)
+
+
+
+# Model Student
+GA_mod_lutz_student = brm(bf(
+  GA_lutz_ga ~ 1 + FKM_5_mb_fEC + FKM_5_mb_fEc + FKM_5_mb_Fec + FKM_5_mb_FeC
+),
+family=student(),
+tscs_data_GA,
+prior = prior_GA_lutz,
+warmup = 2000, iter = 8000,
+control = list(adapt_delta = 0.90), 
+chains = 6)
+
+summary(GA_mod_lutz_student, prob = .95)
+waic2 <- loo(GA_mod_lutz_student)
+
+# Comparison of Model Fit
+loo_compare(waic1, waic2)
 
 
 # CCP ####
-GA_mod = brm(bf(
-  GA_ccp_ga ~ 1 + FKM_5_mb_FEC + FKM_5_mb_fEC + FKM_5_mb_Fec + FKM_5_mb_FeC +
+
+tscs_data_GA_Lutz = tscs_data %>% 
+  select_at(vars(country_text_id, year,systid_ccp,
+                 starts_with("FKM_5"),
+                 starts_with("GA"), 
+                 -FKM_5_cluster,
+                 -ends_with("ctl"), 
+                 -matches("index"),
+                 cabinet_cpds_num_ctl,
+                 wealth_eco,
+                 classification_core_num_ctl = classification_core)
+  ) %>% 
+  mutate(classification_core_num_ctl = ifelse(classification_core_num_ctl == "Deficient Democracy", 1,0 )) %>% 
+  filter(is.na(systid_ccp) == F) %>%   
+  group_by(country_text_id) %>% 
+  mutate_at(vars(starts_with("FKM_5")), funs(bw = mean(., na.rm=T))) %>% 
+  group_by(country_text_id, systid_ccp) %>% 
+  summarise_at(vars(-year), funs(mean(., na.rm=T))) %>%
+  ungroup() %>% 
+  mutate(mb_sum = FKM_5_mb_FEC + FKM_5_mb_fEc + FKM_5_mb_Fec + FKM_5_mb_FeC + FKM_5_mb_fEC) %>% 
+  mutate_at(vars(matches("_mb_"), -matches("bw")), funs(./mb_sum)) %>% 
+  select(-systid_ccp, -mb_sum)
+
+
+prior_GA_cpp <- c(set_prior("normal(0,10)", class = "b"),
+                  set_prior("cauchy(0,5)", class = "sd")
+)
+
+GA_mod_ccp = brm(bf(
+  GA_ccp_ga ~ 1 + classification_core_num_ctl + FKM_5_mb_fEc + FKM_5_mb_fEC + FKM_5_mb_Fec + FKM_5_mb_FeC +
+    FKM_5_mb_fEc_bw + FKM_5_mb_fEC_bw + FKM_5_mb_Fec_bw + FKM_5_mb_FeC_bw +
     (1 | country_text_id)),
   family=gaussian(),
-  test,
-  prior = prior_GA_lutz,
+  tscs_data_GA,
+  prior = prior_GA_cpp,
   warmup = 2000, iter = 8000,
   control = list(adapt_delta = 0.99), 
   chains = 6
 )
-summary(GA_mod, prob = .95)
-prior_summary(GA_mod)
-
-# Lutz ####
-prior_GA_lutz <- c(set_prior("normal(0,10)", class = "b")
-)
-
-GA_mod_lutz = brm(bf(
-  GA_lutz_ga ~ 1 + FKM_5_mb_fEC + FKM_5_mb_fEc + FKM_5_mb_Fec + FKM_5_mb_FeC
-  ),
-  family=gaussian(),
-  test,
-  prior = prior_GA_lutz,
-  warmup = 2000, iter = 8000,
-  control = list(adapt_delta = 0.90), 
-  chains = 6)
-
-summary(GA_mod_lutz, prob = .95)
+summary(GA_mod_ccp, prob = .95)
+prior_summary(GA_mod_ccp)
 
 
 # INTEGRATION ####

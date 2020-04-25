@@ -12,13 +12,13 @@ Plot_Impu = F
 # source("Analyse/Cluster/Cluster_v5.R")
 # 
 
-dmx_trade_cluster = fread(file="Datasets/performance_data/dmx_trade_cluster_v5.csv", encoding = "UTF-8") %>% 
-  mutate(cluster_label_1st = relevel(as.factor(cluster_label_1st), ref="FeC")) %>% 
-  arrange(country, year) %>% 
-  rename(X_fEC = X1,
-         X_fEc = X2,
-         X_FeC = X3,
-         X_Fec = X4)
+dmx_trade_cluster = fread(file="Datasets/performance_data/dmx_trade_cluster_v8.csv", encoding = "UTF-8")
+  # mutate(cluster_label_1st = relevel(as.factor(cluster_label_1st), ref="FeC")) %>% 
+  # arrange(country, year) %>% 
+  # rename(X_fEC = X1,
+  #        X_fEc = X2,
+  #        X_FeC = X3,
+  #        X_Fec = X4)
 
 
 # source("Analyse/Economy/eco_FA_v2.R")
@@ -39,7 +39,6 @@ performance_pc = fread("Datasets/performance_data/ImputedDatasets/performance_pc
 
 # Combine all Datasets ####
 
-
 performance_all = V_dem %>%
   select(country, country_text_id, year) %>%
   filter(year >= 1950) %>%
@@ -55,7 +54,7 @@ performance_all = V_dem %>%
   # left_join(performance_wdi_env %>%
   #             select(country_text_id, year, air_wdi_env), by=c("country_text_id", "year")) %>%
   left_join(performance_ga %>%
-              select(country_text_id, year,  GA_ccp_ga, GA_lutz_ga), by=c("country_text_id", "year")) %>%
+              select(country_text_id, year,  GA_ccp_ga, GA_lutz_ga, systid_ccp), by=c("country_text_id", "year")) %>%
   left_join(performance_soc %>%
               select(country_text_id, year, eco_inequal_soc, soc_inequal_soc), by=c("country_text_id", "year")) %>%
   left_join(performance_ds %>%
