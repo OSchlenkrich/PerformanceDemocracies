@@ -1,11 +1,8 @@
 source("Analyse/CreateDatasets.R")
 
-# Setup ####
-library(tidybayes)
-library(brms)
-library(easyCODA)
 
-options(mc.cores = parallel::detectCores())
+# Setup ####
+
 scale_this = function(x) {
   x_scaled = (x - mean(x, na.rm=T)) / sd(x, na.rm=T)
   return(x_scaled)
@@ -21,47 +18,20 @@ first_DF = function(x) {
   return(x - dplyr::lag(x,1))
 }
 
-prior_tscs <- c(set_prior("normal(0,10)", class = "b"),
-                set_prior("cauchy(0,5)", class = "sd")
-)
+# Priors ####
+prior_unit_tscs <- c(set_prior("cauchy(0,5)", class = "sd"),
+                     set_prior("normal(0,10)", class = "Intercept"))
 
-getall_contrasts_GA = function(model_GA) {
-  brms_df = model_GA %>% 
-    tidy_draws() %>% 
-    select_at(vars(Intercept_FEC = matches("Intercept"), matches("b_FKM"))) %>% 
-    as.data.frame()
-  NamesofCols = colnames(brms_df) %>% 
-    gsub(".*_","",.)
 
-  colnames(brms_df) = NamesofCols
+prior_full_tscs <- c(set_prior("normal(0,10)", class = "b"),
+                set_prior("cauchy(0,5)", class = "sd"),
+                set_prior("normal(0,10)", class = "Intercept"))
 
-  coef_list = list()
-  coef_list[[1]] = brms_df 
-  colnames(coef_list[[1]])[1] = "InterceptFEC"  
-
-  for (i in 2:5) {
-    # intercept
-    coef_list[[i]] = brms_df %>%  
-      mutate(!!paste("Intercept", NamesofCols[i], sep="") := .[[1]] + .[[i]]) %>% 
-      mutate_at(vars(-matches("Intercept", ignore.case = F), 
-                     -matches("FEC", ignore.case = F)), 
-                funs(. - brms_df[,i])) %>% 
-      mutate(FEC = 0 - brms_df[,i])
-    
-  }
-  for (i in 1:5) {
-    coef_list[[i]] = coef_list[[i]] %>% 
-      summarise_all(funs(mean, l95CI = quantile(., prob=0.025), u95CI = quantile(., prob=0.975)), predicate="p") %>% 
-      pivot_longer(cols=everything()) %>% 
-      separate("name", c("var","stat"))%>% 
-      spread(stat, value) %>% 
-      mutate(model = paste("Intercept", NamesofCols[i], sep=""))
-  }
-  
-  final_values = do.call(rbind.data.frame, coef_list) %>% 
-    arrange(model)
-  return(final_values)
-}
+prior_full_phet_tscs <- c(set_prior("normal(0,10)", class = "b"),
+                     set_prior("cauchy(0,5)", class = "sd"),
+                     set_prior("normal(0,10)", class = "Intercept"),
+                     set_prior("cauchy(0,5)", class = "sd", dpar="sigma"),
+                     set_prior("normal(0,10)", class = "Intercept", dpar="sigma"))
 
 
 # Create Datasets ####
@@ -76,7 +46,9 @@ CBI_control = readstata13::read.dta13("Datasets/CBI dataset_2019 corrections.dta
   select(country_text_id, year, cbi_u_cbi_num_ctl = lvau_garriga, cbi_w_cbi_num_ctl =  lvaw_garriga )
 
 V_dem_control = V_dem_all %>% 
-  select(country_text_id, year, corruption_vdem_num_ctl = v2x_corr) 
+  select(country_text_id, year, 
+         corruption_vdem_num_ctl = v2x_corr, 
+         corporatism_vdem_num_ctl = v2csstruc_1) 
 
 control_vars = QoC_data %>% 
   dplyr::select(country_text_id, year,
@@ -132,15 +104,15 @@ tscs_data = performance_all %>%
   # Create Indpedenent Variable: Democracy Profile
   
   group_by(country_text_id) %>% 
-  mutate(FKM_5_mb_fEc = rollapply(FKM_5_mb_fEc, 20, FUN = function(x) mean(x, na.rm=T),
+  mutate(FKM_5_mb_fEc = rollapply(FKM_5_mb_fEc, 10, FUN = function(x) mean(x, na.rm=T),
                                             fill=NA, align="right", partial=T),
-         FKM_5_mb_Fec = rollapply(FKM_5_mb_Fec, 20, FUN = function(x) mean(x, na.rm=T),
+         FKM_5_mb_Fec = rollapply(FKM_5_mb_Fec, 10, FUN = function(x) mean(x, na.rm=T),
                                    fill=NA, align="right", partial=T),
-         FKM_5_mb_FeC = rollapply(FKM_5_mb_FeC, 20, FUN = function(x) mean(x, na.rm=T),
+         FKM_5_mb_FeC = rollapply(FKM_5_mb_FeC, 10, FUN = function(x) mean(x, na.rm=T),
                                    fill=NA, align="right", partial=T),
-         FKM_5_mb_fEC = rollapply(FKM_5_mb_fEC, 20, FUN = function(x) mean(x, na.rm=T),
+         FKM_5_mb_fEC = rollapply(FKM_5_mb_fEC, 10, FUN = function(x) mean(x, na.rm=T),
                                    fill=NA, align="right", partial=T),
-         FKM_5_mb_FEC = rollapply(FKM_5_mb_FEC, 20, FUN = function(x) mean(x, na.rm=T),
+         FKM_5_mb_FEC = rollapply(FKM_5_mb_FEC, 10, FUN = function(x) mean(x, na.rm=T),
                                    fill=NA, align="right", partial=T),
          
          sum_bw = FKM_5_mb_fEc + FKM_5_mb_Fec + FKM_5_mb_FeC + FKM_5_mb_fEC + FKM_5_mb_FEC,
@@ -223,10 +195,10 @@ corrplot(cor(mice_data %>%
 # Imputation
 # includes: FE, Polynomial
 
-nr_imputations = 5
-nr_cores = 5
+nr_imputations = 10
+nr_cores = 10
 
-a.out <- amelia(mice_data, 
+economy_out <- amelia(mice_data, 
                 m = nr_imputations, 
                 ts = "year_0", 
                 cs = "country_text_id", 
@@ -239,12 +211,13 @@ a.out <- amelia(mice_data,
                 empri = .05*nrow(mice_data)
 )
 
-a.out
 
+#save(economy_out, file = "Analyse/Performance/SpecificP/Datasets/economy_out.Rdata")
+economy_out = load("Analyse/Performance/SpecificP/Datasets/economy_out.Rdata")
 
 
 # Create List-Data ####
-LogRATIOS_eco = LR(a.out$imputations[[1]] %>%  select_at(vars(starts_with("FKM_5"))) %>% 
+LogRATIOS_eco = LR(economy_out$imputations[[1]] %>%  select_at(vars(starts_with("FKM_5"))) %>% 
                      mutate(FKM_5_mb_c = FKM_5_mb_fEc + FKM_5_mb_Fec,
                             FKM_5_mb_C = FKM_5_mb_fEC + FKM_5_mb_FeC,
                             FKM_5_mb_E = FKM_5_mb_fEc + FKM_5_mb_fEC,
@@ -256,7 +229,7 @@ LogRATIOS_eco = LR(a.out$imputations[[1]] %>%  select_at(vars(starts_with("FKM_5
 wealth_list = list()
 
 for (i in 1:2) {
-  wealth_list[[i]]  = a.out$imputations[[i]] %>% 
+  wealth_list[[i]]  = economy_out$imputations[[i]] %>% 
     select_at(vars(-matches("lag"),-matches("lead"))) %>% 
     # filter(year != 2017) %>% 
     group_by(country_text_id) %>% 
@@ -402,7 +375,7 @@ wealth_mod1 = brm(
 wealth_mod1 = add_criterion(wealth_mod1, "loo")
 print(wealth_mod1$criteria$loo)
 
-
+r2(wealth_mod1)
 summary(wealth_mod1, prob = .95)
 prior_summary(wealth_mod1, data = eco_tscs, family = gaussian())
 plot(conditional_effects(wealth_mod1))
@@ -418,7 +391,9 @@ posterior_summary(wealth_mod2)
 wealth_mod2 = brm_multiple(
   wealth_eco_df ~ 1 + 
     # path dependence
-    wealth_eco_lag +
+    wealth_eco_lag_wi +
+    wealth_eco_lag2_wi +
+    wealth_eco_lag3_wi +
     
     #economic modernization
     # pop_over65_wdi_num_ctl_wi + pop_over65_wdi_num_ctl_wi_lag + pop_over65_wdi_num_ctl_bw + 
@@ -626,6 +601,8 @@ a.out_env <- amelia(mice_data_env,
 )
 
 a.out_env
+save(a.out_env, file = "Analyse/Performance/SpecificP/Datasets/a.out_env.Rdata")
+a.out_env = load("Analyse/Performance/SpecificP/Datasets/a.out_env.Rdata")
 
 # Create List-Data ####
 LogRATIOS_env = LR(a.out_env$imputations[[1]] %>%  select_at(vars(starts_with("FKM_5"))) %>% 
@@ -1091,7 +1068,7 @@ summary(GA_mod_ccp, prob = .95)
 prior_summary(GA_mod_ccp)
 
 
-# INTEGRATION ####
+# INTEGRATION I #### 
 # Multiple Imputation ####
 mice_data_soc = as.data.frame(tscs_data) %>%
   select_at(vars(country_text_id, year,
@@ -1166,6 +1143,8 @@ a.out_soc <- amelia(mice_data_soc,
 )
 
 a.out_soc
+save(a.out_soc, file = "Analyse/Performance/SpecificP/Datasets/a.out_soc.Rdata")
+a.out_soc = load("Analyse/Performance/SpecificP/Datasets/a.out_soc.Rdata")
 
 
 # Create List-Data ####
@@ -1372,15 +1351,19 @@ soc_inequal_mod1 = brm_multiple(
 summary(soc_inequal_mod1, prob = .95)
 
 
-
+# INTEGRATION II ####
 # Domestic Security ####
 # Multiple Imputation ####
+
 mice_data_ds = as.data.frame(tscs_data) %>%
   select_at(vars(country_text_id, year,
                  matches("_mb_"),
                  ends_with("ds"),
                  ends_with("ctl"), 
-                 classification_core)) %>% 
+                 classification_core,
+                 
+                 # Economic Inequality
+                 eco_inequal_soc_num_ctl = eco_inequal_soc)) %>% 
   
   # filter NAs
   filter(is.na(pubsafe_ds) == F)   %>% 
@@ -1448,8 +1431,19 @@ a.out_ds <- amelia(mice_data_ds,
 )
 
 a.out_ds
+save(a.out_ds, file = "Analyse/Performance/SpecificP/Datasets/a.out_ds.Rdata")
+a.out_ds = load("Analyse/Performance/SpecificP/Datasets/a.out_ds.Rdata")
 
-#
+# Create List-Data ####
+LogRATIOS_ds = LR(a.out_ds$imputations[[1]] %>%  select_at(vars(starts_with("FKM_5"))) %>% 
+                     mutate(FKM_5_mb_c = FKM_5_mb_fEc + FKM_5_mb_Fec,
+                            FKM_5_mb_C = FKM_5_mb_fEC + FKM_5_mb_FeC,
+                            FKM_5_mb_E = FKM_5_mb_fEc + FKM_5_mb_fEC,
+                            FKM_5_mb_e = FKM_5_mb_Fec + FKM_5_mb_FeC
+                     ) %>% 
+                     mutate_at(vars(starts_with("FKM")), funs(zeroadjuster(.))))
+
+
 ds_list = list()
 
 for (i in 1:2) {
@@ -1459,6 +1453,10 @@ for (i in 1:2) {
     group_by(country_text_id) %>% 
     mutate(
       pubsafe_ds_lag = dplyr::lag(pubsafe_ds, 1),
+      pubsafe_ds_lag2 = dplyr::lag(pubsafe_ds, 2),
+      pubsafe_ds_lag3 = dplyr::lag(pubsafe_ds, 3),
+      pubsafe_ds_lag4 = dplyr::lag(pubsafe_ds, 4),
+      
       pubsafe_ds_df = first_DF(pubsafe_ds),
 
       classification_core_num_ctl = classification_core,
@@ -1474,21 +1472,35 @@ for (i in 1:2) {
       #                                   "H_SD" = "5"),
     ) %>% 
     
+    #add logratios
+    bind_cols(data.frame(LogRATIOS_ds$LR)) %>% 
+    
     group_by(country_text_id) %>%
     # within effect
-    mutate_at(vars(ends_with("num_ctl")), funs(wi = . - mean(., na.rm=T))) %>%
-    mutate_at(vars(ends_with("num_ctl_wi")), funs(lag = dplyr::lag(.,1))) %>% 
-    mutate_at(vars(ends_with("num_ctl_wi")), funs(df = first_DF(.)))  %>%
     
+    # LDV
+    mutate(pubsafe_ds_lag_wi = pubsafe_ds_lag - mean(pubsafe_ds_lag, na.rm=T)) %>% 
+    mutate(pubsafe_ds_lag2_wi = pubsafe_ds_lag2 - mean(pubsafe_ds_lag2, na.rm=T))%>% 
+    mutate(pubsafe_ds_lag3_wi = pubsafe_ds_lag3 - mean(pubsafe_ds_lag3, na.rm=T)) %>% 
+    mutate(pubsafe_ds_lag4_wi = pubsafe_ds_lag4 - mean(pubsafe_ds_lag3, na.rm=T)) %>% 
+    
+    # INDEPENDENT VARIABLES
+    mutate_at(vars(ends_with("num_ctl")), funs(df = first_DF(.)))  %>%
+    mutate_at(vars(ends_with("num_ctl")), funs(wi = . - mean(., na.rm=T))) %>%
+    mutate_at(vars(ends_with("num_ctl_wi")), funs(df = first_DF(.)))  %>%
+    mutate_at(vars(ends_with("num_ctl_wi")), funs(lag = dplyr::lag(.,1))) %>% 
+    mutate_at(vars(ends_with("num_ctl_wi")), funs(lag2 = dplyr::lag(.,2))) %>% 
+    
+    # DEMOCRACY PROFILES
+    mutate_at(vars(starts_with("FKM_")), funs(df = first_DF(.))) %>%
     mutate_at(vars(starts_with("FKM_")), funs(wi = . - mean(., na.rm=T))) %>%
-    mutate_at(vars(starts_with("FKM_")), funs(lag = dplyr::lag(.,1))) %>% 
-    mutate_at(vars(starts_with("FKM_")), funs(df = first_DF(.)))  %>%
+    mutate_at(vars(matches("FKM_"), -matches("df")), funs(lag = dplyr::lag(.,1))) %>%
+    mutate_at(vars(matches("FKM_"), -matches("df"), -matches("lag")), funs(lag2 = dplyr::lag(.,2))) %>%
+    
     
     #between effect
     mutate_at(vars(ends_with("num_ctl")), funs(bw = mean(., na.rm=T))) %>% 
-    mutate_at(vars(starts_with("FKM_")), funs(bw = mean(., na.rm=T))) %>% 
-    
-    
+    mutate_at(vars(starts_with("FKM_"), -matches("wi"), -matches("df"), -matches("lag")), funs(bw = mean(., na.rm=T))) %>% 
     
     select_at(vars(country_text_id, year_0, 
                    starts_with("FKM_5"),
@@ -1499,7 +1511,6 @@ for (i in 1:2) {
     ungroup()   %>% 
     as.data.frame() 
 }
-
 
 
 ds_list[[1]] %>% 

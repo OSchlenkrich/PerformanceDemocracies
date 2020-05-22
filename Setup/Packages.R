@@ -36,9 +36,16 @@ library(ggrepel)
 library(semPlot)
 library(pixiedust)
 library(ggpubr)
+library(tidybayes)
+library(brms)
+library(easyCODA)
+library(broom)
 
 # for correct display of tibbles
 options(crayon.enabled = FALSE)
+
+# STAN and BRMS parallel
+options(mc.cores = parallel::detectCores())
 
 # 
 
