@@ -21,12 +21,12 @@ dmx_trade_cluster = fread(file="Datasets/performance_data/dmx_trade_cluster_v8.c
   #        X_Fec = X4)
 
 
-# source("Analyse/Economy/eco_FA_v2.R")
-# source("Analyse/Environment/env_FA.R") # takes some time due to download of OECD data
-# source("Analyse/GoalA/ga_variables.R")
-# source("Analyse/Social/soc_FA_v2.R")
-# source("Analyse/DomesticSecurity/ds_FA.R")
-# source("Analyse/Confidence/conf_FA.R")
+# source("Analyse/PerformanceAreas/Economy/eco_FA_v2.R")
+# source("Analyse/PerformanceAreas/Environment/env_FA.R") # takes some time due to download of OECD data
+# source("Analyse/PerformanceAreas/GoalA/ga_variables.R")
+# source("Analyse/PerformanceAreas/Social/soc_FA_v2.R")
+# source("Analyse/PerformanceAreas/DomesticSecurity/ds_FA.R")
+# source("Analyse/PerformanceAreas/Confidence/conf_FA.R")
 
 #### LOAD DATASETS #######
 performance_eco = fread("Datasets/performance_data/ImputedDatasets/performance_eco.csv", encoding = "UTF-8")

@@ -1,6 +1,6 @@
 # Social Imputation
 
-source("Analyse/Social/soc_variables.R")
+source("Analyse/PerformanceAreas/Social/soc_variables.R")
 source("Setup/AuxiliaryVariables.R")
 
 

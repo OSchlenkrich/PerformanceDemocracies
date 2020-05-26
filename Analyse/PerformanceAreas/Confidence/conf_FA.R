@@ -1,6 +1,6 @@
 # Confidence Factor Analysis
 
-source("Analyse/Confidence/conf_variables_v2.R")
+source("Analyse/PerformanceAreas/Confidence/conf_variables_v2.R")
 source("Setup/Sig_Tables.R")
 
 

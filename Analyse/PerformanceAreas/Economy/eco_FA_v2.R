@@ -1,6 +1,6 @@
 # Economic Factor Analysis
 
-source("Analyse/Economy/eco_wdi_imputation.R")
+source("Analyse/PerformanceAreas/Economy/eco_wdi_imputation.R")
 source("Setup/Sig_Tables.R")
 
 ### Inverse Scores

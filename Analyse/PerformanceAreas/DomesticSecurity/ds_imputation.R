@@ -1,6 +1,6 @@
 # Domestic Security Imputation
 
-source("Analyse/DomesticSecurity/ds_variables.R")
+source("Analyse/PerformanceAreas/DomesticSecurity/ds_variables.R")
 source("Setup/AuxiliaryVariables.R")
 
 fa_data_ds_frame_mice = fa_data_ds_frame %>% 

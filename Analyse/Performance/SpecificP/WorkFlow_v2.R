@@ -3,8 +3,103 @@ library(bbmle)
 library(glmmTMB)
 library(broom)
 
+# Multicollinearity Test ####
+multicollinearity_test = function(vars, dependent_var, datalist, with_lag = T) {
 
-# TEST FOR UNITROOT ####
+  dependent_var_lag = paste(dependent_var, "_lag_wi", sep="")
+  
+    
+  # get independent_vars
+  independentvars = vars[grepl("num_ctl", vars) | grepl("FKM", vars)]
+  
+  independentvars_wi = paste(independentvars, "_wi", sep="")
+  independentvars_wi_lag = paste(independentvars, "_wi_lag", sep="")
+  independentvars_bw = paste(independentvars, "_bw", sep="")
+  
+  all_vifs = data.frame()
+  for (i in 1:length(independentvars)) {
+    my_frame = datalist[[1]] %>% 
+      select(country_text_id, year_0, 
+             depvar = dependent_var,
+             depvar_lag = dependent_var_lag,
+             indep = independentvars_wi[i],
+             indep_wi_lag = independentvars_wi_lag[i],
+             indep_bw = independentvars_bw[i]) %>%
+      as.data.frame() 
+          
+    if (with_lag == T) {
+      # lag included
+      
+      m1 = glmmTMB(depvar ~ depvar_lag +
+                     indep + 
+                     indep_wi_lag +
+                     indep_bw +
+                     (1|country_text_id),
+                   my_frame)
+      
+      # Check Multicollinearity
+      vif_stats = check_collinearity(m1)
+      vif_stats$Parameter = c(dependent_var_lag, independentvars_wi[i],independentvars_wi_lag[i],independentvars_bw[i])
+      
+    } else {
+      # without lag included
+       
+      m1 = glmmTMB(depvar ~ depvar_lag +
+                     indep + 
+                     indep_bw +
+                     (1|country_text_id),
+                   my_frame)
+      
+      # Check Multicollinearity
+      vif_stats = check_collinearity(m1)
+      vif_stats$Parameter = c(dependent_var_lag, independentvars_wi[i],independentvars_bw[i])
+      
+    }
+
+    # Cosmetics
+    vif_stats$Parameter = gsub("num_ctl_","",vif_stats$Parameter)
+    vif_stats$Parameter = gsub("\\..*", "", vif_stats$Parameter)
+    
+    # combine all estimates
+    all_vifs = bind_rows(all_vifs, vif_stats)
+  }
+  
+  # create dust table 
+  # distinguish between low, <i>moderate and <b>high VIF correlation
+  all_vifs_dust = all_vifs %>% 
+    filter(Parameter != dependent_var_lag) %>% 
+    mutate(strength_cor = if_else(VIF>5 & VIF<10, "moderate",
+                                  if_else(VIF>=10, "high", "low")),
+           VIF = round(VIF, 3),
+           Parameter = if_else(strength_cor == "moderate", paste("<i>", Parameter, sep=""), Parameter),
+           VIF = ifelse(strength_cor == "moderate", paste("<i>", VIF, sep=""), VIF),
+           strength_cor = ifelse(strength_cor == "moderate", paste("<i>", strength_cor, sep=""), strength_cor),
+           
+           Parameter = if_else(strength_cor == "high", paste("<b>", Parameter, sep=""), Parameter),
+           VIF = ifelse(strength_cor == "high", paste("<b>", VIF, sep=""), VIF),
+           strength_cor = ifelse(strength_cor == "high", paste("<b>", strength_cor, sep=""), strength_cor)) %>% 
+    select(-SE_factor)
+  
+  
+  dust(all_vifs_dust)%>%
+    sprinkle(font_size = 12, part="head") %>%
+    sprinkle(font_size = 10) %>% 
+    sprinkle_colnames("Variable", "VIF", "Correlation") %>% 
+
+    sprinkle(row=1, border_color="black", border="top", border_thickness =2) %>% 
+    sprinkle(col=1, border_color="black", border="right", border_thickness =2) %>% 
+    sprinkle(col=1, border_color="black", border="right", border_thickness =2, part="head") %>% 
+    sprinkle(col=2, border_color="black", border="right", border_thickness =1, part="body")%>% 
+    sprinkle(col=2, border_color="black", border="right", border_thickness =1, part="head")%>% 
+    
+    sprinkle(halign="center", part="head") %>% 
+    sprinkle(halign="center", part="body", cols=2:3) %>% 
+    sprinkle_print_method("html")
+}
+
+
+
+# Unit Root Test ####
 
 chech_stationarity_Beck = function(vars, datalist, model = "plm") {
   table_data = data.frame(matrix(NA, nrow=length(vars), ncol=4)) %>% 

@@ -1,6 +1,6 @@
 # Economic Imputation
 
-source("Analyse/Economy/eco_variables.R")
+source("Analyse/PerformanceAreas/Economy/eco_variables.R")
 source("Setup/AuxiliaryVariables.R")
 
 fa_data_wdi_frame_mice = fa_data_eco_frame %>% 

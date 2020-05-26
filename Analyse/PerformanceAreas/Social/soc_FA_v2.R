@@ -1,6 +1,6 @@
 # Social Factor Analysis
 
-source("Analyse/Social/soc_imputation.R")
+source("Analyse/PerformanceAreas/Social/soc_imputation.R")
 source("Setup/Sig_Tables.R")
 
 ### Inverse Scores

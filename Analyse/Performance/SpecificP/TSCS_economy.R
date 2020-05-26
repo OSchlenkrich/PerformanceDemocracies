@@ -8,6 +8,9 @@ library(glmmTMB)
 
 load("Analyse/Performance/SpecificP/Datasets/economy_out.Rdata")
 source("Analyse/Performance/SpecificP/WorkFlow_v2.R")
+source("Analyse/CreateDatasets.R")
+source("Analyse/Performance/SpecificP/WorkFlow_v2.R")
+source("Setup/brms_tables.R")
 
 
 
@@ -169,6 +172,10 @@ vars = wealth_list[[1]] %>%
 
 chech_stationarity_Beck(vars, wealth_list, model = "glmmTMB")
 chech_stationarity_Fisher(vars, wealth_list)
+
+# Check Unit Multicollinearity #####
+multicollinearity_test(c(vars, "FKM_5_mb_fEc.FKM_5_mb_tot_fEcT"), "wealth_eco", wealth_list, with_lag=T)
+multicollinearity_test(c(vars, "FKM_5_mb_fEc.FKM_5_mb_tot_fEcT"), "wealth_eco", wealth_list, with_lag=F)
 
 # Check Unit Heterogeneity #####
 check_wealth_data = wealth_list[[1]] %>% 
