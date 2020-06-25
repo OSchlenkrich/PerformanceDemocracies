@@ -22,7 +22,7 @@ KMO(fa_data_ds_frame_mice_inv %>%
 
 KMO(fa_data_ds_frame_mice_inv %>% 
       select_at(vars(ends_with("ds"))) %>% 
-      select(-order_safety_gdp_perc_oecd_num_ds, -crime_rate_unodc_num_ds)) 
+      select(-order_safety_gdp_perc_oecd_num_ds)) 
 
 corrplot(cor(fa_data_ds_frame_mice_inv %>% 
                select_at(vars(ends_with("ds"))) , use="pairwise"), method="number")
@@ -38,6 +38,7 @@ fa.parallel(fa_ds_data, fm="mle", n.iter=100, quant=0.95, fa="fa",
             use="pairwise.complete.obs",
             main="Parallel Analysis Scree Plots for Domestic Securirty Performance")
 
+vss(fa_ds_data, fm="mle", rotate="none")
 vss(fa_ds_data, fm="mle", rotate="none")$map %>% 
   round(.,3)
 

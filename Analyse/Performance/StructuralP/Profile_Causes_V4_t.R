@@ -405,7 +405,8 @@ caus_culture_profiles_data %>%
   xlab("") +
   ylab("") +
   theme(legend.position = "none", axis.text.x = element_blank()) +
-  geom_text_repel(aes(label = outlier), na.rm = TRUE, hjust = -0.3)
+  geom_text_repel(aes(label = outlier), na.rm = TRUE, hjust = -0.3) +
+  theme_bw()
 
 # Collinearity
 caus_culture_profiles_data %>% 

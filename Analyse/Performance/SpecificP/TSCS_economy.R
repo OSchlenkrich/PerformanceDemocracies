@@ -6,17 +6,31 @@ library(lmerTest)
 library(glmmTMB)
 
 
-load("Analyse/Performance/SpecificP/Datasets/economy_out.Rdata")
 source("Analyse/Performance/SpecificP/WorkFlow_v2.R")
 source("Analyse/CreateDatasets.R")
 source("Analyse/Performance/SpecificP/WorkFlow_v2.R")
 source("Setup/brms_tables.R")
 
-
+load("Analyse/Performance/SpecificP/Datasets/economy_out.Rdata")
 
 # Create List-Data ####
-LogRATIOS_eco_basis = LR(economy_out$imputations[[1]] %>%  select_at(vars(starts_with("FKM_5"))) %>% 
-                     mutate_at(vars(starts_with("FKM")), funs(zeroadjuster(.))))
+# LogRATIOS_eco_basis = LR(economy_out$imputations[[1]] %>%  select_at(vars(starts_with("FKM_5"))) %>% 
+#                      mutate_at(vars(starts_with("FKM")), funs(zeroadjuster(.))))
+
+
+LogRATIOS_3_eco_total = LR(economy_out$imputations[[1]] %>%  
+                             select_at(vars(starts_with("FKM_3"))) %>% 
+                             mutate(
+                               FKM_3_mb_tot_FEcT = FKM_3_mb_FeC + FKM_3_mb_fEC,
+                               FKM_3_mb_tot_FeCT = FKM_3_mb_FEc + FKM_3_mb_fEC,
+                               FKM_3_mb_tot_fECT = FKM_3_mb_FeC + FKM_3_mb_FEc)%>% 
+                             mutate_at(vars(starts_with("FKM")), funs(zeroadjuster(.))))
+LogRATIOS_3_eco_total = data.frame(LogRATIOS_3_eco_total$LR) %>% 
+  select_at(vars(matches("_tot_")))  %>% 
+  select(FKM_3_mb_FEc.FKM_3_mb_tot_FEcT,
+         FKM_3_mb_FeC.FKM_3_mb_tot_FeCT,
+         FKM_3_mb_fEC.FKM_3_mb_tot_fECT)
+
 
 LogRATIOS_eco_dim = LR(economy_out$imputations[[1]] %>%  
                          select_at(vars(starts_with("FKM_5"))) %>%
@@ -26,6 +40,11 @@ LogRATIOS_eco_dim = LR(economy_out$imputations[[1]] %>%
                                 FKM_5_mb_dim_e = FKM_5_mb_Fec + FKM_5_mb_FeC) %>% 
                          select_at(vars(matches("_dim_"))) %>% 
                          mutate_at(vars(starts_with("FKM")), funs(zeroadjuster(.))))
+LogRATIOS_eco_dim = data.frame(LogRATIOS_eco_dim$LR) %>% 
+  select_at(vars(matches("_dim_")))  %>% 
+  select(FKM_5_mb_dim_c.FKM_5_mb_dim_CT = FKM_5_mb_dim_c.FKM_5_mb_dim_C,
+         FKM_5_mb_dim_E.FKM_5_mb_dim_eT = FKM_5_mb_dim_E.FKM_5_mb_dim_e)
+
 
 LogRATIOS_eco_total = LR(economy_out$imputations[[1]] %>%  
                            select_at(vars(starts_with("FKM_5"))) %>% 
@@ -37,7 +56,16 @@ LogRATIOS_eco_total = LR(economy_out$imputations[[1]] %>%
                              FKM_5_mb_tot_fECT = FKM_5_mb_fEc + FKM_5_mb_Fec + FKM_5_mb_FeC + FKM_5_mb_FEC)%>% 
                            mutate_at(vars(starts_with("FKM")), funs(zeroadjuster(.))))
 LogRATIOS_eco_total = data.frame(LogRATIOS_eco_total$LR) %>% 
-  select_at(vars(matches("_tot_"))) 
+  select_at(vars(matches("_tot_"))) %>% 
+  select(FKM_5_mb_fEc.FKM_5_mb_tot_fEcT,
+         FKM_5_mb_Fec.FKM_5_mb_tot_FecT,
+         FKM_5_mb_FEC.FKM_5_mb_tot_FECT,
+         FKM_5_mb_FeC.FKM_5_mb_tot_FeCT,
+         FKM_5_mb_fEC.FKM_5_mb_tot_fECT)
+
+
+# mylist = economy_out$imputations[[1]] %>% 
+#   select(country_text_id, year_0, FKM_5_mb_Fec, FKM_5_mb_fEC, FKM_5_mb_FeC, FKM_5_mb_FEC, FKM_5_mb_fEc, FKM_3_mb_FeC, FKM_3_mb_FEc, FKM_3_mb_fEC) 
 
 
 
@@ -48,10 +76,10 @@ for (i in 1:1) {
     select_at(vars(-matches("lag"),-matches("lead"),-matches("_mb_"))) %>% 
     
     #add logratios
-    bind_cols(data.frame(LogRATIOS_eco_basis$LR)) %>% 
-    bind_cols(data.frame(LogRATIOS_eco_dim$LR)) %>% 
-    bind_cols(data.frame(LogRATIOS_eco_total)) %>% 
-    
+    bind_cols(LogRATIOS_3_eco_total) %>% 
+    bind_cols(LogRATIOS_eco_dim) %>% 
+    bind_cols(LogRATIOS_eco_total) %>% 
+
     
     group_by(country_text_id) %>% 
     # fill in gaps for correct lags
@@ -118,7 +146,7 @@ for (i in 1:1) {
     
     
     select_at(vars(country_text_id, year_0, trend, 
-                   starts_with("FKM_5"),
+                   starts_with("FKM"),
                    matches("eco"), 
                    matches("ctl"), 
                    -matches("index"))
@@ -127,12 +155,15 @@ for (i in 1:1) {
     as.data.frame() 
 }
 
+# EA: Exploratory Analysis ####
 
+# Missing Data
 wealth_list[[1]] %>% 
   group_by(year_0) %>% 
   select_at(vars(ends_with("ctl"), ends_with("eco"))) %>% 
   summarise_all(pMiss_01) %>% 
-  melt(id.vars="year_0") %>% 
+  melt(id.vars="year_0") %>%
+  mutate(variable = gsub("_num_ctl", "", variable)) %>% 
   ggplot(aes(x=year_0, y=value, fill=variable)) +
   geom_bar(stat="identity", width=1) +
   facet_wrap(variable~.) +
@@ -140,23 +171,58 @@ wealth_list[[1]] %>%
   scale_x_continuous(name=NULL, breaks=seq(1950,2020, 10)) + 
   theme_bw()  +
   theme(axis.text.x = element_text(angle=90), legend.position = "none") +
-  ggtitle("Missings in Democracy Profile Sample - Environmental")
+  ggtitle("Missings in Democracy Profile Sample - Economy")
 
 
-# corrplot
-corrplot(cor(wealth_list[[1]] %>% 
-               select_if(is.numeric) %>% 
-               select_at(vars(-matches("lag"),
-                              -matches("lead"),
-                              -matches("wi"),
-                              -matches("df"),
-                              -matches("mb"),
-                               ends_with("ctl"),
-                              -ends_with("ctl"))), use="pairwise"))
+# Collinearity
+wealth_list[[1]] %>% 
+  select_at(vars(ends_with("ctl"), ends_with("eco"), ends_with("T", ignore.case	=F))) %>% 
+  rename_all(funs(gsub("_num_ctl","",.)))  %>%
+  rename_all(funs(gsub("\\..*T", "", .)))  %>% 
+  cor(use="pairwise", method = "pearson") %>% 
+  corrplot()
+wealth_list[[1]] %>% 
+  select_at(vars(ends_with("ctl"), ends_with("eco"))) %>% 
+  rename_all(funs(gsub("_num_ctl","",.)))  %>%
+  rename_all(funs(gsub("\\..*T", "", .)))  %>% 
+  cor(use="pairwise", method = "pearson") %>% 
+  corrplot(method="number")
+wealth_list[[1]] %>% 
+  select_at(vars(ends_with("eco"), ends_with("T", ignore.case	=F))) %>% 
+  rename_all(funs(gsub("\\..*T", "", .)))  %>% 
+  cor(use="pairwise", method = "pearson") %>% 
+  corrplot(method="number")
 
+# Box Plot Outlier Detection
+wealth_list[[1]]  %>% 
+  select_at(vars(country_text_id, ends_with("ctl"), ends_with("eco"), ends_with("T", ignore.case	=F))) %>%
+  pivot_longer(cols= -country_text_id) %>% 
+  na.omit() %>% 
+  group_by(name) %>% 
+  mutate(outlier = ifelse(is_outlier(value), country_text_id, NA)) %>%
+  ggplot(aes(x=1, y=value, fill=name)) +
+  geom_boxplot() +
+  facet_wrap(name~., scales = "free_y") +
+  xlab("") +
+  ylab("")  +
+  theme_bw() +
+  theme(legend.position = "none", axis.text.x = element_blank()) 
 
+# check green trade
+asd = wealth_list[[1]] %>% 
+  select(country_text_id, year_0, trade_wdi_num_ctl)
 
-# WEALTH ####
+# XY Plots
+#check fiscal crisis greenparties trade
+wealth_list[[1]]  %>% 
+  select_at(vars(country_text_id, ends_with("ctl"), ends_with("eco"), ends_with("T", ignore.case	=F))) %>% 
+  pivot_longer(cols= c(-country_text_id, -wealth_eco, -productivity_eco)) %>% 
+  ggplot(aes(x=value, y=wealth_eco, grp=name)) +
+  geom_point() +
+  geom_smooth(se=F) +
+  facet_wrap(name~., scales = "free") +
+  theme_bw()
+  
 
 # Check Stationarity ####
 vars = wealth_list[[1]] %>% 
@@ -174,13 +240,37 @@ chech_stationarity_Beck(vars, wealth_list, model = "glmmTMB")
 chech_stationarity_Fisher(vars, wealth_list)
 
 # Check Unit Multicollinearity #####
-multicollinearity_test(c(vars, "FKM_5_mb_fEc.FKM_5_mb_tot_fEcT"), "wealth_eco", wealth_list, with_lag=T)
-multicollinearity_test(c(vars, "FKM_5_mb_fEc.FKM_5_mb_tot_fEcT"), "wealth_eco", wealth_list, with_lag=F)
+multicollinearity_test(c(vars, 
+                         "FKM_3_mb_FEc.FKM_3_mb_tot_FEcT",
+                         "FKM_3_mb_FeC.FKM_3_mb_tot_FeCT",
+                         "FKM_3_mb_fEC.FKM_3_mb_tot_fECT",
+                         "FKM_5_mb_dim_c.FKM_5_mb_dim_CT",
+                         "FKM_5_mb_dim_E.FKM_5_mb_dim_eT",
+                         "FKM_5_mb_fEc.FKM_5_mb_tot_fEcT",
+                         "FKM_5_mb_fEc.FKM_5_mb_tot_fEcT",
+                         "FKM_5_mb_Fec.FKM_5_mb_tot_FecT",
+                         "FKM_5_mb_FEC.FKM_5_mb_tot_FECT",
+                         "FKM_5_mb_FeC.FKM_5_mb_tot_FeCT",
+                         "FKM_5_mb_fEC.FKM_5_mb_tot_fECT"), "wealth_eco", wealth_list, with_lag=T)
+multicollinearity_test(c(vars, 
+                         "FKM_3_mb_FEc.FKM_3_mb_tot_FEcT",
+                         "FKM_3_mb_FeC.FKM_3_mb_tot_FeCT",
+                         "FKM_3_mb_fEC.FKM_3_mb_tot_fECT",
+                         "FKM_5_mb_dim_c.FKM_5_mb_dim_CT",
+                         "FKM_5_mb_dim_E.FKM_5_mb_dim_eT",
+                         "FKM_5_mb_fEc.FKM_5_mb_tot_fEcT",
+                         "FKM_5_mb_fEc.FKM_5_mb_tot_fEcT",
+                         "FKM_5_mb_Fec.FKM_5_mb_tot_FecT",
+                         "FKM_5_mb_FEC.FKM_5_mb_tot_FECT",
+                         "FKM_5_mb_FeC.FKM_5_mb_tot_FeCT",
+                         "FKM_5_mb_fEC.FKM_5_mb_tot_fECT"), "productivity_eco", wealth_list, with_lag=F)
+
+# WEALTH ####
 
 # Check Unit Heterogeneity #####
 check_wealth_data = wealth_list[[1]] %>% 
   select(country_text_id, year_0, 
-         wealth_eco_df, 
+         wealth_eco, 
          wealth_eco_lag, 
          wealth_eco_lag2, 
          wealth_eco_lag3, 
@@ -190,7 +280,7 @@ check_wealth_data = wealth_list[[1]] %>%
 
 
 wealth_bayes_homogen = brm(
-  wealth_eco_df ~ 1,
+  wealth_eco ~ 1,
   data = check_wealth_data, family = gaussian(),
   warmup = 2000, iter = 7000,
   chains = 6
@@ -198,7 +288,7 @@ wealth_bayes_homogen = brm(
 wealth_bayes_homogen <- add_criterion(wealth_bayes_homogen, "loo", reloo=T)
 
 wealth_bayes_unit = brm(
-  wealth_eco_df ~ 
+  wealth_eco ~ 
     (1|country_text_id),
   data = check_wealth_data, family = gaussian(),
   prior = prior_unit_tscs ,
@@ -210,36 +300,42 @@ wealth_bayes_unit <- add_criterion(wealth_bayes_unit, "loo", reloo=T)
 loo_compare(wealth_bayes_homogen, wealth_bayes_unit, criterion = "loo")
 
 #PPC
-ppc_unithet(wealth_bayes_homogen, wealth_bayes_unit, dataset = check_wealth_data, "wealth_eco_df", "country")
+ppc_unithet(wealth_bayes_homogen, wealth_bayes_unit, dataset = check_wealth_data, "wealth_eco", "country")
 
+# test = loo(wealth_bayes_unit)
+# plot(test)
+# test2 = cbind(wealth_bayes_unit$data, paret = test$diagnostics$pareto_k)
 
 # Check Contemporaneous Correlation ####
 
 wealth_bayes_corr = brm(
-  wealth_eco_df ~ 
+  wealth_eco ~ 1 + 
     (1|country_text_id) + (1|year_0),
   data = check_wealth_data, family = gaussian(),
   prior = prior_unit_tscs ,
   warmup = 2000, iter = 7000,
   chains = 6
 )
-wealth_bayes_corr <- add_criterion(wealth_bayes_corr, "waic", reloo=T)
+wealth_bayes_corr <- add_criterion(wealth_bayes_corr, "loo", reloo=T)
 loo_compare(wealth_bayes_unit, wealth_bayes_corr, criterion = "loo")
 
+# test = loo(wealth_bayes_corr)
+# plot(test)
+# test2 = cbind(wealth_bayes_corr$data, paret = test$diagnostics$pareto_k)
+
 #PPC
-ppc_unithet(wealth_bayes_unit, wealth_bayes_corr, dataset = check_wealth_data, "wealth_eco_df", "year_0")
+ppc_unithet(wealth_bayes_unit, wealth_bayes_corr, dataset = check_wealth_data, "wealth_eco", "year_0")
 
 
 # Check Panel heteroscedasticity ####
 
 wealth_bayes_panelhet = brm(
   bf(
-    wealth_eco_df ~ 
-      wealth_eco_lag +
-      (1 + wealth_eco_lag|country_text_id) + (1|year_0),
+    wealth_eco ~ 1 +
+      (1 |country_text_id) + (1|year_0),
     sigma = ~ 1 + (1|country_text_id)),
   data = check_wealth_data, family = gaussian(),
-  prior = prior_full_phet_tscs,
+  prior = prior_phet_tscs,
   warmup = 2000, iter = 7000,
   chains = 6, 
   control = list(adapt_delta = 0.95)
@@ -248,24 +344,41 @@ wealth_bayes_panelhet = brm(
 wealth_bayes_panelhet <- add_criterion(wealth_bayes_panelhet, "loo", reloo=T)
 loo_compare(wealth_bayes_panelhet, wealth_bayes_lag_rc, criterion = "waic")
 
-ppc_panelhet(wealth_bayes_corr, wealth_bayes_panelhet, dataset = check_wealth_data, "wealth_eco_df")
+ppc_panelhet(wealth_bayes_corr, wealth_bayes_panelhet, dataset = check_wealth_data, "wealth_eco")
 
 # Check Autocorrelation ####
 
 wealth_bayes_lag = brm(
-  bf(wealth_eco_df ~ 
-       wealth_eco_lag_wi +
+  bf(wealth_eco ~ 
+       wealth_eco_lag +
     (1|country_text_id) + (1|year_0),
     sigma = ~ 1 + (1|country_text_id)),
   data = check_wealth_data, family = gaussian(),
-  prior = prior_full_phet_tscs ,
-  warmup = 2000, iter = 7000,
-  chains = 6, 
-  control = list(adapt_delta = 0.95)
+  prior = prior_unit_tscs ,
+  warmup = 2000, iter = 4000,
+  chains = 6,
+  sample_prior ="only"
 )
-wealth_bayes_lag <- add_criterion(wealth_bayes_lag, "loo", reloo=T)
 
+
+wealth_bayes_lag <- add_criterion(wealth_bayes_lag, "loo", reloo=T)
+prior_summary(wealth_bayes_lag)
 ppc_auto(wealth_bayes_lag, dataset = check_wealth_data, "wealth_eco_df")
+
+prior_unit_tscs <- c(set_prior("normal(0,10)", class = "b"),
+                        set_prior("cauchy(0,5)", class = "sd"),
+                        set_prior("normal(0,10)", class = "Intercept"),
+                        set_prior("cauchy(0,5)", class = "sd", dpar="sigma"),
+                        set_prior("normal(0,10)", class = "Intercept", dpar="sigma"),
+                        set_prior("normal(0.5,0.2)", class = "b", coef = "wealth_eco_lag"))
+
+
+
+get_prior(bf(wealth_eco_df ~ 
+               wealth_eco_lag +
+               (1|country_text_id) + (1|year_0),
+             sigma = ~ 1 + (1|country_text_id)),
+          data = check_wealth_data, family = gaussian())
 
 wealth_bayes_lag2 = brm(
   bf(wealth_eco_df ~ 
@@ -497,8 +610,6 @@ general_formula_prod = as.formula(
     
     # path dependence
     productivity_eco_lag_wi +
-    productivity_eco_lag2_wi  +
-    productivity_eco_lag3_wi +
     
     year_0 +
   
@@ -512,30 +623,30 @@ general_formula_prod = as.formula(
     # cabinet_cpds_num_ctl_wi_df + cabinet_cpds_num_ctl_wi_lag + cabinet_cpds_num_ctl_bw 
     # socdem_plt_cpds_num_ctl_wi + socdem_plt_cpds_num_ctl_wi_lag + socdem_plt_cpds_num_ctl_bw +
     # liberal_plt_cpds_num_ctl_wi + liberal_plt_cpds_num_ctl_wi_lag + liberal_plt_cpds_num_ctl_bw +
-    cabinet_cpds_num_ctl_wi + cabinet_cpds_num_ctl_wi_lag + cabinet_cpds_num_ctl_bw +
+    # cabinet_cpds_num_ctl_wi + cabinet_cpds_num_ctl_wi_lag + cabinet_cpds_num_ctl_bw +
     
     # #PRT
-    unions_vi_num_ctl_wi + unions_vi_num_ctl_wi_lag + unions_vi_num_ctl_bw +
+    #unions_vi_num_ctl_wi + unions_vi_num_ctl_wi_lag + unions_vi_num_ctl_bw +
     # #corporatism_vdem_num_ctl_wi_df + corporatism_vdem_num_ctl_wi_lag + corporatism_vdem_num_ctl_bw +
     # 
     # # formal institutions
-    cbi_w_cbi_num_ctl_wi + cbi_w_cbi_num_ctl_wi_lag + cbi_w_cbi_num_ctl_bw +
+    #cbi_w_cbi_num_ctl_wi + cbi_w_cbi_num_ctl_wi_lag + cbi_w_cbi_num_ctl_bw +
     # 
     # # informal institutions
-    classification_core_num_ctl_wi + classification_core_num_ctl_wi_lag + classification_core_num_ctl_bw +
-    corruption_vdem_num_ctl_wi + corruption_vdem_num_ctl_wi_lag + corruption_vdem_num_ctl_bw +
+    #classification_core_num_ctl_wi + classification_core_num_ctl_wi_lag + classification_core_num_ctl_bw +
+    #corruption_vdem_num_ctl_wi + corruption_vdem_num_ctl_wi_lag + corruption_vdem_num_ctl_bw +
     # 
     # # international factors
     trade_wdi_num_ctl_wi + trade_wdi_num_ctl_wi_lag + trade_wdi_num_ctl_bw +
      
-    FKM_5_mb_dim_c.FKM_5_mb_dim_C_wi + FKM_5_mb_dim_c.FKM_5_mb_dim_C_wi_lag + FKM_5_mb_dim_c.FKM_5_mb_dim_C_bw +
-    FKM_5_mb_dim_E.FKM_5_mb_dim_e_wi + FKM_5_mb_dim_E.FKM_5_mb_dim_e_wi_lag + FKM_5_mb_dim_E.FKM_5_mb_dim_e_bw
-     
-    # FKM_5_mb_fEc.FKM_5_mb_tot_fEcT_df_wi + FKM_5_mb_fEc.FKM_5_mb_tot_fEcT_wi_lag + FKM_5_mb_fEc.FKM_5_mb_tot_fEcT_bw
-    # FKM_5_mb_fEC.FKM_5_mb_tot_fECT_df_wi + FKM_5_mb_fEC.FKM_5_mb_tot_fECT_wi_lag + FKM_5_mb_fEC.FKM_5_mb_tot_fECT_bw
-    # FKM_5_mb_FEC.FKM_5_mb_tot_FECT_df_wi + FKM_5_mb_FEC.FKM_5_mb_tot_FECT_wi_lag + FKM_5_mb_FEC.FKM_5_mb_tot_FECT_bw
-    # FKM_5_mb_FeC.FKM_5_mb_tot_FeCT_df_wi + FKM_5_mb_FeC.FKM_5_mb_tot_FeCT_wi_lag + FKM_5_mb_FeC.FKM_5_mb_tot_FeCT_bw
-    # FKM_5_mb_Fec.FKM_5_mb_tot_FecT_df_wi + FKM_5_mb_Fec.FKM_5_mb_tot_FecT_wi_lag + FKM_5_mb_Fec.FKM_5_mb_tot_FecT_bw
+    # FKM_5_mb_dim_c.FKM_5_mb_dim_C_wi + FKM_5_mb_dim_c.FKM_5_mb_dim_C_wi_lag + FKM_5_mb_dim_c.FKM_5_mb_dim_C_bw +
+    # FKM_5_mb_dim_E.FKM_5_mb_dim_e_wi + FKM_5_mb_dim_E.FKM_5_mb_dim_e_wi_lag + FKM_5_mb_dim_E.FKM_5_mb_dim_e_bw
+    #  
+    FKM_5_mb_fEc.FKM_5_mb_tot_fEcT_df_wi + FKM_5_mb_fEc.FKM_5_mb_tot_fEcT_bw+
+    FKM_5_mb_fEC.FKM_5_mb_tot_fECT_df_wi + FKM_5_mb_fEC.FKM_5_mb_tot_fECT_bw+
+    FKM_5_mb_FEC.FKM_5_mb_tot_FECT_df_wi + FKM_5_mb_FEC.FKM_5_mb_tot_FECT_bw+
+    FKM_5_mb_FeC.FKM_5_mb_tot_FeCT_df_wi + FKM_5_mb_FeC.FKM_5_mb_tot_FeCT_bw+
+    FKM_5_mb_Fec.FKM_5_mb_tot_FecT_df_wi + FKM_5_mb_Fec.FKM_5_mb_tot_FecT_bw
   
 )
 
@@ -547,7 +658,7 @@ general_model_prod = glmmTMB(
   wealth_list[[1]],
   control=glmmTMBControl(optCtrl=list(iter.max=1e3,eval.max=1e3))
 )
-
+check_collinearity(general_model_prod)
 
 summary(general_model_prod)
 

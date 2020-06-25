@@ -3,6 +3,28 @@ library(bbmle)
 library(glmmTMB)
 library(broom)
 
+
+# Priors BRMS ####
+prior_unit_tscs <- c(set_prior("cauchy(0,5)", class = "sd"),
+                     set_prior("normal(0,10)", class = "Intercept"))
+
+
+prior_phet_tscs <- c(set_prior("cauchy(0,5)", class = "sd"),
+                     set_prior("normal(0,10)", class = "Intercept"),
+                     set_prior("cauchy(0,5)", class = "sd", dpar="sigma"),
+                     set_prior("normal(0,10)", class = "Intercept", dpar="sigma"))
+
+prior_full_tscs <- c(set_prior("normal(0,10)", class = "b"),
+                     set_prior("cauchy(0,5)", class = "sd"),
+                     set_prior("normal(0,10)", class = "Intercept"))
+
+prior_full_phet_tscs <- c(set_prior("normal(0,10)", class = "b"),
+                          set_prior("cauchy(0,5)", class = "sd"),
+                          set_prior("normal(0,10)", class = "Intercept"),
+                          set_prior("cauchy(0,5)", class = "sd", dpar="sigma"),
+                          set_prior("normal(0,10)", class = "Intercept", dpar="sigma"))
+
+
 # Multicollinearity Test ####
 multicollinearity_test = function(vars, dependent_var, datalist, with_lag = T) {
 
@@ -58,7 +80,7 @@ multicollinearity_test = function(vars, dependent_var, datalist, with_lag = T) {
 
     # Cosmetics
     vif_stats$Parameter = gsub("num_ctl_","",vif_stats$Parameter)
-    vif_stats$Parameter = gsub("\\..*", "", vif_stats$Parameter)
+    vif_stats$Parameter = gsub("\\..*T", "", vif_stats$Parameter)
     
     # combine all estimates
     all_vifs = bind_rows(all_vifs, vif_stats)

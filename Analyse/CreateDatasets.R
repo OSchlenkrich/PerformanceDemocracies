@@ -36,6 +36,7 @@ performance_ga = fread("Datasets/performance_data/ImputedDatasets/performance_ga
 performance_soc = fread("Datasets/performance_data/ImputedDatasets/performance_soc.csv", encoding = "UTF-8")
 performance_ds = fread("Datasets/performance_data/ImputedDatasets/performance_ds.csv", encoding = "UTF-8")
 performance_pc = fread("Datasets/performance_data/ImputedDatasets/performance_pc.csv", encoding = "UTF-8")
+performance_pclvl1 = fread("Datasets/performance_data/ImputedDatasets/conf_scores.csv", encoding = "UTF-8")
 
 # Combine all Datasets ####
 

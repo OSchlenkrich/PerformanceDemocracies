@@ -258,29 +258,29 @@ folded_ladder_fun = function(x, plotting = F) {
   nr_iterations = 1/0.025 + 1
   
   my_results_frame = data.frame(matrix(NA, nr_iterations, 3)) %>% 
-    dplyr::rename(lambda = X1, shapiro.w = X2, shapiro.p.value = X3)
+    dplyr::rename(lambda = X1, ad.value = X2, ad.p.value = X3)
   
   # special: lambda=0 is logit
   results = log(x) - log(1-x)
-  sh_test_W = stats::shapiro.test(results)
-  #sh_test_W = ad.test(results)
+  #sh_test_W = stats::shapiro.test(results)
+  ad_test_W = ad.test(results)
   
-  my_results_frame[1,] = c(0, sh_test_W$statistic, round(sh_test_W$p.value, 3))
+  my_results_frame[1,] = c(0, ad_test_W$statistic, round(ad_test_W$p.value, 3))
   
   lambda = 0.025
 
   for (i in 2:nr_iterations) {
     results = f_fun(x, lambda)
-    sh_test_W = shapiro.test(results)
-    sh_test_W = ad.test(results)
+    #sh_test_W = shapiro.test(results)
+    ad_test_W = ad.test(results)
     
-    my_results_frame[i,] = c(lambda, sh_test_W$statistic, round(sh_test_W$p.value, 3))
+    my_results_frame[i,] = c(lambda, ad_test_W$statistic, round(ad_test_W$p.value, 3))
     lambda = lambda + 0.025
   }
   
   best_lambda = my_results_frame %>% 
-    top_n(n=1, wt=shapiro.w) %>% 
-    mutate(shapiro.w = round(shapiro.w, 3))
+    top_n(n=1, wt=-ad.value) %>% 
+    mutate(ad.value = round(ad.value, 3))
   
   print(best_lambda)
   
@@ -488,3 +488,20 @@ results_to_excel = function(reg_obj, filename, PCSE = F) {
   write.csv2(results_df, file=file, row.names = T)
 }
 
+
+# Scaling
+scale_this = function(x) {
+  x_scaled = (x - mean(x, na.rm=T)) / sd(x, na.rm=T)
+  return(x_scaled)
+}
+
+# to calculate logratios > 0
+zeroadjuster = function(x) {
+  x = ifelse(x==0, 0.005, x) 
+  return(x)
+}
+
+# First Difference
+first_DF = function(x) {
+  return(x - dplyr::lag(x,1))
+}

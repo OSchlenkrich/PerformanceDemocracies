@@ -34,7 +34,11 @@ dmx_trade_cluster %>%
   
 # Create Integrated Value Survey + country_text_id for matching
 EVS = read_spss("C:/RTest/IVS/ZA4804_v3-0-0.sav", user_na = T)
-WVS = readRDS("C:/RTest/IVS/F00008390-WVS_Longitudinal_1981_2016_r_v20180912.rds")
+WVS = read_spss("C:/RTest/IVS/WVS_Longitudinal_1981_2016_Spss_v20180912.sav", user_na = T)
+
+# remove labels; needed for bind_rows
+WVS = zap_labels(WVS)
+EVS = zap_labels(EVS)
 
 IVS = WVS %>% 
   bind_rows(EVS) %>% 
@@ -44,6 +48,8 @@ IVS = WVS %>%
 rm(EVS)
 rm(WVS)
 gc()
+
+
 
 ### Extract Confidence Variables
 
@@ -116,7 +122,7 @@ confidence_IVS %>%
   dplyr::select(country_text_id, year = year_study, variable) %>% 
   mutate(helper_ivs = 1) %>% 
   right_join(dmx_trade_cluster %>% 
-               dplyr::select(country, country_text_id, year, cluster_label_1st) %>% 
+               dplyr::select(country, country_text_id, year, FKM_5_cluster) %>% 
                filter(year >= 1950), by=c("country_text_id", "year")) %>%
   pivot_wider(names_from = variable,
               values_from = helper_ivs) %>% 
@@ -156,7 +162,7 @@ confidence_IVS %>%
   dplyr::select(country_text_id, year = year_study, variable) %>% 
   mutate(helper_ivs = 1) %>% 
   right_join(dmx_trade_cluster %>% 
-               dplyr::select(country, country_text_id, year, cluster_label_1st) %>% 
+               dplyr::select(country, country_text_id, year, FKM_5_cluster) %>% 
                filter(year >= 1950), by=c("country_text_id", "year")) %>%
   pivot_wider(names_from = variable,
               values_from = helper_ivs) %>% 

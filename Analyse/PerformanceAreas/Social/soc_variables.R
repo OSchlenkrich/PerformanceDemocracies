@@ -167,7 +167,6 @@ NA_frame_soc_oecd = Integration_Performance_IP_norm %>%
 #### Factor Analysis: Transfer to MI
 
 fa_data_soc_frame = Integration_Performance_IP_norm %>% 
-  bind_cols(Integration_Performance %>%  dplyr::select(country, country_text_id, year)) %>%
   select_at(vars(-ends_with("rr_GI"))) %>% 
   select_at(vars(country, country_text_id, year, 
                  ends_with("t_GI"), 

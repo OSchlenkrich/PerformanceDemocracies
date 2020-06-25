@@ -60,13 +60,12 @@ a.out_wdi <- amelia(mice_data,
                 m = nr_imputations, 
                 ts = "year_0", 
                 cs = "country_text_id", 
-                noms=c("cluster_label_1st_fact_anal"), 
                 polytime = 1,
                 intercs = T,
                 p2s = 2,
                 parallel = "snow",
                 ncpus	= nr_cores,
-                empri = .05*nrow(mice_data)
+                empri = .025*nrow(mice_data)
                 )
 
 a.out_wdi

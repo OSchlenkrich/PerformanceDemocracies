@@ -71,11 +71,10 @@ conf_scores = fa_data_conf_inv %>%
 
 confidence_final = confidence_IVS %>% 
   filter(classification_core == "Deficient Democracy" |  classification_core == "Working Democracy") %>%
-  dplyr::select(survey, country, country_text_id, regions, year = year_study, classification_core, cluster_label_1st) %>%
+  dplyr::select(survey, country, country_text_id, regions, year = year_study, classification_core, FKM_5_cluster) %>%
   filter(year >= 1990) %>% 
-  bind_cols(conf_scores %>% dplyr::select(-survey)) %>% 
+  bind_cols(conf_scores %>% dplyr::select(conf_index, weights)) %>% 
   ungroup() 
-
 
 performance_pc = confidence_final %>% 
   dplyr::select(country_text_id, weights, year, conf_index) %>%

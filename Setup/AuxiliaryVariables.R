@@ -136,11 +136,64 @@ aux_vars_dmx_env %>%
 
 # ANALYSE VARS
 if (exists("dmx_trade_cluster") == T ){
-  analyse_vars = dmx_trade_cluster %>%
-    select(country_text_id, 
-           year, 
-           cluster_label_1st_fact_anal = cluster_1st) %>% 
+  # Main Independent Var: Log Ratios Democracy Profiles
+ source("Analyse/Cluster/LogRatios.R")
+
+ # Other Analyse vars
+  
+  V_dem_control = V_dem_all %>% 
+    select(country_text_id, year, 
+           corruption_vdem_pr_ctl = v2x_corr, 
+           corporatism_vdem_pr_ctl = v2csstruc_1,
+           statehoodr_vdem_pr_ctl = v2svstterr)  %>%
+    mutate_at(vars(statehoodr_vdem_pr_ctl), funs(./100)) %>% 
+    # transformation and scaling
+    mutate_at(vars(matches("pr")), funs(folded_ladder_fun)) %>% 
+    mutate_at(vars(matches("pr")), funs(scale)) 
+  
+  # V_dem_control %>%
+  #   select_at(vars(ends_with("ctl"))) %>%
+  #   melt() %>%
+  #   ggplot(aes(x=value)) +
+  #   geom_histogram()  +
+  #   facet_wrap(variable~., scales = "free")
+
+  
+  #QoC
+  QoC_control = QoC_data %>% 
+    dplyr::select(country_text_id, year,
+                  
+                  pop_over65_wdi_pr_ctl = wdi_pop65,
+                  
+                  unions_vi_num_ctl = vi_udr,
+
+                  trade_wdi_num_ctl = wdi_trade,
+                  
+    ) %>% 
+    
+    filter(country_text_id %in% unique(dmx_trade_cluster$country_text_id)) %>% 
+    filter_if(is.double, any_vars(!is.na(.))) %>%
+    mutate_at(vars(matches("pr")), funs(./100)) %>% 
+    arrange(country_text_id, year)  %>% 
+    # transformation and scaling
+    mutate_at(vars(matches("pr")), funs(folded_ladder_fun)) %>% 
+    mutate_at(vars(matches("num")), funs(ladder_fun))  %>% 
+    mutate_at(vars(matches("pr")), funs(scale))
+  
+  # QoC_control %>%
+  #   select_at(vars(ends_with("ctl"))) %>%
+  #   melt() %>%
+  #   ggplot(aes(x=value)) +
+  #   geom_histogram()  +
+  #  facet_wrap(variable~., scales = "free")
+  
+    
+  analyse_vars = LogRATIOS_3_eco_total %>% 
+    left_join(LogRATIOS_eco_dim, by=c("country_text_id", "year")) %>% 
+    left_join(LogRATIOS_eco_total,by=c("country_text_id", "year")) %>% 
     tidyr::complete(country_text_id, year = min(year):max(year), fill = list(NA)) %>% 
+    left_join(V_dem_control,by=c("country_text_id", "year")) %>% 
+    left_join(QoC_control,by=c("country_text_id", "year")) %>% 
     dplyr::arrange(country_text_id, year) 
 }
 
