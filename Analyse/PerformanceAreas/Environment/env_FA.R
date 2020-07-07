@@ -26,7 +26,7 @@ corrplot(cor(fa_data_oecd_frame_mice_inv %>%
 
 
 ### Factor Analysis
-fa_env_data = fa_data_oecd_frame_mice_inv%>% 
+fa_env_data = fa_data_oecd_frame_mice_inv %>% 
   select_at(vars(ends_with("env"), -CO2_ugdp_oecd_num_env, -CH4_ugdp_oecd_num_env,-N2O_ugdp_oecd_num_env, -NMVOC_ugdp_oecd_num_env))
 
 paran(na.omit(fa_env_data), iterations=100, graph=T, cfa=T, centile=95)
@@ -39,7 +39,7 @@ vss(fa_env_data, fm="mle", rotate="none")$map %>%
 vss(fa_env_data, fm="mle", rotate="none") 
 
 # Factor Analysis
-fa_oecd_env = fa(fa_env_data,2, rotate="oblimin", missing=F, fm="mle", scores = "Bartlett")
+fa_oecd_env = fa(fa_env_data, 2, rotate="oblimin", missing=F, fm="mle", scores = "Bartlett")
 fa_oecd_env
 
 

@@ -64,7 +64,9 @@ test_after = data.frame(country_text_id = unique(distanceCountries_final$iso_o))
               mutate(ind2 = "VDEM"), by="country_text_id")
 
 # Create Spatially weighted Dependent Variable
-# Average DV
+# Average DV (only between effect)
+
+
 
 spatial_dv = function(tscs_data, dvar) {
   average_dependent = tscs_data %>% 
@@ -72,7 +74,7 @@ spatial_dv = function(tscs_data, dvar) {
     group_by(country_text_id) %>% 
     summarize(mean_dv = mean(dvar, na.rm=T)) %>% 
     ungroup() %>% 
-    mutate(mean_dv = scale_this(mean_dv))
+    mutate(mean_dv = scale_this(mean_dv)) 
   
   # Create Weighted DV
   spatial_cor = distanceCountries_final %>% 
@@ -94,13 +96,40 @@ spatial_dv = function(tscs_data, dvar) {
 }
 
 
+
+spatial_dv_year = function(tscs_data, dvar) {
+  dependent_year = tscs_data %>% 
+    select(country_text_id, year, dvar = dvar) %>% 
+    mutate(dvar = scale_this(dvar))
+  
+  # Create Weighted DV
+  spatial_cor = distanceCountries_final %>% 
+    right_join(dependent_year, by = c("iso_o" = "country_text_id")) %>% 
+    right_join(dependent_year, by = c("iso_d" = "country_text_id", "year")) %>% 
+    # min-max
+    mutate(dist = (dist - min(dist))/(max(dist) - min(dist)),
+           # inversing so that countries far apart weight less
+           dist = 1-dist,
+           # weighting
+           weighted_dv = dist * dvar.y) %>% 
+    group_by(iso_o, year) %>%
+    summarise(weighted_dv = mean(weighted_dv, na.rm=T)) %>% 
+    ungroup() %>% 
+    rename(country_text_id = iso_o)  %>% 
+    mutate(weighted_dv = scale_this(weighted_dv))
+  
+  colnames(spatial_cor)[3] = paste(dvar, "_spatial_ctl", sep="")
+  
+  return(spatial_cor)
+}
+
 # Plots
 
-# tscs_data %>% 
-#   select(country_text_id, regions) %>% 
-#   distinct() %>% 
-#   left_join(spatial_cor, by = "country_text_id") %>% 
-#   ggplot(aes(x=regions, y=weighted_dv)) + 
+# tscs_data %>%
+#   select(country_text_id, year, regions) %>%
+#   #distinct() %>%
+#   left_join(spatial_cor, by = c("country_text_id", "year")) %>%
+#   ggplot(aes(x=regions, y=air_env_spatial_ctl)) +
 #   geom_point() +
 #   coord_flip() +
 #   theme_bw()

@@ -1,6 +1,8 @@
 # BRMS Table ####
 
 generateTableBrms = function(..., prob_interval = 0.95, modelnames = NULL) {
+  options(scipen=999)
+  digits = 3
   
   make_table_brms = function(brms_model, prob_interval) {
     if (dim(broom::tidy(brms_model,
@@ -12,7 +14,7 @@ generateTableBrms = function(..., prob_interval = 0.95, modelnames = NULL) {
                                    par_type = c("all"),
                                    prob = prob_interval) %>%
         filter(term == "sigma")  %>% 
-        mutate_if(is.numeric, funs(round(.,3))) %>% 
+        mutate_if(is.numeric, funs(sprintf("%1.3f", round(.,digits)))) %>% 
         mutate(CI_95 = paste(lower, "-", upper)) %>% 
         select(Predictors = term, Estimates = estimate, CI_95) %>% 
         mutate(Predictors = ifelse(grepl("sigma", Predictors), "&epsilon;", Predictors)) 
@@ -21,9 +23,9 @@ generateTableBrms = function(..., prob_interval = 0.95, modelnames = NULL) {
       residuals_brms = broom::tidy(brms_model,
                                    par_type = c("non-varying"),
                                    prob = prob_interval) %>% 
-        mutate(estimate = round(estimate,3),
-               lower  = round(lower,2),
-               upper = round(upper,2),
+        mutate(estimate = sprintf("%1.3f", round(estimate, digits)),
+               lower  = sprintf("%1.3f", round(lower, digits)),
+               upper = sprintf("%1.3f", round(upper, digits)),
         ) %>% 
         mutate(CI_95 = paste(lower, "-", upper)) %>% 
         filter(grepl("sigma_", term))  %>% 
@@ -36,16 +38,16 @@ generateTableBrms = function(..., prob_interval = 0.95, modelnames = NULL) {
     fix_effects = broom::tidy(brms_model,
                               par_type = c("non-varying"),
                               prob = prob_interval) %>% 
-      mutate(estimate = round(estimate,3),
-             lower  = round(lower,2),
-             upper = round(upper,2),
+      mutate(estimate = sprintf("%1.3f", round(estimate, digits)),
+             lower  = sprintf("%1.3f", round(lower, digits)),
+             upper = sprintf("%1.3f", round(upper, digits)),
       ) %>% 
       mutate(CI_95 = paste(lower, "-", upper)) %>% 
       filter(!grepl("sigma_", term))  %>% 
       select(Predictors = term, Estimates = estimate, CI_95) %>% 
       # zzz_ for ordering
       mutate(Predictors = ifelse(grepl("sigma", Predictors), paste("zzz_", Predictors, sep=""), Predictors)) %>% 
-      arrange(Predictors) %>% 
+      #arrange(Predictors) %>% 
       mutate(Predictors = gsub("zzz_", "", Predictors)) %>% 
       mutate(Predictors = ifelse(grepl("sigma", Predictors), paste(gsub("sigma_", "", Predictors), "<sub>&sigma;", sep=""), Predictors)) 
     
@@ -58,9 +60,9 @@ generateTableBrms = function(..., prob_interval = 0.95, modelnames = NULL) {
       random_effects = broom::tidy(brms_model,
                                    par_type = c("hierarchical"),
                                    prob = prob_interval) %>% 
-        mutate(estimate = round(estimate,3),
-               lower  = round(lower,2),
-               upper = round(upper,2),
+        mutate(estimate = sprintf("%1.3f", round(estimate, digits)),
+               lower  = sprintf("%1.3f", round(lower, digits)),
+               upper = sprintf("%1.3f", round(upper, digits)),
         ) %>% 
         filter(!grepl("cor_", term)) %>% 
         mutate(CI_95 = paste(lower, "-", upper)) %>% 
@@ -111,18 +113,26 @@ generateTableBrms = function(..., prob_interval = 0.95, modelnames = NULL) {
     # Separator
     Separator_Residuals = data.frame(Predictors = " <strong><i>Residuals")
     Separator_Random = data.frame(Predictors = " <strong><i>Random Effects")
+    Separator_Random = data.frame(Predictors = " <strong><i>Random Effects")
+    
+    # Number of Observations
+    NumberObs = data.frame(Predictors = "Num. obs.",
+                           Estimates =  as.character(dim(brms_model$data)[1]))
     
     
     
     mytable = fix_effects  %>% 
-                     bind_rows(Separator_Residuals) %>% 
-                     bind_rows(residuals_brms) %>% 
-                     bind_rows(Separator_Random) %>% 
-                     bind_rows(random_effects_ctry) %>% 
-                     bind_rows(random_effects_year)%>% 
-                     bind_rows(random_effects_sigma) %>% 
+      bind_rows(Separator_Residuals) %>% 
+      bind_rows(residuals_brms) %>% 
+      bind_rows(Separator_Random) %>% 
+      bind_rows(random_effects_ctry) %>% 
+      bind_rows(random_effects_year) %>% 
+      bind_rows(random_effects_sigma) %>% 
       mutate(Estimates = paste(Estimates, " (", CI_95, ")", sep="")) %>% 
-      select(-CI_95)
+      select(-CI_95) %>% 
+      bind_rows(NumberObs) 
+    print(mytable)
+
    return(mytable) 
   }
   
@@ -155,12 +165,32 @@ generateTableBrms = function(..., prob_interval = 0.95, modelnames = NULL) {
     
   }
 
+  # print(dust_data)
+
+  dust_data = dust_data %>%
+    #relabel
+    mutate(Predictors = gsub("_vdem", "", Predictors),
+           Predictors = gsub("_cpds", "", Predictors),
+           Predictors = gsub("_cbi", "", Predictors),
+           Predictors = gsub("_odempr", "", Predictors),
+           Predictors = gsub("_wdi", "", Predictors),
+           Predictors = gsub("_vi", "", Predictors),
+           Predictors = gsub("_cat_ctl", "", Predictors),
+           Predictors = gsub("_pr_ctl", "", Predictors),
+           Predictors = gsub("_num_ctl", "", Predictors),
+           Predictors = gsub("_ctl", "", Predictors),
+           Predictors = gsub("_wi", "<sub>wi</sub>", Predictors),
+           Predictors = gsub("_lag", "<sub>,t-1", Predictors),
+           Predictors = gsub("_spatial", "<sub>spatial", Predictors),
+           Predictors = gsub("_bw", "<sub>bw", Predictors))
+
   # Dust Table
   mytable_final = dust_data %>% 
     dust() %>% 
     
     sprinkle(border = c("bottom"), part=c("head")) %>%
-    sprinkle(halign="center", part=c("head")) %>%
+    sprinkle(halign="center", part="head") %>%
+    #sprinkle(halign="center", part="body") %>%
     
     sprinkle(rows = 1, border = "top",  border_thickness=2) %>%
     sprinkle(cols = 2:dim(dust_data)[2], border = "left",  border_thickness=2, part="head") %>%
@@ -171,7 +201,8 @@ generateTableBrms = function(..., prob_interval = 0.95, modelnames = NULL) {
     
     # font size
     sprinkle(font_size = 10, font_size_units = "pt", part="head") %>% 
-    sprinkle(font_size = 9, font_size_units = "pt", part="body") %>% 
+    sprinkle(font_size = 9, halign="center", font_size_units = "pt", part="body") %>% 
+    sprinkle(cols = 1, halign="left", part="body") %>% 
     
     sprinkle_na_string(na_string = "") %>% 
     sprinkle_print_method("html")

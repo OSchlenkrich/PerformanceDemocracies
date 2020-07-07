@@ -30,7 +30,7 @@ corrplot(cor(fa_data_soc_frame_mice_inv %>%
 
 ### Factor Analysis
 fa_dataset = fa_data_soc_frame_mice_inv %>% 
-  select_at(vars(ends_with("soc"), -v2dlunivl_vdem_num_soc  ))
+  select_at(vars(ends_with("soc")))
 
 par(mfrow=c(1,1))
 paran(na.omit(fa_dataset), iterations=0, graph=T, cfa=T, centile=95)

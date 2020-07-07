@@ -129,6 +129,8 @@ transformTukeyown = function (x, start = -10, end = 10, int = 0.025, plotit = TR
     A = as.numeric(rep(1000, n))
     Anderson.p.value = as.numeric(rep(0, n))
   }
+  
+
   for (i in (1:n)) {
     lambda[i] = signif(start + (i - 1) * int, digits = 4)
     if (lambda[i] > 0) {
@@ -217,6 +219,8 @@ transformTukeyown = function (x, start = -10, end = 10, int = 0.025, plotit = TR
     return(lambda)
   }
 }
+
+
 
 ladder_fun = function(x) {
   library(rcompanion)
@@ -337,7 +341,9 @@ EPI_fun = function(x, lower = 0.025, upper=0.975) {
 
 
 # Trimming
-trim = function(x,prop=.05,minimum=F) {
+
+
+trim = function(x,prop=.05, minimum=F, only=F) {
   max_trimmed_value = which(x < quantile(x,prob=(1-prop), na.rm=T))
   max_end = max(x[max_trimmed_value], na.rm=T)
 
@@ -351,11 +357,14 @@ trim = function(x,prop=.05,minimum=F) {
     
     totrim_min = which(x <= quantile(x,prob=prop, na.rm=T))
     x[totrim_min] = min_end
-    x[totrim_min] = NA
+    #x[totrim_min] = NA
     
   } 
-  x[totrim_max] = max_end
-  x[totrim_max] = NA
+  
+  if (only == F) {
+    x[totrim_max] = max_end
+    #x[totrim_max] = NA
+  }
   
   return(x)
 }
@@ -504,4 +513,134 @@ zeroadjuster = function(x) {
 # First Difference
 first_DF = function(x) {
   return(x - dplyr::lag(x,1))
+}
+
+
+# XY Plots
+xyplot = function(dataset, dependent_vars_label, deselection_independent = NULL) {
+  
+  dependent_vars = dataset %>% 
+    select_at(vars(dependent_vars_label)) 
+  
+  if (is.null(deselection_independent) == T) {
+    independent_vars = dataset %>% 
+      select_at(vars(ends_with("_ctl"), starts_with("FKM"), ends_with("_odempr"))) 
+    
+  } else {
+    independent_vars = dataset %>% 
+      select_at(vars(ends_with("_ctl"), starts_with("FKM"), ends_with("_odempr"), -deselection_independent)) 
+  }
+  
+  plotlist = list()
+  for (i in 1:dim(independent_vars)[2]) {
+    xlabel = colnames(independent_vars)[i]
+    xlabel = gsub("_num_ctl","", xlabel)
+    xlabel = gsub("_pr_ctl","", xlabel)
+    xlabel = gsub("_ctl","", xlabel)
+    
+    plotlist[[i]] = independent_vars %>%
+      select(sel_var = i) %>%
+      bind_cols(dependent_vars) %>%
+      pivot_longer(cols = -sel_var) %>%
+      ggplot(aes(x=sel_var, y=value, col=name)) +
+      geom_point(col="black", alpha=0.25) +
+      geom_smooth(se=F, size=1.1) +
+      stat_cor(aes(method = "pearson", label = ..r.label..)) + 
+      xlab(xlabel) +
+      ylab("") +
+      theme_bw() +
+      theme(legend.position = "none")
+    
+
+  }
+  
+  return(ggarrange(plotlist=plotlist, common.legend = F) %>% 
+           annotate_figure(top = text_grob(dependent_vars_label)))
+}
+
+
+# Make Data for TSCS Regression
+make_reg_data = function(imputatedData, DV_label, naframe, vars_noimput) {
+  
+  vars_noimput_naid = paste(vars_noimput, "_is_na", sep="")
+
+  data_list = list()
+  
+  for (i in 1:10) {
+    performance_data_nas = imputatedData$imputations[[i]]
+    
+    for (k in 1:length(vars_noimput)) {
+      performance_data_nas = performance_data_nas %>% 
+        bind_cols(naframe) %>% 
+        rename(LHS = vars_noimput[k], RHS_na = vars_noimput_naid[k]) %>% 
+        mutate(LHS = ifelse(RHS_na == 1, NA, LHS)) %>% 
+        rename(!!vars_noimput[k] := LHS) %>% 
+        select_at(vars(-RHS_na, -ends_with("is_na")))
+    }
+
+    # fill in gaps for correct lags
+    performance_data = performance_data_nas %>% 
+      select_at(vars(-matches("lag"),-matches("lead"),-matches("_mb_"))) %>% 
+      # rename DV
+      rename(DV = DV_label) %>% 
+      
+      group_by(country_text_id) %>% 
+      tidyr::complete(country_text_id, year_0 = min(year_0):max(year_0), fill = list(NA)) %>% 
+      ungroup()
+    
+    # LDVs and FD
+    performance_data_LDV = performance_data %>% 
+      group_by(country_text_id) %>% 
+      mutate(
+        # ADL
+        DV_lag = dplyr::lag(DV, 1),
+        #productivity_eco_lag = dplyr::lag(productivity_eco, 1),
+        
+        # ECM
+        DV_df = first_DF(DV),
+        #productivity_eco_df = first_DF(productivity_eco),
+        
+      )  %>% 
+      # Within Effect of LDV
+      mutate_at(vars(matches("lag")), funs(DV_wi_lag = . - mean(., na.rm=T))) %>%
+      ungroup() 
+    
+    # Control Variables
+    performance_data_LDV_ctl = performance_data_LDV %>% 
+      group_by(country_text_id) %>%
+      
+      # within effect
+      mutate_at(vars(ends_with("num_ctl"), ends_with("cat_ctl"), ends_with("pr_ctl")), funs(wi = . - mean(., na.rm=T))) %>%
+      mutate_at(vars(ends_with("num_ctl_wi"), ends_with("cat_ctl_wi"), ends_with("pr_ctl_wi")), funs(lag = dplyr::lag(.,1))) %>% 
+      
+      mutate_at(vars(ends_with("num_ctl"), ends_with("cat_ctl"), ends_with("pr_ctl")), funs(df = first_DF(.)))  %>%
+      mutate_at(vars(ends_with("num_ctl_wi"), ends_with("cat_ctl_wi"), ends_with("pr_ctl_wi")), funs(df = first_DF(.)))  %>%
+      
+      
+      #between effect
+      mutate_at(vars(ends_with("num_ctl"), ends_with("cat_ctl"), ends_with("pr_ctl")), funs(bw = mean(., na.rm=T))) %>% 
+      ungroup()
+    
+    # Democracy Profiles
+    performance_data_LDV_ctl_dp = performance_data_LDV_ctl %>% 
+      group_by(country_text_id) %>%
+      # within effect
+      mutate_at(vars(starts_with("FKM"), matches("centrip_odempr")), funs(df = first_DF(.))) %>%
+      mutate_at(vars(starts_with("FKM"), matches("centrip_odempr")), funs(wi = . - mean(., na.rm=T))) %>%
+      mutate_at(vars(matches("FKM"), matches("centrip_odempr"), -matches("df")), funs(lag = dplyr::lag(.,1))) %>%
+      
+      #between effect
+      mutate_at(vars(starts_with("FKM"), centrip_odempr, -matches("wi"), -matches("df"), -matches("lag")), funs(bw = mean(., na.rm=T))) %>% 
+      ungroup()
+    
+    performance_data_LDV_ctl_dp_trend = performance_data_LDV_ctl_dp %>% 
+      mutate(trend = year_0 - median(year_0, na.rm=T))
+    
+    data_list[[i]] = performance_data_LDV_ctl_dp_trend
+    colnames(data_list[[i]]) = gsub("DV", DV_label, colnames(data_list[[i]]))
+    
+  }
+  
+  return(data_list)
+  
 }

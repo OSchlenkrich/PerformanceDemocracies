@@ -26,7 +26,7 @@ dmx_trade_cluster = fread(file="Datasets/performance_data/dmx_trade_cluster_v8.c
 # source("Analyse/PerformanceAreas/GoalA/ga_variables.R")
 # source("Analyse/PerformanceAreas/Social/soc_FA_v2.R")
 # source("Analyse/PerformanceAreas/DomesticSecurity/ds_FA.R")
-# source("Analyse/PerformanceAreas/Confidence/conf_FA.R")
+# source("Analyse/PerformanceAreas/Confidence/conf_FA_v2.R")
 
 #### LOAD DATASETS #######
 performance_eco = fread("Datasets/performance_data/ImputedDatasets/performance_eco.csv", encoding = "UTF-8")
@@ -69,5 +69,7 @@ performance_all = V_dem %>%
                  ends_with("_pc")),funs("index" = EPI_fun(., lower = 0.01, upper=0.99)))  %>% 
   mutate_at(vars(matches("abstraction_env")),funs("index" = EPI_fun(., lower = 0.025, upper=0.975)))
 
+# Other Democracy Profiles ####
+source("Analyse/Cluster/OtherDemocracyProfiles.R")
 
 

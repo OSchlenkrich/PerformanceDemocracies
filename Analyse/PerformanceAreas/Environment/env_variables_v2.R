@@ -183,7 +183,8 @@ Environment_Performance_IP_norm = Environment_Performance_IP  %>%
                  NOX_ugdp_oecd,
                  NMVOC_ugdp_oecd), funs(trim(., 0.01, minimum=T))) %>% 
   mutate_at(vars(greenhouse_ugdp_wdi), funs(trim(., 0.025, minimum=T))) %>% 
-  mutate_at(vars(waste_ugdp_oecd), funs(trim(., 0.05, minimum=T))) %>%
+  mutate_at(vars(waste_ugdp_oecd), funs(trim(., 0.02, minimum=T))) %>%
+  mutate_at(vars(GHG_ugdp_oecd, CO_ugdp_oecd), funs(trim(., 0.01, minimum=T, only=T))) %>%
   mutate_all(funs(ladder_fun(.))) %>% 
   mutate_all(scale)
 

@@ -326,7 +326,7 @@ Economy_Perfomance_IP_norm = Economy_Perfomance_IP  %>%
                  "inflation_imf",
                  "Balance_wdi"), funs(trim(., 0.01, minimum=T))) %>% 
   mutate_at(vars("investment_wdi",
-                 GDP_capita_gen_num_wdi), funs(trim(., 0.03, minimum=T))) %>%
+                 GDP_capita_gen_num_wdi), funs(trim(., 0.025, minimum=T, only=T))) %>%
   mutate_at(vars(ends_with("oecd"), ends_with("imf"), ends_with("pwt"), ends_with("wdi"), -matches("_pr")), funs(ladder_fun(.))) %>% 
   mutate_at(vars(matches("_pr_")), funs(folded_ladder_fun(., plotting =F))) %>% 
   mutate_all(scale)

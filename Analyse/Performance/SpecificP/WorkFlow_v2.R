@@ -613,28 +613,32 @@ ppc_auto = function(mod_auto, dataset, independent_var, country_sample = NULL) {
 
 # Residual Time Plot ####
 
-ppc_resid_time = function(mod_auto, dataset, country_sample = NULL, title = NULL) {
+ppc_resid_time = function(mod_auto, country_sample = NULL, title = NULL) {
   mod_resid = residuals(mod_auto, type="pearson", method="posterior_predict")
   
+
   plot_data_residuals = data.frame(mod_auto$data, 
                                    # country_text_id = dataset$country_text_id, 
-                                   year_0 = dataset$year_0,
+                                   year_0 = mod_auto$data$year_0,
                                    residuals = mod_resid[,1])
   
   if (is.null(country_sample) == T ) {
     country_sample = sample(unique(plot_data_residuals$country_text_id), 9)
   }
   
-  plot_data_residuals %>% 
-    filter(country_text_id %in% country_sample) %>% 
-    ggplot(aes(x=year_0, y=residuals))+
-    geom_point(alpha=0.5) +
-    geom_smooth(se=T, color="black", linetype = "longdash", span=0.8) +
-    geom_hline(yintercept = 0) +
-    facet_wrap(country_text_id ~ .) +
-    theme_bw() +
-    ggtitle(title) +
-    xlab("")
+  # plot_data_residuals %>% 
+  #   filter(country_text_id %in% country_sample) %>% 
+  #   ggplot(aes(x=year_0, y=residuals))+
+  #   geom_point(alpha=0.5) +
+  #   geom_smooth(se=T, color="black", linetype = "longdash", span=0.8) +
+  #   geom_hline(yintercept = 0) +
+  #   facet_wrap(country_text_id ~ .) +
+  #   theme_bw() +
+  #   ggtitle(title) +
+  #   xlab("")
+  
+  return(plot_data_residuals %>% 
+    filter(country_text_id %in% country_sample))
 }
 
 # Fitted vs Residuals Plot ####
@@ -724,6 +728,13 @@ distribution_plot = function(model) {
 } 
 
 ### Lag Distribution #####
+
+wealth_FKM_2Cent, "wealth_eco_lag", "trade_wdi", unit = 1, time_periods=4, ci=0.95
+brms_model = wealth_FKM_2Cent
+LDV_label = "wealth_eco_lag"
+IndV_label = "trade_wdi"
+
+
 lag_distribution_bayes = function(brms_model, LDV_label, IndV_label, unit = 1, time_periods=4, ci=0.95) {
   
   posterior_coefs = posterior_samples(brms_model, pars = IndV_label) %>% 
@@ -742,11 +753,13 @@ lag_distribution_bayes = function(brms_model, LDV_label, IndV_label, unit = 1, t
   
   # Impulse Matrices X and Y
   impulse_x = c(unit, rep(0, dim(coefs)[2]-1))
-  impulse_y = c(0, rep(1, dim(coefs)[2]-1))
+  impulse_y = matrix(c(0, rep(1, dim(coefs)[2]-1)), nrow = 1)
   
-  for (ldv_dim in 2:dim(LDV)[2]) {
+  ldv_dim = 2
+  while (ldv_dim  <= dim(LDV)[2]) {
     impulse_y = impulse_y %>% 
       rbind(shift(impulse_y,1))
+    ldv_dim = ldv_dim + 1
   }
   impulse_y = t(impulse_y)
   
