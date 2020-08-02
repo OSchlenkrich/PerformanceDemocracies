@@ -97,7 +97,12 @@ AR_dmx %>%
   melt() %>% 
   ggplot(aes(x=value)) + 
   geom_histogram()  +
-  facet_wrap(variable~., scales = "free")
+  facet_wrap(variable~., scales = "free")  +
+  theme_bw() +
+  theme(legend.position = "none") +
+  scale_y_continuous(name=NULL)  +
+  scale_x_continuous(name=NULL) +
+  ggtitle("Raw Sample")
 
 
 # Transformation Variables ####
@@ -114,7 +119,12 @@ AR_dmx_norm %>%
   melt() %>% 
   ggplot(aes(x=value)) + 
   geom_histogram()  +
-  facet_wrap(variable~., scales = "free")
+  facet_wrap(variable~., scales = "free")  +
+  theme_bw() +
+  theme(legend.position = "none") +
+  scale_y_continuous(name=NULL)  +
+  scale_x_continuous(name=NULL) +
+  ggtitle("Transformed Sample")
 
 # Index ####
 performance_ga = AR_dmx_norm %>%

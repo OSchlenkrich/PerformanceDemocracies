@@ -221,7 +221,7 @@ make_table_diri = function(..., oddsRatios = F) {
     
     return(list(summary_table_gaze, foot_matrix, border_intercept=border_intercept_adapted))
   }
-  ###################################
+  ####
   
   # Input into list
   sum_obj = list(...)
@@ -253,7 +253,7 @@ make_table_diri = function(..., oddsRatios = F) {
   dust_data_join$term = gsub("_fEC", "", dust_data_join$term) 
   dust_data_join$term = gsub("_FeC", "", dust_data_join$term) 
   
-  ###################################
+  ####
   # Create foot DF
   foot_data_join = dust_data[[1]][[2]] 
   if (length(dust_data) > 1) {
@@ -272,7 +272,7 @@ make_table_diri = function(..., oddsRatios = F) {
     
   
 
-  ###################################
+  ####
   # Create Table with pixiedust
   dust(dust_data_join, glance_foot = F)  %>% 
     redust(foot_data_join, part="foot") %>% 
@@ -310,41 +310,49 @@ make_table_diri = function(..., oddsRatios = F) {
 # Factor Table
 fa_table = function(fa_model) {
   my_omega = omega(fa_model$r, nfactors=fa_model$factors, fm="mle", option="second", plot=F)
+  print(my_omega)
   
-  
-  dust_df = data.frame(varnames = row.names(fa_model$loadings),
+  dust_df = data.frame(items = row.names(fa_model$loadings),
                        unclass(fa_model$loadings),
                        h2 = round(fa_model$communalities,3)) %>% 
-    mutate(varnames = gsub("_num_eco", "", varnames)) %>%
+    mutate(items = gsub("_num_eco", "", items)) %>%
     arrange(-.[,2]) %>% 
     mutate_if(is.numeric, funs(round(.,3)))  %>% 
     mutate(h2 = as.character(h2)) %>% 
-    mutate_if(is.numeric, funs(ifelse(abs(.) > 0.3, paste("<b>", ., sep=""), .)))
+    mutate_if(is.numeric, funs(ifelse(abs(.) > 0.3, paste("<b>", ., sep=""), .))) 
   
   if (fa_model$factors == 1) {
     dust_sub_df = data.frame(fitmeasure = "Proportion var:", value = fa_model$Vaccounted[2,1]) %>%
-      bind_rows(data.frame(fitmeasure = "&omega;<sup>t", value = my_omega$omega.tot)) %>% 
+      bind_rows(data.frame(fitmeasure = "&omega;<sup>total", value = my_omega$omega.tot)) %>% 
       mutate_if(is.numeric, funs(round(.,3))) 
   } else {
-    dust_sub_df = data.frame(fitmeasure = "Proportion var:", value = fa_model$Vaccounted[2,1]) %>%
+    dust_sub_df = data.frame(fitmeasure = "Proportion Variance:", value = fa_model$Vaccounted[2,1]) %>%
       bind_rows(data.frame(fitmeasure = "RMSEA:", value = fa_model$RMSEA[1]) ) %>% 
-      bind_rows(data.frame(fitmeasure = "BIC:", value = fa_model$BIC)) %>% 
-      bind_rows(data.frame(fitmeasure = "TLI:", value = fa_model$TLI)) %>% 
-      bind_rows(data.frame(fitmeasure = "&omega;<sup>t", value = my_omega$omega.tot)) %>% 
+      #bind_rows(data.frame(fitmeasure = "BIC:", value = fa_model$BIC)) %>% 
+      #bind_rows(data.frame(fitmeasure = "TLI:", value = fa_model$TLI)) %>% 
+      bind_rows(data.frame(fitmeasure = "&omega;<sup>total", value = my_omega$omega.tot)) %>% 
+      bind_rows(data.frame(fitmeasure = "&omega;<sup>group", value = round(my_omega$omega.group[2,2],3))) %>% 
       mutate_if(is.numeric, funs(round(.,3))) 
     
+
     if (fa_model$factors > 1) {
       for (i in 2:fa_model$factors) {
         dust_sub_df = dust_sub_df %>% 
-          mutate(!!paste(i) := c(round(fa_model$Vaccounted[2,i],3), NA, NA, NA, NA)) 
+          mutate(!!paste(i) := c(round(fa_model$Vaccounted[2,i],3), NA, NA, round(my_omega$omega.group[2,i+1],3))) 
       }
     }
-  }
 
-  dust_sub_df = dust_sub_df %>%
-    mutate(X = NA)
+  }
   
-  dust_sub_df = data.frame(dust_sub_df)
+  dust_sub_df = dust_sub_df %>%
+    mutate(X = NA) %>% 
+    data.frame()
+  
+  dust_df = dust_df %>% 
+    mutate(items = gsub("_num_eco", "", items),
+           items = gsub("_num_soc", "", items),
+           items = gsub("_num_env", "", items),
+           items = gsub("_num_ds", "", items))
   
   fa_table = dust(dust_df)  %>% 
     redust(dust_sub_df, part="foot")  %>%
@@ -366,31 +374,48 @@ fa_table = function(fa_model) {
 
 
 # Factor Table UMX
-fa_table_umx = function(fa_solution, RMSEA, TLI) {
+fa_table_umx = function(fa_solution, RMSEA, TLI, my_omega) {
   
   loadings_umx = loadings(fa_solution)
-  
-  
-  dust_df = data.frame(varnames = row.names(loadings_umx),
-                       F1 = unclass(loadings_umx[,1]), 
-                       h2 = (unclass(loadings_umx[,1]^2)), row.names = NULL) %>% 
-    mutate(varnames = gsub("_ord_ivs", "", varnames)) %>%
-    arrange(-.[,2]) %>% 
-    mutate_if(is.numeric, funs(round(.,3)))  %>% 
-    mutate(h2 = as.character(h2)) %>% 
-    mutate_if(is.numeric, funs(ifelse(abs(.) > 0.3, paste("<b>", ., sep=""), .)))
-  
-  
+
+  if (dim(loadings(fa_solution))[2] == 1) {
+    dust_df = data.frame(varnames = row.names(loadings_umx),
+                         F1 = unclass(loadings_umx[,1]), 
+                         h2 = (unclass((loadings_umx[,1])^2)), row.names = NULL) %>% 
+      mutate(varnames = gsub("_ord_ivs", "", varnames)) %>%
+      arrange(-.[,2]) %>% 
+      mutate_if(is.numeric, funs(round(.,3)))  %>% 
+      mutate(h2 = as.character(h2)) %>% 
+      mutate_if(is.numeric, funs(ifelse(abs(.) > 0.3, paste("<b>", ., sep=""), .)))
+  }
+  if (dim(loadings(fa_solution))[2] == 2) {
+    dust_df = data.frame(varnames = row.names(loadings_umx),
+                         F1 = unclass(loadings_umx[,1]),
+                         F2 = unclass(loadings_umx[,2]), 
+                         h2 = (unclass((loadings_umx[,1])^2)) + (unclass((loadings_umx[,2])^2)), row.names = NULL) %>% 
+      mutate(varnames = gsub("_ord_ivs", "", varnames)) %>%
+      arrange(-.[,2]) %>% 
+      mutate_if(is.numeric, funs(round(.,3)))  %>% 
+      mutate(h2 = as.character(h2)) %>% 
+      mutate_if(is.numeric, funs(ifelse(abs(.) > 0.3, paste("<b>", ., sep=""), .)))
+  }
   dust_sub_df = data.frame(fitmeasure = "Proportion var:", value = sum(loadings_umx^2)/length(loadings_umx)) %>%
     bind_rows(data.frame(fitmeasure = "RMSEA:", value = RMSEA) ) %>% 
-    bind_rows(data.frame(fitmeasure = "TLI:", value = TLI)) %>%
-    bind_rows(data.frame(fitmeasure = "alpha", value = alpha(fa_solution$data$observed, check.keys=TRUE, n.iter=10)$total$std.alpha)) %>% 
+    #bind_rows(data.frame(fitmeasure = "TLI:", value = TLI)) %>%
+    #bind_rows(data.frame(fitmeasure = "alpha", value = alpha(fa_solution$data$observed, check.keys=TRUE, n.iter=10)$total$std.alpha)) %>% 
+    bind_rows(data.frame(fitmeasure = "&omega;<sup>total", value = my_omega$omega.tot)) %>% 
     mutate_if(is.numeric, funs(round(.,3))) 
   
-  dust_sub_df = dust_sub_df %>%
-    mutate(X = NA)
+  for (i in 1:dim(loadings(fa_solution))[2]) {
+      dust_sub_df = dust_sub_df %>% 
+        mutate(!!paste(i) := NA) 
+      }
   
-  dust_sub_df = data.frame(dust_sub_df)
+  dust_sub_df = dust_sub_df %>%
+    #mutate(X = NA) %>% 
+    data.frame()
+  
+  print(dust_sub_df)
   
   fa_table = dust(dust_df)  %>% 
     redust(dust_sub_df, part="foot")  %>%

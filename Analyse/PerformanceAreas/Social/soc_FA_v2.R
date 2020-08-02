@@ -22,19 +22,23 @@ dim(fa_data_soc_frame_mice_inv)
 
 KMO(fa_data_soc_frame_mice_inv %>% 
       select_at(vars(ends_with("soc"))))
-
+KMO_table(KMO(fa_data_soc_frame_mice_inv %>% 
+                select_at(vars(ends_with("soc")))))
 corrplot(cor(fa_data_soc_frame_mice_inv %>% 
-               select_at(vars(ends_with("soc"))) , use="pairwise"), method="number")
+               select_at(vars(ends_with("soc"))) %>% 
+               rename_all(funs(gsub("_num_soc","",.)))  , use="pairwise"), method="number")
 
 
 
 ### Factor Analysis
 fa_dataset = fa_data_soc_frame_mice_inv %>% 
-  select_at(vars(ends_with("soc")))
+  select_at(vars(ends_with("soc")))  %>% 
+  rename_all(funs(gsub("_num_soc","",.)))
 
 par(mfrow=c(1,1))
 paran(na.omit(fa_dataset), iterations=0, graph=T, cfa=T, centile=95)
-fa.parallel(fa_dataset, fm="ml")
+paran_ggplot(fa.parallel(fa_dataset, fm="ml", n.iter=100, quant=0.95, fa="fa",
+                         use="pairwise.complete.obs"))
 
 vss(fa_dataset, fm="mle", rotate="none")
 vss(fa_dataset, fm="mle", rotate="none")$map %>% 
@@ -43,17 +47,16 @@ vss(fa_dataset, fm="mle", rotate="none")$map %>%
 
 # Factor Solution
 fa_oecd_2_soc = fa(fa_dataset, 2, rotate="oblimin", missing=F, fm="mle")
-fa.diagram(fa_oecd_2_soc, cut=0)
+fa.diagram(fa_oecd_2_soc, cut=0, main= "Factor Solution for Social Performance")
 fa_oecd_2_soc
 fa_oecd_2_soc$loadings
 
 
-fa_oecd_1_soc = fa(fa_dataset, 1, rotate="oblimin", missing=F, fm="mle")
-fa.diagram(fa_oecd_1_soc, cut=0, main= "Factor Solution for Social Performance")
-fa_oecd_1_soc
+fa_oecd_4_soc = fa(fa_dataset, 4, rotate="oblimin", missing=F, fm="mle")
+fa.diagram(fa_oecd_4_soc, cut=0, main= "Factor Solution for Social Performance")
+fa_oecd_4_soc
 
 fa_table(fa_oecd_2_soc)
-fa_table(fa_oecd_1_soc)
 
 # Reliability
 omega(as.matrix(fa_dataset), nfactors=2, fm="ml")

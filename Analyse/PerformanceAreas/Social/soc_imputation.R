@@ -35,6 +35,10 @@ fa_data_soc_frame_mice = fa_data_soc_frame %>%
   filter(missing_SUM != max(missing_SUM, na.rm=T)) %>% 
   select(-country, -classification_core, -missing_SUM) 
 
+# auxilary variables
+fa_data_soc_frame_mice %>% 
+  select_at(vars(matches("_aux"))) %>% 
+  names()
 
 mice_data = as.data.frame(fa_data_soc_frame_mice) %>% 
   select(-year)
@@ -45,7 +49,8 @@ mice_data[] <- lapply(mice_data, function(x) { attributes(x) <- NULL; x })
 library(corrplot)
 corrplot(cor(fa_data_soc_frame_mice %>% 
                select_if(is.numeric) %>% 
-               select_at(vars(-year, -year_0, -ends_with("lag"),-ends_with("lead"))), use="pairwise"))
+               select_at(vars(-year, -year_0, -ends_with("lag"),-ends_with("lead"))) %>% 
+               rename_all(funs(gsub("_num_soc","",.))), use="pairwise"))
 
 
 # Missing Data Pattern
@@ -74,33 +79,68 @@ a.out_soc <- amelia(mice_data,
 
 a.out_soc
 
+
+# saveRDS(a.out_soc, "Analyse/PerformanceAreas/Social/a.out_soc.RDS")
+a.out_soc = readRDS("Analyse/PerformanceAreas/Social/a.out_soc.RDS")
+
+
+
 if (Plot_Impu == T) {
   # convergence
   par(mfrow=c(1,1))
-  disperse(a.out_soc, dims = 1, m = 5)
+  disp_soc = disperse(a.out_soc, dims = 1, m = 5)
+  
+  # saveRDS(disp_soc, "Analyse/PerformanceAreas/Social/Diag/disp_soc.RDS")
+  disp_soc = readRDS("Analyse/PerformanceAreas/Social/Diag/disp_soc.RDS")
+  convergence_amelia(disp_soc)  +
+    ggtitle("Social Performance: Overdispersed Starting Values")
   
   # obs vs. imp
-  par(mfrow=c(4,2), mar=c(4,4,4,4))
-  compare.density(a.out_soc, var = c("Unemployment_t_GI_num_soc"), main= "Observed vs. Imputed Values of Unemployment Generosity Index")
-  compare.density(a.out_soc, var = c("Pension_t_GI_num_soc"), main= "Observed vs. Imputed Values of Pension Generosity Index")
-  compare.density(a.out_soc, var = c("Sickness_t_GI_num_soc"), main= "Observed vs. Imputed Values of Sickness Generosity Index")
-  compare.density(a.out_soc, var = c("gini_lis_num_soc"), main= "Observed vs. Imputed Values of Gini Coefficient (LIS)")
-  compare.density(a.out_soc, var = c("poverty9010_lis_num_soc"), main= "Observed vs. Imputed Values of Percentile Ratio (90/10) (LIS)")
-  compare.density(a.out_soc, var = c("poverty8020_lis_num_soc"), main= "Observed vs. Imputed Values of Percentile Ratio (80/20) (LIS)")
-  compare.density(a.out_soc, var = c("v2dlunivl_vdem_num_soc"), main= "Observed vs. Imputed Values of Means-tested v. universalistic policy")
-  compare.density(a.out_soc, var = c("gini_wdi_num_soc"), main= "Observed vs. Imputed Values of Gini Coefficient (WDI)")
-  
+  # obs vs. imp
+  ggarrange(
+    compare.density_own(a.out_soc, var = "Combined_t_GI_num_soc"),
+    compare.density_own(a.out_soc, var = "poverty9010_lis_num_soc"),
+    compare.density_own(a.out_soc, var = c("poverty8020_lis_num_soc")),
+    compare.density_own(a.out_soc, var = c("femlabor_wdi_num_soc")),
+    compare.density_own(a.out_soc, var = c("gini_wdi_num_soc")),
+    compare.density_own(a.out_soc, var = c("schools_gender_wdi_num_soc")),
+    compare.density_own(a.out_soc, var = c("pub_serv_gender_vdem_num_soc")),
+    compare.density_own(a.out_soc, var = c("pub_serv_social_vdem_num_soc")),
+    compare.density_own(a.out_soc, var = c("v2dlunivl_vdem_num_soc")),
+    common.legend = T,
+    legend = "bottom"
+  )
   
   # predictive capability
-  par(mfrow=c(4,2), mar=c(4,4,4,4))
-  Amelia::overimpute(a.out_soc, var = "Unemployment_t_GI_num_soc", main= "Observed vs. Imputed Values of Unemployment Generosity Index")
-  Amelia::overimpute(a.out_soc, var = "Pension_t_GI_num_soc", main= "Observed vs. Imputed Values of Pension Generosity Index")
-  Amelia::overimpute(a.out_soc, var = "Sickness_t_GI_num_soc", main= "Observed vs. Imputed Values of Sickness Generosity Index")
-  Amelia::overimpute(a.out_soc, var = "gini_lis_num_soc", main= "Observed vs. Imputed Values of Gini Coefficient (LIS)")
-  Amelia::overimpute(a.out_soc, var = "poverty9010_lis_num_soc", main= "Observed vs. Imputed Values of Imputed Values of Percentile Ratio (90/10) (LIS)")
-  Amelia::overimpute(a.out_soc, var = "poverty8020_lis_num_soc", main= "Observed vs. Imputed Values of Imputed Values of Percentile Ratio (80/20) (LIS)")
-  Amelia::overimpute(a.out_soc, var = "v2dlunivl_vdem_num_soc", main= "Observed vs. Imputed Values of Means-tested v. universalistic policy")
-  Amelia::overimpute(a.out_soc, var = "gini_wdi_num_soc", main= "Observed vs. Imputed Values of Gini Coefficient (WDI)")
+  
+  GI_imp_soc = Amelia::overimpute(a.out_soc, var = "Combined_t_GI_num_soc")
+  # saveRDS(GI_imp_soc, "Analyse/PerformanceAreas/Social/Diag/GI_imp_soc.RDS")
+  pov90_imp_soc = Amelia::overimpute(a.out_soc, var = "poverty9010_lis_num_soc")
+  # saveRDS(pov90_imp_soc, "Analyse/PerformanceAreas/Social/Diag/pov90_imp_soc.RDS")
+  pov80_imp_soc = Amelia::overimpute(a.out_soc, var = "poverty8020_lis_num_soc")
+  # saveRDS(pov80_imp_soc, "Analyse/PerformanceAreas/Social/Diag/pov80_imp_soc.RDS")
+  fem_imp_soc = Amelia::overimpute(a.out_soc, var = "femlabor_wdi_num_soc")
+  # saveRDS(fem_imp_soc, "Analyse/PerformanceAreas/Social/Diag/fem_imp_soc.RDS")
+  schools_imp_soc = Amelia::overimpute(a.out_soc, var = "schools_gender_wdi_num_soc")
+  # saveRDS(schools_imp_soc, "Analyse/PerformanceAreas/Social/Diag/schools_imp_soc.RDS")
+  pubg_imp_soc = Amelia::overimpute(a.out_soc, var = "pub_serv_gender_vdem_num_soc")
+  # saveRDS(pubg_imp_soc, "Analyse/PerformanceAreas/Social/Diag/pubg_imp_soc.RDS")
+  pubs_imp_soc = Amelia::overimpute(a.out_soc, var = "pub_serv_social_vdem_num_soc")
+  # saveRDS(pubs_imp_soc, "Analyse/PerformanceAreas/Social/Diag/pubs_imp_soc.RDS")
+  univ_imp_soc = Amelia::overimpute(a.out_soc, var = "v2dlunivl_vdem_num_soc")
+  # saveRDS(univ_imp_soc, "Analyse/PerformanceAreas/Social/Diag/univ_imp_soc.RDS")
+
+  
+  ggarrange(
+    overimpute_gglot(GI_imp_soc, "Combined_GI"),
+    overimpute_gglot(pov90_imp_soc, "poverty9010_lis"),
+    overimpute_gglot(pov80_imp_soc, "poverty8010_lis"),
+    overimpute_gglot(fem_imp_soc, "femlabor_wdi"),
+    overimpute_gglot(schools_imp_soc, "schools_gender_wdi"),
+    overimpute_gglot(pubg_imp_soc, "pub_serv_gender_vdem"),
+    overimpute_gglot(pubs_imp_soc, "pub_serv_social_vdem"),
+    overimpute_gglot(univ_imp_soc, "v2dlunivl_vdem")
+  )
   
   par(mfrow=c(1,1))
   
@@ -120,6 +160,40 @@ if (Plot_Impu == T) {
 imputed_soc = mapply(cbind, a.out_soc$imputations, "imp" = 1:nr_imputations, SIMPLIFY = FALSE) %>% 
   bind_rows() %>% 
   mutate(imp = as.factor(imp))
+
+
+# Plausibilty: Relationship with GDP
+imputed_soc %>% 
+  left_join(fa_data_soc_frame_mice %>%
+              select(country_text_id, year, year_0),
+            by = c("country_text_id", "year_0")) %>% 
+  left_join(fa_data_soc_frame, by=c("country_text_id", "year"))  %>% 
+  mutate(is_na = ifelse(gini_lis_is_na == 1, "Imputed", "Observed")) %>% 
+  ggplot(aes(x=educ_equal_vdem_gen_num_aux, y = gini_wdi_num_soc, col=is_na)) +
+  geom_point() +
+  facet_wrap(is_na ~ .) +
+  scale_color_grey(name="") +
+  xlab("Educational Equality (V-Dem)") +
+  ylab("Gini Index (WDI)") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+imputed_soc %>% 
+  left_join(fa_data_soc_frame_mice %>%
+              select(country_text_id, year, year_0),
+            by = c("country_text_id", "year_0")) %>% 
+  left_join(fa_data_soc_frame, by=c("country_text_id", "year"))  %>% 
+  mutate(is_na = ifelse(gini_lis_is_na == 1, "Imputed", "Observed")) %>% 
+  ggplot(aes(x=health_vdem_soc_num_aux, y = gini_wdi_num_soc, col=is_na)) +
+  geom_point() +
+  facet_wrap(is_na ~ .) +
+  scale_color_grey(name="") +
+  xlab("Health Equality (V-Dem)") +
+  ylab("Gini Index (WDI)") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+
 
 imputed_soc_vars = imputed_soc %>% 
   left_join(fa_data_soc_frame_mice %>%

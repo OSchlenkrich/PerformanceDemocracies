@@ -75,9 +75,6 @@ oecd_gdp_capita_data = fread("unzip -p Datasets/oecd_gdp_capita_constant.zip") %
   filter(Subject=="GDP per head of population",
          Measure=="USD, constant prices, 2010 PPPs")
 
-names(oecd_gdp_capita_data)
-table(oecd_gdp_capita_data$Subject )
-
 oecd_social_data = fread("unzip -p Datasets/OECD_Social_Protection.zip") %>% 
   filter(Measure == "In percentage of Gross Domestic Product",
          Source == "Public",
@@ -101,7 +98,7 @@ oecd_poverty_data = fread("unzip -p Datasets/OECD_Poverty.zip") %>%
          Definition == "Current definition") %>% 
   dplyr::select(country = Country, year = Year, Gini = Value) %>% 
   group_by(country, year) %>%
-  slice(1) %>% 
+  dplyr::slice(1) %>% 
   ungroup( ) %>% 
   mutate(country = as.factor(country),
          country = fct_recode(country,
@@ -277,7 +274,7 @@ ParlGov_Family_yearly = fread("Datasets/ParlGov_Frame.csv", header=T) %>%
                                         )) %>% 
   group_by(country, year) %>% 
   arrange(-seats) %>% 
-  slice(1)
+  dplyr::slice(1)
   
 # Populism
 

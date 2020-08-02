@@ -583,10 +583,20 @@ domestic_security_IP %>%
 
 domestic_security_IP %>% 
   select_at(vars(ends_with("oecd"), ends_with("unodc"), ends_with("gcs"), ends_with("gwp"))) %>% 
+  select(order_safety_gdpcapita_oecd,
+         hom_rate_unodc,
+         theft_rate_unodc,
+         reliab_police_gcs,
+         trust_gwp) %>% 
   melt() %>% 
   ggplot(aes(x=value)) + 
   geom_histogram()  +
-  facet_wrap(variable~., scales = "free") 
+  facet_wrap(variable~., scales = "free")  +
+  theme_bw() +
+  theme(legend.position = "none") +
+  scale_y_continuous(name=NULL)  +
+  scale_x_continuous(name=NULL) +
+  ggtitle("Raw Sample")
 
 
 domestic_security_IP %>% 
@@ -594,7 +604,12 @@ domestic_security_IP %>%
   melt() %>% 
   ggplot(aes(x=value)) + 
   geom_histogram()  +
-  facet_wrap(variable~., scales = "free") 
+  facet_wrap(variable~., scales = "free") +
+  theme_bw() +
+  theme(legend.position = "none") +
+  scale_y_continuous(name=NULL)  +
+  scale_x_continuous(name=NULL) +
+  ggtitle("Raw Sample")
 
 
 
@@ -613,17 +628,34 @@ domestic_security_IP_norm = domestic_security_IP %>%
   
 domestic_security_IP_norm %>% 
   select_at(vars(ends_with("oecd"), ends_with("unodc"), ends_with("gcs"), ends_with("gwp"))) %>% 
+  select(order_safety_gdpcapita_oecd,
+         hom_rate_unodc,
+         theft_rate_unodc,
+         reliab_police_gcs,
+         trust_gwp) %>% 
   melt() %>% 
   ggplot(aes(x=value)) + 
   geom_histogram()  +
-  facet_wrap(variable~., scales = "free") 
+  facet_wrap(variable~., scales = "free") + 
+  theme_bw() +
+  theme(legend.position = "none") +
+  scale_y_continuous(name=NULL)  +
+  scale_x_continuous(name=NULL) +
+  ggtitle("Transformed Sample")
+
 
 domestic_security_IP_norm %>% 
   select_at(vars(ends_with("ucdp"), ends_with("wgi"))) %>% 
   melt() %>% 
   ggplot(aes(x=value)) + 
   geom_histogram()  +
-  facet_wrap(variable~., scales = "free")
+  facet_wrap(variable~., scales = "free") +
+  theme_bw() +
+  theme(legend.position = "none") +
+  scale_y_continuous(name=NULL)  +
+  scale_x_continuous(name=NULL) +
+  ggtitle("Transformed Sample")
+
 
 
 

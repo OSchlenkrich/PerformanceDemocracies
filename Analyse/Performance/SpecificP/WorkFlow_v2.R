@@ -24,6 +24,12 @@ prior_full_phet_tscs <- c(set_prior("normal(0,10)", class = "b"),
                           set_prior("cauchy(0,5)", class = "sd", dpar="sigma"),
                           set_prior("normal(0,10)", class = "Intercept", dpar="sigma"))
 
+# SAVE BRMS models
+saveBRMS = function(modelname_label) {
+  saveRDS(get(modelname_label), file=paste("Analyse/Performance/SpecificP/brmsModels/", modelname_label, ".rds", sep=""))
+}
+
+
 
 # Multicollinearity Test ####
 multicollinearity_test = function(vars, dependent_var, datalist, with_lag = T) {
@@ -626,20 +632,30 @@ ppc_resid_time = function(mod_auto, country_sample = NULL, title = NULL) {
     country_sample = sample(unique(plot_data_residuals$country_text_id), 9)
   }
   
-  # plot_data_residuals %>% 
-  #   filter(country_text_id %in% country_sample) %>% 
-  #   ggplot(aes(x=year_0, y=residuals))+
-  #   geom_point(alpha=0.5) +
-  #   geom_smooth(se=T, color="black", linetype = "longdash", span=0.8) +
-  #   geom_hline(yintercept = 0) +
-  #   facet_wrap(country_text_id ~ .) +
-  #   theme_bw() +
-  #   ggtitle(title) +
-  #   xlab("")
-  
-  return(plot_data_residuals %>% 
-    filter(country_text_id %in% country_sample))
+  plot_data_residuals %>%
+    filter(country_text_id %in% country_sample) %>%
+    ggplot(aes(x=year_0, y=residuals))+
+    geom_point(alpha=0.5) +
+    geom_smooth(se=T, color="black", linetype = "longdash", span=0.8) +
+    geom_hline(yintercept = 0) +
+    facet_wrap(country_text_id ~ .) +
+    theme_bw() +
+    ggtitle(title) +
+    xlab("")
+
 }
+
+
+ppc_resid_data = function(mod_auto) {
+  mod_resid = residuals(mod_auto, summary=F, nsamples = 1)
+
+  plot_data_residuals = mod_auto$data %>% 
+    bind_cols(data.frame(residuals = mod_resid[1,]))
+  
+
+  return(plot_data_residuals)
+}
+
 
 # Fitted vs Residuals Plot ####
 
@@ -662,7 +678,8 @@ fitted_res_plot = function(model,  country_sample = NULL, title = NULL) {
     geom_hline(yintercept = c(-2,2), linetype="longdash") +
     #facet_wrap(country_text_id ~ .) +
     theme_bw()  +
-    ggtitle(title) 
+    ggtitle(title) +
+    geom_text(data = fitted_res_data %>% filter(residuals > 4 | residuals < -4), aes(label=paste(country_text_id, year_0, sep = " ")))
 }
 
 fitted_var_plot = function(model, independent_var, country_sample = NULL, title = NULL) {
@@ -729,18 +746,13 @@ distribution_plot = function(model) {
 
 ### Lag Distribution #####
 
-wealth_FKM_2Cent, "wealth_eco_lag", "trade_wdi", unit = 1, time_periods=4, ci=0.95
-brms_model = wealth_FKM_2Cent
-LDV_label = "wealth_eco_lag"
-IndV_label = "trade_wdi"
-
-
 lag_distribution_bayes = function(brms_model, LDV_label, IndV_label, unit = 1, time_periods=4, ci=0.95) {
   
   posterior_coefs = posterior_samples(brms_model, pars = IndV_label) %>% 
     select_at(vars(-matches("_bw")))
   print(colnames(posterior_coefs))
   posterior_LDV = posterior_samples(brms_model, pars = LDV_label)
+  print(colnames(posterior_LDV))
   
   
   shift <- function (x, shift) c(rep(0,times=shift), x[1:(length(x)-shift)])
@@ -749,8 +761,8 @@ lag_distribution_bayes = function(brms_model, LDV_label, IndV_label, unit = 1, t
                 matrix(0, nrow=dim(as.matrix(posterior_coefs))[1], ncol = time_periods))
   LDV = as.matrix(posterior_LDV)
   
-  LRM = rowSums(coefs)/rowSums(1-LDV)
-  
+  LRM = rowSums(coefs)/(1 - rowSums(LDV))
+
   # Impulse Matrices X and Y
   impulse_x = c(unit, rep(0, dim(coefs)[2]-1))
   impulse_y = matrix(c(0, rep(1, dim(coefs)[2]-1)), nrow = 1)
@@ -795,5 +807,90 @@ lag_distribution_bayes = function(brms_model, LDV_label, IndV_label, unit = 1, t
     theme_bw()
   # barplot(colMeans(time_array), width = 1, space = 1, beside = TRUE, xlab = "Time Periods",
   #         ylab = "Change in Y", cex.main = 0.85, cex.lab=0.75, cex.axis=0.75 )
+}
+
+
+lag_distribution_bayes_ecm = function(brms_model_ecm, LDV_label, IndV_label, unit = 1, time_periods=4, ci=0.95) {
+  
+  posterior_coefs = posterior_samples(brms_model_ecm, pars = IndV_label) %>% 
+    select_at(vars(-matches("_bw"))) %>% 
+    as.matrix()
+  print(colnames(posterior_coefs))
+  posterior_LDV = posterior_samples(brms_model_ecm, pars = LDV_label) %>% 
+    as.matrix()
+  print(colnames(posterior_LDV))
+  
+  
+
+  time_array = array(NA, c(dim(posterior_coefs)[1], time_periods))
+  LDV = as.matrix(abs(rowSums(posterior_LDV)))
+  
+  time_array[,1] = posterior_coefs[,1] * unit
+  lag_coef = posterior_coefs[,2]
+  
+  LRM = lag_coef/LDV
+  max(LRM)
+  LRM_star = LRM - time_array[,1]
+  
+  for (t in 2:time_periods) {
+    time_array[,t]  = (LRM_star * unit) * LDV
+    LRM_star = LRM_star - time_array[,t]
+    
+  }
+  
+  estimates = data.frame(array(NA, dim=c(dim(time_array)[2],3))) %>% 
+    rename(est = X1, l = X2, u = X3) %>% 
+    mutate(time = paste("t + ", 1:dim(time_array)[2], sep=""))
+  
+  for (i in 1:dim(estimates)[1]) {
+    estimates$est[i] = median(time_array[,i])
+    estimates$l[i] = hdi(time_array[,i], .width = ci)[1]
+    estimates$u[i] = hdi(time_array[,i], .width = ci)[2]
+  }
+  
+  print(paste("LRM:", round(median(LRM),3)))
+  print(paste("HDI:", round(hdi(LRM, .width = ci), 3)))
+  ggplot(estimates, aes(x=time, y=est)) + 
+    geom_bar(stat="identity") +
+    geom_errorbar(aes(ymin=l, ymax=u)) +
+    geom_hline(yintercept = 0) +
+    theme_bw()
+  # barplot(colMeans(time_array), width = 1, space = 1, beside = TRUE, xlab = "Time Periods",
+  #         ylab = "Change in Y", cex.main = 0.85, cex.lab=0.75, cex.axis=0.75 )
+}
+
+
+# Check Autocorrelation of Residuals ####
+check_autocorresiduals = function(brmsmodel, runs = 10) {
+  
+  results = data.frame(array(NA, dim = c(runs, 4)))
+  colnames(results) = c("var", "lower", "upper", "est")
+  results[,1] = "residuals_lag"
+  
+  for (i in 1:runs) {
+    print(i)
+    resid_Data = ppc_resid_data(brmsmodel)
+    
+    resid_Data_lag = resid_Data %>% 
+      group_by(country_text_id) %>% 
+      mutate(resid_lag = dplyr::lag(residuals, 1))
+    
+    
+    formula1 = strsplit(paste(brmsmodel$formula)[1], split = "~")
+    formula1[[1]][1] = "residuals ~ resid_lag +" 
+    # glmmtmb cannot handle (1|year_0); it is too close to zero
+    formula1[[1]][2] = gsub("\\+ \\(1 \\| year_0\\)","",formula1[[1]][2])
+    new_formula = as.formula(paste(formula1[[1]][1], formula1[[1]][2], collapse = ""))
+    
+    
+    m1 = glmmTMB(new_formula,
+                 resid_Data_lag,
+                 control=glmmTMBControl(optCtrl=list(iter.max=1e3,eval.max=1e3)))
+    
+    
+    results[i,2:4] = as.numeric(confint(m1)["cond.resid_lag", ]  )  
+  }
+  return(results)
+  
 }
 

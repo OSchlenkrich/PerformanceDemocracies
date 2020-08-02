@@ -24,19 +24,39 @@ KMO(fa_data_ds_frame_mice_inv %>%
       select_at(vars(ends_with("ds"))) %>% 
       select(-order_safety_gdp_perc_oecd_num_ds)) 
 
+kmo_ds = KMO(fa_data_ds_frame_mice_inv %>% 
+      select_at(vars(ends_with("ds"))) %>% 
+      select( -order_safety_gdp_perc_oecd_num_ds,
+              -crime_rate_unodc_num_ds, -orgacrime_gcs_num_ds, -burg_rate_unodc_num_ds))
+
+KMO_table(kmo_ds)
+
 corrplot(cor(fa_data_ds_frame_mice_inv %>% 
                select_at(vars(ends_with("ds"))) , use="pairwise"), method="number")
 
 
 ### Factor Analysis
-fa_ds_data = fa_data_ds_frame_mice_inv %>% 
+fa_ds_data_theft = fa_data_ds_frame_mice_inv %>% 
   select_at(vars(ends_with("ds"), -order_safety_gdp_perc_oecd_num_ds,
                  -crime_rate_unodc_num_ds, -orgacrime_gcs_num_ds, -burg_rate_unodc_num_ds))
 
 par(mfrow=c(1,1))
-fa.parallel(fa_ds_data, fm="mle", n.iter=100, quant=0.95, fa="fa",
-            use="pairwise.complete.obs",
-            main="Parallel Analysis Scree Plots for Domestic Securirty Performance")
+paran_ggplot(fa.parallel(fa_ds_data_theft, fm="mle", n.iter=100, quant=0.95, fa="fa",
+            use="pairwise.complete.obs"))
+
+fa_oecd_theft_ds = fa(fa_ds_data_theft, 2, rotate="oblimin", missing=F, fm="mle", scores="Bartlett")
+fa.diagram(fa_oecd_theft_ds, cut=0, main= "Factor Solution for Domestic Security Performance (Theft)")
+fa_table(fa_oecd_theft_ds)
+vss(fa_oecd_theft_ds, fm="mle", rotate="none")
+
+# Without Theft
+fa_ds_data = fa_data_ds_frame_mice_inv %>% 
+  select_at(vars(ends_with("ds"), -order_safety_gdp_perc_oecd_num_ds, -theft_rate_unodc_num_ds,
+                 -crime_rate_unodc_num_ds, -orgacrime_gcs_num_ds, -burg_rate_unodc_num_ds))
+
+par(mfrow=c(1,1))
+paran_ggplot(fa.parallel(fa_ds_data, fm="mle", n.iter=100, quant=0.95, fa="fa",
+                         use="pairwise.complete.obs"))
 
 vss(fa_ds_data, fm="mle", rotate="none")
 vss(fa_ds_data, fm="mle", rotate="none")$map %>% 
