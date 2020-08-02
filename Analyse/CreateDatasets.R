@@ -72,7 +72,8 @@ performance_all = V_dem %>%
                  ends_with("_env"), 
                  ends_with("_soc"), 
                  ends_with("_ds"), 
-                 ends_with("_pc")),funs("index" = EPI_fun(., lower = 0.01, upper=0.99)))  %>% 
+                 ends_with("_pc"), 
+                 ends_with("_ga")),funs("index" = EPI_fun(., lower = 0.01, upper=0.99)))  %>% 
   mutate_at(vars(matches("abstraction_env")),funs("index" = EPI_fun(., lower = 0.025, upper=0.975)))
 
 # Other Democracy Profiles ####

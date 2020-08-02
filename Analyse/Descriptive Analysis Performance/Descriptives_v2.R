@@ -387,16 +387,13 @@ plot_Data = performance_all %>%
   summarise_all(funs(pMiss_01(.))) %>% 
   pivot_longer(cols=-country) %>% 
   #filter(name == "conf_pc") %>% 
-  mutate(value = ifelse(value < 1, "yes", "no"))
+  mutate(value = ifelse(value < 0.9, "yes", "no"))
 
 for (i in 1:length(unique(plot_Data$name))) {
   varname = unique(plot_Data$name)[i]
   create_world_map_cat(plot_Data %>%  filter(name == varname), label = varname , cat_label = "Observed?")
 }
 
-par(mfrow=c(1,2))
-
-create_world_map_cat(plot_Data %>%  filter(name == "eco_inequal_soc"), label = varname , cat_label = "Observed?")
 
 # OECD sample
 performance_all  %>% 
@@ -453,9 +450,9 @@ table_wealth %>%
 # Development
 
 grid.arrange(development_plot(variable_eco, "Economic Performance - \nWealth (All Countries)"),
-             development_plot(variable_eco, "Economic Performance - \nWealth (OECD)", OECD=T),
+             development_plot(variable_eco, "Economic Performance - \nWealth (OECD Founder)", OECD=T),
              variationplot(variable_eco, "Economic Performance - \nWealth (All Countries)", OECD=F),
-             variationplot(variable_eco, "Economic Performance - \nWealth (OECD)", OECD=T)
+             variationplot(variable_eco, "Economic Performance - \nWealth (OECD Founder)", OECD=T)
              )
 lineplot(variable_eco, OECD=F)
 lineplot(variable_eco, OECD=T)
@@ -495,9 +492,9 @@ grid.arrange(lineplot(variable_prod_eco, OECD=F,  "Economic Performance - Produc
 
 # Development
 grid.arrange(development_plot(variable_prod_eco, "Economic Performance - \nProductivity (All Countries)", position="bottom"),
-             development_plot(variable_prod_eco, "Economic Performance - \nProductivity (OECD)", OECD=T, "bottom"),
+             development_plot(variable_prod_eco, "Economic Performance - \nProductivity (OECD Founder)", OECD=T, "bottom"),
              variationplot(variable_prod_eco, "Economic Performance - \nProductivity (All Countries)", OECD=F),
-             variationplot(variable_prod_eco, "Economic Performance - \nProductivity (OECD)", OECD=T)
+             variationplot(variable_prod_eco, "Economic Performance - \nProductivity (OECD Founder)", OECD=T)
 )
 lineplot(variable_prod_eco, OECD=F)
 lineplot(variable_prod_eco, OECD=T)
@@ -529,10 +526,10 @@ table_air %>%
 
 
 # Development
-grid.arrange(development_plot(variable_air_env, "Environmental Performance - \nAir Emissions (All Countries)", position="top"),
-             development_plot(variable_air_env, "Environmental Performance - \nAir Emissions (OECD)", OECD=T, "top"),
-             variationplot(variable_air_env, "Environmental Performance - \nAir Emissions (All Countries)", OECD=F),
-             variationplot(variable_air_env, "Environmental Performance - \nAir Emissions (OECD)", OECD=T)
+grid.arrange(development_plot(variable_air_env, "Environmental Performance - \nAir Quality (All Countries)", position="top"),
+             development_plot(variable_air_env, "Environmental Performance - \nAir Quality (OECD Founder)", OECD=T, "top"),
+             variationplot(variable_air_env, "Environmental Performance - \nAir Quality (All Countries)", OECD=F),
+             variationplot(variable_air_env, "Environmental Performance - \nAir Quality (OECD Founder)", OECD=T)
 )
 
 lineplot(variable_air_env, OECD=F)
@@ -540,7 +537,7 @@ lineplot(variable_air_env, OECD=T)
 
 
 # Abstraction ####
-variable_abs_env = "abstraction_env_index"
+variable_abs_env = "resources_env_index"
 
 # Ranking 
 table_abs = get_table(variable_abs_env) %>% 
@@ -567,10 +564,10 @@ table_abs %>%
 
 
 # Development
-grid.arrange(development_plot(variable_abs_env, "Environmental Performance - \nAbstraction (All Countries)", position="top"),
-             development_plot(variable_abs_env, "Environmental Performance - \nAbstraction (OECD)", OECD=T, "top"),
-             variationplot(variable_abs_env, "Environmental Performance - \nAbstraction (All Countries)", OECD=F),
-             variationplot(variable_abs_env, "Environmental Performance - \nAbstraction (OECD)", OECD=T)
+grid.arrange(development_plot(variable_abs_env, "Environmental Performance - \nResources (All Countries)", position="top"),
+             development_plot(variable_abs_env, "Environmental Performance - \nResources (OECD Founder)", OECD=T, "top"),
+             variationplot(variable_abs_env, "Environmental Performance - \nResources (All Countries)", OECD=F),
+             variationplot(variable_abs_env, "Environmental Performance - \nResources (OECD Founder)", OECD=T)
 )
 lineplot(variable_abs_env, OECD=F)
 lineplot(variable_abs_env, OECD=T)
@@ -581,12 +578,15 @@ lineplot(variable_abs_env, OECD=T)
 names(performance_all)
 
 performance_all %>% 
-  select_at(vars(country_text_id, year, matches("_ga"))) %>% 
-  filter(year > 1990, is.na(GA_ccp_ga) == F) %>% 
+  select_at(vars(country_text_id, year, matches("_ga_index"))) %>% 
+  filter(year > 1990, is.na(arate_ccp_ga_index) == F) %>% 
   select(-year) %>% 
   group_by(country_text_id) %>% 
   summarise_all(mean, na.rm=T) %>% 
+  group_by(country_text_id) %>% 
   mutate_all(funs(ifelse(is.nan(.) == T, NA, .))) %>% 
+  mutate_all(funs(round(., 1))) %>% 
+  ungroup() %>% 
   make_dust_table() %>% 
   sprinkle_colnames("country", "AR CCP", "AR Lutz")
 
@@ -596,8 +596,8 @@ performance_all %>%
   #filter(year > 1990) %>% 
   group_by(country_text_id) %>% 
   summarise_all(mean, na.rm=T) %>% 
-  mutate(country_text_id = fct_reorder2(country_text_id, GA_lutz_ga, GA_ccp_ga)) %>% 
-  pivot_longer(cols=c("GA_ccp_ga", "GA_lutz_ga")) %>% 
+  mutate(country_text_id = fct_reorder2(country_text_id, arate_lutz_ga, arate_ccp_ga)) %>% 
+  pivot_longer(cols=c("arate_ccp_ga", "arate_lutz_ga")) %>% 
   na.omit() %>% 
   ggplot(aes(x=country_text_id, y=value, shape=name)) +
   geom_point(size=2) +
@@ -607,6 +607,27 @@ performance_all %>%
   coord_flip() +
   theme_bw() +
   theme(legend.position = "bottom", legend.title = element_blank())
+
+performance_all %>% 
+  select_at(vars(country_text_id, year, matches("_ga"))) %>% 
+  #filter(year > 1990) %>% 
+  group_by(country_text_id) %>% 
+  summarise_all(mean, na.rm=T) %>% 
+  ungroup() %>% 
+  select(country_text_id, arate_lutz_ga) %>% 
+  arrange(-arate_lutz_ga) %>% 
+  top_n(5, arate_lutz_ga)
+
+performance_all %>% 
+  select_at(vars(country_text_id, year, matches("_ga"))) %>% 
+  #filter(year > 1990) %>% 
+  group_by(country_text_id) %>% 
+  summarise_all(mean, na.rm=T) %>% 
+  ungroup() %>% 
+  select(country_text_id, arate_ccp_ga) %>% 
+  arrange(-arate_ccp_ga) %>% 
+  top_n(5, arate_ccp_ga)
+
 
 
 # SOCIAL ####
@@ -628,9 +649,9 @@ top_performer_table(variable_equ_env)
 
 # Development
 grid.arrange(development_plot(variable_equ_env, "Social Performance - \nEconomic Inequality (All Countries)", position="bottom"),
-             development_plot(variable_equ_env, "Social Performance - \nEconomic Inequality (OECD)", OECD=T, "bottom"),
+             development_plot(variable_equ_env, "Social Performance - \nEconomic Inequality (OECD Founder)", OECD=T, "bottom"),
              variationplot(variable_equ_env, "Social Performance - \nEconomic Inequality (All Countries)", OECD=F),
-             variationplot(variable_equ_env, "Social Performance - \nEconomic Inequality (OECD)", OECD=T)
+             variationplot(variable_equ_env, "Social Performance - \nEconomic Inequality (OECD Founder)", OECD=T)
 )
 lineplot(variable_equ_env, OECD=F)
 lineplot(variable_equ_env, OECD=T)
@@ -663,9 +684,9 @@ performance_all %>%
 
 # Development
 grid.arrange(development_plot(variable_squ_env, "Social Performance - \nSocial Inequality (All Countries)", position="bottom"),
-             development_plot(variable_squ_env, "Social Performance - \nSocial Inequality (OECD)", OECD=T, "bottom"),
+             development_plot(variable_squ_env, "Social Performance - \nSocial Inequality (OECD Founder)", OECD=T, "bottom"),
              variationplot(variable_squ_env, "Social Performance - \nSocial Inequality (All Countries)", OECD=F),
-             variationplot(variable_squ_env, "Social Performance - \nSocial Inequality (OECD)", OECD=T)
+             variationplot(variable_squ_env, "Social Performance - \nSocial Inequality (OECD Founder)", OECD=T)
 )
 lineplot(variable_squ_env, OECD=F)
 lineplot(variable_squ_env, OECD=T)
@@ -673,7 +694,7 @@ lineplot(variable_squ_env, OECD=T)
 # INTEGRATION ####
 # Domestic Security ####
 
-variable_ds = "pubsafe_ds_index"
+variable_ds = "domsec_ds_index"
 
 # Ranking 
 table_ds = get_table(variable_ds) %>% 
@@ -711,9 +732,9 @@ performance_all %>%
 
 # Development
 grid.arrange(development_plot(variable_ds, "Domestic Security Performance \n(All Countries)", position="bottom"),
-             development_plot(variable_ds, "Domestic Security Performance \n(OECD)", OECD=T, "bottom"),
+             development_plot(variable_ds, "Domestic Security Performance \n(OECD Founder)", OECD=T, "bottom"),
              variationplot(variable_ds, "Domestic Security Performance \n(All Countries)", OECD=F),
-             variationplot(variable_ds, "Domestic Security Performance \n(OECD)", OECD=T)
+             variationplot(variable_ds, "Domestic Security Performance \n(OECD Founder)", OECD=T)
 )
 lineplot(variable_ds, OECD=F)
 lineplot(variable_ds, OECD=T)

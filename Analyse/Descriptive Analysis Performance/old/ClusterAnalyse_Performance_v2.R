@@ -1,6 +1,7 @@
 # CLUSTER ANALYSE ####
 library(clusterSim)
 library(fclust)
+library(fpc)
 source("Analyse/CreateDatasets.R")
 
 
@@ -158,11 +159,11 @@ performance_cluster_data = performance_all %>%
          wealth_eco,
          productivity_eco,
          air_env,
-         abstraction_env,
+         resources_env,
          #GA_ccp_ga,
          eco_inequal_soc,
          soc_inequal_soc,
-         pubsafe_ds,
+         domsec_ds,
          conf_pc
          ) %>% 
   group_by(country_text_id) %>% 
