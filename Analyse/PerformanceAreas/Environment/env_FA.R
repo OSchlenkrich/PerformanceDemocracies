@@ -19,20 +19,33 @@ dim(fa_data_oecd_frame_mice_inv)
 
 KMO(fa_data_oecd_frame_mice_inv %>% 
       select_at(vars(ends_with("env")))) 
-KMO(fa_data_oecd_frame_mice_inv %>% 
-      select_at(vars(ends_with("env"), -CO2_ugdp_oecd_num_env )))
-corrplot(cor(fa_data_oecd_frame_mice_inv %>% 
-               select_at(vars(ends_with("env"))) , use="pairwise"), method="number")
 
+KMO(fa_data_oecd_frame_mice_inv %>% 
+      # these variables are already included in GHG
+      select_at(vars(ends_with("env"), -CO2_ugdp_oecd_num_env, -CH4_ugdp_oecd_num_env,-N2O_ugdp_oecd_num_env, -NMVOC_ugdp_oecd_num_env)))
+
+corrplot(cor(fa_data_oecd_frame_mice_inv %>% 
+               select_at(vars(ends_with("env"), -CO2_ugdp_oecd_num_env, -CH4_ugdp_oecd_num_env,-N2O_ugdp_oecd_num_env, -NMVOC_ugdp_oecd_num_env)) %>% 
+               rename_all(funs(gsub("_num_env","",.)))  , use="pairwise"), method="number")
+
+KMO_table(KMO(fa_data_oecd_frame_mice_inv %>% 
+                select_at(vars(ends_with("env"), -CO2_ugdp_oecd_num_env, -CH4_ugdp_oecd_num_env,-N2O_ugdp_oecd_num_env, -NMVOC_ugdp_oecd_num_env))))
 
 ### Factor Analysis
 fa_env_data = fa_data_oecd_frame_mice_inv %>% 
-  select_at(vars(ends_with("env"), -CO2_ugdp_oecd_num_env, -CH4_ugdp_oecd_num_env,-N2O_ugdp_oecd_num_env, -NMVOC_ugdp_oecd_num_env))
+  select_at(vars(ends_with("env"), -CO2_ugdp_oecd_num_env, -CH4_ugdp_oecd_num_env,-N2O_ugdp_oecd_num_env, -NMVOC_ugdp_oecd_num_env)) %>% 
+  rename_all(funs(gsub("_num_env","",.)))
 
+
+names(fa_env_data)
 paran(na.omit(fa_env_data), iterations=100, graph=T, cfa=T, centile=95)
 fa.parallel(fa_env_data, fm="mle", n.iter=100, quant=0.95, fa="fa",
             use="pairwise.complete.obs",
             main="Parallel Analysis Scree Plots for Environmental Performance")
+
+paran_ggplot(fa.parallel(fa_env_data, fm="mle", n.iter=100, quant=0.95, fa="fa",
+                         use="pairwise.complete.obs",
+                         main="Parallel Analysis Scree Plots for Environmental Performance"))
 
 vss(fa_env_data, fm="mle", rotate="none")$map %>% 
   round(.,3)
@@ -45,7 +58,7 @@ fa_oecd_env
 
 round(fa_oecd_env$residual, 2)
 
-fa.diagram(fa_oecd_env, cut=0)
+fa.diagram(fa_oecd_env, cut=0, main= "Factor Solution for Environmental Performance")
 fa_oecd_env$loadings
 
 fa_table(fa_oecd_env)
@@ -64,38 +77,4 @@ fa_table(fa_oecd_env)
 # model_plot$graphAttributes$Nodes$labels["Factor1"] = "air_env"
 # model_plot$graphAttributes$Nodes$labels["Factor2"] = "abstraction_env"
 # 
-# plot(model_plot)
-
-
-# Reliability Score
-omega(fa_env_data, 2)
-
-
-## Calculate Factor Scores
-performance_env = fa_data_oecd_frame_mice_inv %>% 
-  mutate(air_env = scale(fa_oecd_env$scores[,1])[,1],
-         abstraction_env = scale(fa_oecd_env$scores[,2])[,1]
-         )
-
-###
-
-samples = c("CAN","DEU", "USA", "SWE", "IND", "FIN", "DNK")
-samples = c("BRA", "RUS", "CHE", "IND", "DEU", "AUS")
-
-samples = c("ISL", "USA", "CHE", "SWE", "DEU")
-
-performance_env %>% 
-  select_at(vars(country_text_id, year, air_env, abstraction_env)) %>% 
-  filter(country_text_id %in% samples) %>% 
-  melt(id.vars=c("country_text_id", "year")) %>% 
-  ggplot(aes(x=year, y=value, col=country_text_id)) + 
-  geom_line(size=1) +
-  #geom_errorbar(aes(ymin=lower, ymax=upper)) + 
-  theme_bw() +
-  scale_y_continuous(name="Economic Performance")  +
-  scale_x_continuous(name=NULL, breaks=seq(1950,2020, 10)) +
-  facet_wrap(variable~.)
-
-
-write.csv(performance_env, file="Datasets/performance_data/ImputedDatasets/performance_env.csv", row.names = F, fileEncoding ="UTF-8")
-
+# plot(model_plot) %>% 

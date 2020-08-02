@@ -36,6 +36,11 @@ fa_data_oecd_frame_mice = fa_data_oecd_frame %>%
   filter(year>=1990) %>% 
   mutate(year_0 = year - min(year))
 
+# auxilary variables
+fa_data_oecd_frame_mice %>% 
+  select_at(vars(matches("_aux"))) %>% 
+  names()
+
 
 mice_data = as.data.frame(fa_data_oecd_frame_mice) %>% 
   select(-year)
@@ -45,7 +50,9 @@ mice_data[] <- lapply(mice_data, function(x) { attributes(x) <- NULL; x })
 # corrplot
 corrplot(cor(fa_data_oecd_frame_mice %>% 
                select_if(is.numeric) %>% 
-               select_at(vars(-matches("lag"),-matches("lead"))), use="pairwise"))
+               select_at(vars(-matches("lag"),-matches("lead"))) %>% 
+               rename_all(funs(gsub("_num_env","",.))) %>% 
+               rename_all(funs(gsub("_num_aux","",.))), use="pairwise"))
 
 
 # Imputation
@@ -68,28 +75,59 @@ a.out <- amelia(mice_data,
 
 a.out
 
+# saveRDS(a.out, "Analyse/PerformanceAreas/Environment/a.out.RDS")
+a.out = readRDS("Analyse/PerformanceAreas/Environment/a.out.RDS")
+
+
+
 if (Plot_Impu == T) {
   # convergence
   par(mfrow=c(1,1))
-  disperse(a.out, dims = 1, m = 5)
+  disp_env = disperse(a.out, dims = 1, m = 5)
+  
+  # saveRDS(disp_env, "Analyse/PerformanceAreas/Environment/Diag/disp_env.RDS")
+  disp_env = readRDS("Analyse/PerformanceAreas/Environment/Diag/disp_env.RDS")
+  convergence_amelia(disp_env)  +
+    ggtitle("Environmental Performance: Overdispersed Starting Values")
+  
   
   # obs vs. imp
-  par(mfrow=c(3,2))
-  compare.density(a.out, var = c("greenhouse_oecd_num_env"), main= "Observed vs. Imputed Values of Greenhouse gas emissions")
-  compare.density(a.out, var = c("sulphur_oecd_num_env"), main= "Observed vs. Imputed Values of Sulphur Oxides Emissions")
-  compare.density(a.out, var = c("nitrogen_oecd_num_env"), main= "Observed vs. Imputed Values of Nitrogene Oxides Emissions")
-  compare.density(a.out, var = c("co2_oecd_num_env"), main= "Observed vs. Imputed Values of CO2 emissions from fuel combustion")
-  compare.density(a.out, var = "waste_oecd_num_env", main= "Observed vs. Imputed Values of Municipal waste")
-  compare.density(a.out, var = "water_oecd_num_env", main= "Observed vs. Imputed Values of Water abstractions")
+  ggarrange(
+    compare.density_own(a.out, var = "water_ugdp_oecd_num_env"),
+    compare.density_own(a.out, var = "waste_ugdp_oecd_num_env"),
+    compare.density_own(a.out, var = c("GHG_ugdp_oecd_num_env")),
+    compare.density_own(a.out, var = c("SOX_ugdp_oecd_num_env")),
+    compare.density_own(a.out, var = c("NOX_ugdp_oecd_num_env")),
+    compare.density_own(a.out, var = c("CO_ugdp_oecd_num_env")),
+    common.legend = T,
+    legend = "bottom"
+  )
+  
   
   # predictive capability
-  par(mfrow=c(3,2))
-  Amelia::overimpute(a.out, var = "greenhouse_oecd_num_env", main= "Observed vs. Imputed Values of Greenhouse gas emissions")
-  Amelia::overimpute(a.out, var = "sulphur_oecd_num_env", main= "Observed vs. Imputed Values of Sulphur Oxides Emissions")
-  Amelia::overimpute(a.out, var = "nitrogen_oecd_num_env", main= "Observed vs. Imputed Values of Nitrogene Oxides Emissions")
-  Amelia::overimpute(a.out, var = "co2_oecd_num_env", main= "Observed vs. Imputed Values of CO2 emissions from fuel combustion")
-  Amelia::overimpute(a.out, var = "waste_oecd_num_env", main= "Observed vs. Imputed Values of Municipal waste")
-  Amelia::overimpute(a.out, var = "water_oecd_num_env", main= "Observed vs. Imputed Values of Water abstractions")
+  
+  water_imp_env = Amelia::overimpute(a.out, var = "water_ugdp_oecd_num_env")
+  # saveRDS(water_imp_env, "Analyse/PerformanceAreas/Environment/Diag/water_imp_env.RDS")
+  waste_imp_env = Amelia::overimpute(a.out, var = "waste_ugdp_oecd_num_env")
+  # saveRDS(waste_imp_env, "Analyse/PerformanceAreas/Environment/Diag/waste_imp_env.RDS")
+  GHG_imp_env = Amelia::overimpute(a.out, var = "GHG_ugdp_oecd_num_env")
+  # saveRDS(GHG_imp_env, "Analyse/PerformanceAreas/Environment/Diag/GHG_imp_env.RDS")
+  SOX_imp_env = Amelia::overimpute(a.out, var = "SOX_ugdp_oecd_num_env")
+  # saveRDS(SOX_imp_env, "Analyse/PerformanceAreas/Environment/Diag/SOX_imp_env.RDS")
+  NOX_imp_env = Amelia::overimpute(a.out, var = "NOX_ugdp_oecd_num_env")
+  # saveRDS(NOX_imp_env, "Analyse/PerformanceAreas/Environment/Diag/NOX_imp_env.RDS")
+  CO_imp_env = Amelia::overimpute(a.out, var = "CO_ugdp_oecd_num_env")
+  # saveRDS(CO_imp_env, "Analyse/PerformanceAreas/Environment/Diag/CO_imp_env.RDS")
+  
+  ggarrange(
+    overimpute_gglot(water_imp_env, "water_ugdp"),
+    overimpute_gglot(waste_imp_env, "waste_ugdp"),
+    overimpute_gglot(GHG_imp_env, "GHG_ugdp"),
+    overimpute_gglot(SOX_imp_env, "SOX_ugdp"),
+    overimpute_gglot(NOX_imp_env, "NOX_ugdp"),
+    overimpute_gglot(CO_imp_env, "CO_ugdp")
+  )
+  
   
   
   par(mfrow=c(1,1))
@@ -111,6 +149,22 @@ if (Plot_Impu == T) {
 imputed_env = mapply(cbind, a.out$imputations, "imp" = 1:nr_imputations, SIMPLIFY = FALSE) %>% 
   bind_rows() %>% 
   mutate(imp = as.factor(imp))
+
+# Plausibilty: Relationship with GDP
+
+imputed_env %>% 
+  left_join(fa_data_oecd_frame_mice %>%
+              select(country_text_id, year, year_0),
+            by = c("country_text_id", "year_0")) %>% 
+  left_join(fa_data_oecd_frame, by=c("country_text_id", "year"))  %>% 
+  mutate(is_na = ifelse(NOX_ugdp_oecd_is_na == 1, "Imputed", "Observed")) %>% 
+  ggplot(aes(x=GDP_capita_wdi_gen_num_aux, y = NOX_ugdp_oecd_num_env, col=is_na)) +
+  geom_point() +
+  scale_color_grey(name="") +
+  xlab("GDP per Capita") +
+  ylab("NOx") +
+  theme_bw() +
+  theme(legend.position = "bottom")
 
 
 imputed_env_vars = imputed_env %>% 

@@ -194,7 +194,7 @@ imf_gdp= fread("Datasets/imf_gdpppp.csv", header = T) %>%
 # Create Main Dataset
 Economy_Perfomance = QoC_data %>% 
   select(country_text_id, year,
-
+         
          GDP_capita_gen_num_wdi = wdi_gdpcapcur,
          # Inflation_wdi = wdi_inflation,
          # Unemployment_pr_wdi = wdi_unempilo,
@@ -218,16 +218,16 @@ Economy_Perfomance = QoC_data %>%
   left_join(imf_inflation, by=c("country_text_id", "year")) %>%  
   left_join(WB_consumption, by=c("country_text_id", "year")) %>% 
   left_join(imf_gdp, by=c("country_text_id", "year")) %>% 
-
+  
   filter(year >= 1950) %>%  
   dplyr::arrange(country_text_id, year) %>% 
   group_by(country_text_id) %>% 
   mutate(
-         # Inflation_wdi = abs(Inflation_wdi),
-         # Inflation_oecd = abs(Inflation_oecd),
-         # Balance_oecd = abs(Balance_oecd),
-         Balance_wdi = abs(Balance_wdi)
-         ) %>% 
+    # Inflation_wdi = abs(Inflation_wdi),
+    # Inflation_oecd = abs(Inflation_oecd),
+    # Balance_oecd = abs(Balance_oecd),
+    Balance_wdi = abs(Balance_wdi)
+  ) %>% 
   ungroup() %>%
   # mutate_at(vars(matches("_pr_")), funs(./100)) %>% 
   # Contra Deflation 
@@ -306,6 +306,7 @@ Economy_Perfomance_IP %>%
 
 Economy_Perfomance_IP %>% 
   select_at(vars(ends_with("oecd"), ends_with("imf"), ends_with("pwt"), ends_with("wdi"))) %>% 
+  select(-GDP_capita_gen_num_wdi) %>% 
   melt() %>% 
   ggplot(aes(x=value)) + 
   geom_histogram()  +
@@ -333,6 +334,7 @@ Economy_Perfomance_IP_norm = Economy_Perfomance_IP  %>%
 
 Economy_Perfomance_IP_norm %>% 
   select_at(vars(ends_with("oecd"), ends_with("imf"), ends_with("pwt"), ends_with("wdi"))) %>% 
+  select(-GDP_capita_gen_num_wdi) %>% 
   melt() %>% 
   ggplot(aes(x=value)) + 
   geom_histogram()  +

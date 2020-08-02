@@ -37,6 +37,11 @@ fa_data_ds_frame_mice = fa_data_ds_frame %>%
   filter(year>=1990) %>% 
   mutate(year_0 = year - min(year))
 
+# auxilary variables
+fa_data_ds_frame_mice %>% 
+  select_at(vars(matches("_aux"))) %>% 
+  names()
+
 
 mice_data = as.data.frame(fa_data_ds_frame_mice) %>% 
   select(-year)
@@ -70,27 +75,55 @@ a.out_ds <- amelia(mice_data,
 
 a.out_ds
 
+
+
+# saveRDS(a.out_ds, "Analyse/PerformanceAreas/DomesticSecurity/a.out_ds.RDS")
+a.out_ds = readRDS("Analyse/PerformanceAreas/DomesticSecurity/a.out_ds.RDS")
+
+
 if (Plot_Impu == T) {
   # convergence
   par(mfrow=c(1,1))
-  disperse(a.out_ds, dims = 1, m = 5)
+  disp_ds = disperse(a.out_ds, dims = 1, m = 5)
+  
+  # saveRDS(disp_ds, "Analyse/PerformanceAreas/DomesticSecurity/Diag/disp_ds.RDS")
+  disp_ds = readRDS("Analyse/PerformanceAreas/DomesticSecurity/Diag/disp_ds.RDS")
+  
+  convergence_amelia(disp_ds)  +
+    ggtitle("Domestic Security Performance: Overdispersed Starting Values")
+  
   
   # obs vs. imp
-  par(mfrow=c(2,2), mar=c(4,4,4,4))
-  compare.density(a.out_ds, var = c("hom_rate_unodc_num_ds"), main= "Observed vs. Imputed Values of Homicides per 100.000")
-  compare.density(a.out_ds, var = c("rob_rate_unodc_num_ds"), main= "Observed vs. Imputed Values of Robberies per 100.000")
-  compare.density(a.out_ds, var = c("theft_rate_unodc_num_ds"), main= "Observed vs. Imputed Values of Robberies per 100.000")
-  compare.density(a.out_ds, var = c("order_safety_gdp_oecd_num_ds"), main= "Observed vs. Imputed Values of General government spending – Public order and safety")
-
-  
+  ggarrange(
+    compare.density_own(a.out_ds, var = "order_safety_gdpcapita_oecd_num_ds"),
+    compare.density_own(a.out_ds, var = "hom_rate_unodc_num_ds"),
+    compare.density_own(a.out_ds, var = "theft_rate_unodc_num_ds"), 
+    compare.density_own(a.out_ds, var = "reliab_police_gcs_num_ds"),
+    compare.density_own(a.out_ds, var = "trust_gwp_num_ds"),
+    common.legend = T,
+    legend = "bottom"
+  )
   
   # predictive capability
-  par(mfrow=c(2,2))
-  Amelia::overimpute(a.out_ds, var = "hom_rate_unodc_num_ds", main= "Observed vs. Imputed Values of Homicides per 100.000")
-  Amelia::overimpute(a.out_ds, var = "rob_rate_unodc_num_ds", main= "Observed vs. Imputed Values of Robberies per 100.000")
-  Amelia::overimpute(a.out_ds, var = "theft_rate_unodc_num_ds", main= "Observed vs. Imputed Values of Robberies per 100.000")
-  Amelia::overimpute(a.out_ds, var = "order_safety_gdp_oecd_num_ds", main= "Observed vs. Imputed Values of General government spending – Public order and safety")
+  order_imp_ds = Amelia::overimpute(a.out_ds, var = "order_safety_gdpcapita_oecd_num_ds")
+  # saveRDS(order_imp_ds, "Analyse/PerformanceAreas/DomesticSecurity/Diag/order_imp_ds.RDS")
+  hom_imp_ds = Amelia::overimpute(a.out_ds, var = "hom_rate_unodc_num_ds")
+  # saveRDS(hom_imp_ds, "Analyse/PerformanceAreas/DomesticSecurity/Diag/hom_imp_ds.RDS")
+  theft_imp_ds = Amelia::overimpute(a.out_ds, var = "theft_rate_unodc_num_ds")
+  # saveRDS(theft_imp_ds, "Analyse/PerformanceAreas/DomesticSecurity/Diag/theft_imp_ds.RDS")
+  reliab_imp_ds = Amelia::overimpute(a.out_ds, var = "reliab_police_gcs_num_ds")
+  # saveRDS(reliab_imp_ds, "Analyse/PerformanceAreas/DomesticSecurity/Diag/reliab_imp_ds.RDS")
+  trust_imp_ds = Amelia::overimpute(a.out_ds, var = "trust_gwp_num_ds")
+  # saveRDS(trust_imp_ds, "Analyse/PerformanceAreas/DomesticSecurity/Diag/trust_imp_ds.RDS")
   
+  
+  ggarrange(
+    overimpute_gglot(order_imp_ds, "order_safety_gdpcapita_oecd"),
+    overimpute_gglot(hom_imp_ds, "hom_rate_unodc"),
+    overimpute_gglot(theft_imp_ds, "theft_rate_unodc"),
+    overimpute_gglot(reliab_imp_ds, "reliab_police_gcs"),
+    overimpute_gglot(trust_imp_ds, "trust_gwp")
+  )
   
   
   tscsPlot(a.out_ds, cs = "AUS",

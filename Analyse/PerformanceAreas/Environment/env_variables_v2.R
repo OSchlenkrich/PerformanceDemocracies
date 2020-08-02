@@ -156,6 +156,12 @@ Environment_Performance_IP %>%
 
 Environment_Performance_IP %>% 
   select_at(vars(ends_with("oecd"), ends_with("wdi"))) %>% 
+  select(water_ugdp_oecd,
+         waste_ugdp_oecd, 
+         GHG_ugdp_oecd,
+         SOX_ugdp_oecd,   
+         NOX_ugdp_oecd,
+         CO_ugdp_oecd) %>% 
   melt() %>% 
   ggplot(aes(x=value)) + 
   geom_histogram()  +
@@ -170,7 +176,7 @@ Environment_Performance_IP %>%
 
 
 
-####
+# Transformation ####
 
 
 Environment_Performance_IP_norm = Environment_Performance_IP  %>% 
@@ -192,6 +198,12 @@ Environment_Performance_IP_norm = Environment_Performance_IP  %>%
 
 Environment_Performance_IP_norm %>% 
   select_at(vars(ends_with("oecd"), ends_with("wdi"))) %>% 
+  select(water_ugdp_oecd,
+         waste_ugdp_oecd, 
+         GHG_ugdp_oecd,
+         SOX_ugdp_oecd,   
+         NOX_ugdp_oecd,
+         CO_ugdp_oecd) %>% 
   melt() %>% 
   ggplot(aes(x=value)) + 
   geom_histogram()   +

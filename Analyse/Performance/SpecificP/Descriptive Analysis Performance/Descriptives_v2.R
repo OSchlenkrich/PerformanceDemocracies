@@ -296,7 +296,62 @@ top_performer_table = function(variable) {
     sprinkle_print_method("html")  
 }
 
+create_world_map_cat= function(dataset, label = NULL, cat_label) {
+  require(RColorBrewer)
+  
+  # dmy_year$country[dmy_year$country=="Burma/Myanmar"] = "Burma"
+  # dmy_year$country[dmy_year$country=="Republic of Vietnam"] = "Vietnam"
+  # dmy_year$country[dmy_year$country=="São Tomé and Príncipe"] = "Sao Tome and Principe"
+  
+  merged_map_data <- joinCountryData2Map(dataset,
+                                         joinCode = "NAME",
+                                         nameJoinColumn = "country",
+                                         verbose = TRUE)
+  
+  
+  
+  cnt = as.character(merged_map_data$NAME[merged_map_data$NAME != "Antarctica"])
+  cnt = as.character(cnt[cnt != "Greenland"])
+  
+  merged_map_data <- subset(merged_map_data, NAME  %in%  cnt)
+  
+  
+  colourPalette <- c("grey", "black")
+  
+  if (is.null(label) == T) {
+    mapParams = mapCountryData(merged_map_data,
+                               nameColumnToPlot="value",
+                               colourPalette=colourPalette,
+                               catMethod="categorical", 
+                               addLegend = T, 
+                               #lwd=1,
+                               mapTitle = "")    
+  } else {
+    mapParams = mapCountryData(merged_map_data,
+                               nameColumnToPlot="value",
+                               colourPalette=colourPalette,
+                               catMethod="categorical", 
+                               addLegend = T, 
+                               #lwd=1,
+                               mapTitle = label, selected_year)
+  }
+  
+  
+  do.call( addMapLegendBoxes, c(mapParams, title=cat_label))
+  
+}
+
 # NA values ####
+test = performance_all %>% 
+  group_by(year) %>% 
+  select_at(vars(ends_with("_eco"), 
+                 ends_with("_env"), 
+                 ends_with("_ga"), 
+                 ends_with("_soc"), 
+                 ends_with("_ds"), 
+                 ends_with("_pc"))) %>% 
+  summarise_all(funs(1-pMiss_01(.)))
+
 performance_all %>% 
   group_by(year) %>% 
   select_at(vars(ends_with("_eco"), 
@@ -305,17 +360,43 @@ performance_all %>%
                  ends_with("_soc"), 
                  ends_with("_ds"), 
                  ends_with("_pc"))) %>% 
-  summarise_all(funs(1-pMiss_01(.))) %>% 
-  melt(id.vars="year") %>% 
-  ggplot(aes(x=year, y=value, fill=variable)) +
+  summarise_all(funs(pMiss_01(.))) %>% 
+  pivot_longer(cols=-year) %>% 
+  ggplot(aes(x=year, y=value, fill=name)) +
   geom_bar(stat="identity", width=1) +
-  facet_wrap(variable~.) +
+  facet_wrap(name~.) +
   scale_y_continuous(name=NULL, breaks=seq(0,1, 0.25), limit=c(0,1), labels=percent)  +
   scale_x_continuous(name=NULL, breaks=seq(1950,2020, 10)) + 
   scale_fill_grey(start = 0.4, end = 0.4) +
   theme_bw() +
   theme(axis.text.x = element_text(angle=90), legend.position = "none") +
   ggtitle("Missings in Democracy Profile Sample")
+
+# World Map
+par(mfrow=c(2,2))
+
+plot_Data = performance_all %>%
+  filter(year > 2000) %>% 
+  group_by(country) %>% 
+  select_at(vars(ends_with("_eco"), 
+                 ends_with("_env"), 
+                 ends_with("_ga"), 
+                 ends_with("_soc"), 
+                 ends_with("_ds"), 
+                 ends_with("_pc"))) %>% 
+  summarise_all(funs(pMiss_01(.))) %>% 
+  pivot_longer(cols=-country) %>% 
+  #filter(name == "conf_pc") %>% 
+  mutate(value = ifelse(value < 1, "yes", "no"))
+
+for (i in 1:length(unique(plot_Data$name))) {
+  varname = unique(plot_Data$name)[i]
+  create_world_map_cat(plot_Data %>%  filter(name == varname), label = varname , cat_label = "Observed?")
+}
+
+par(mfrow=c(1,2))
+
+create_world_map_cat(plot_Data %>%  filter(name == "eco_inequal_soc"), label = varname , cat_label = "Observed?")
 
 # OECD sample
 performance_all  %>% 

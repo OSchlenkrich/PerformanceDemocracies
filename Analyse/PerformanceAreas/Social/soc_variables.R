@@ -36,14 +36,14 @@ Integration_Performance = QoC_data %>%
   filter_if(is.double, any_vars(!is.na(.))) %>% 
   
   mutate(gini_wdi = gini_wdi/100) %>% 
-
+  
   # Sample
   filter(year > 1950) %>% 
   filter(country_text_id %in% unique(dmx_trade_cluster$country_text_id)) %>% 
   group_by(country_text_id) %>% 
   tidyr::complete(country_text_id, year = 1950:2017, fill = list(NA)) %>% 
   ungroup() %>% 
-   
+  
   left_join(V_dem_equal, by=c("country_text_id", "year")) %>% 
   left_join(dmx_trade_cluster %>%  select(-country, -regions), by=c("country_text_id", "year"))  %>%
   
@@ -115,7 +115,14 @@ Integration_Performance_IP %>%
   melt() %>% 
   ggplot(aes(x=value)) + 
   geom_histogram()  +
-  facet_wrap(variable~., scales = "free") 
+  facet_wrap(variable~., scales = "free") +
+  theme_bw() +
+  theme(legend.position = "none") +
+  scale_y_continuous(name=NULL)  +
+  scale_x_continuous(name=NULL) +
+  ggtitle("Raw Sample")
+
+
 
 Integration_Performance_IP %>% 
   group_by(year) %>% 
@@ -147,7 +154,12 @@ Integration_Performance_IP_norm %>%
   melt() %>% 
   ggplot(aes(x=value)) + 
   geom_histogram()  +
-  facet_wrap(variable~., scales = "free")
+  facet_wrap(variable~., scales = "free") +
+  theme_bw() +
+  theme(legend.position = "none") +
+  scale_y_continuous(name=NULL)  +
+  scale_x_continuous(name=NULL) +
+  ggtitle("Transformed Sample")
 
 
 

@@ -18,22 +18,32 @@ names(imputed_wdi_eco_vars)
 ### KOM-Test
 dim(fa_data_wdi_frame_mice_inv)
 
-KMO(fa_data_wdi_frame_mice_inv %>% 
-      select_at(vars(ends_with("eco"))))
-KMO(fa_data_wdi_frame_mice_inv %>% 
-      select_at(vars(ends_with("eco"), -investment_wdi_num_eco, -Balance_wdi_num_eco))) 
+kmo_eco1 = KMO(fa_data_wdi_frame_mice_inv %>% 
+                 select_at(vars(ends_with("eco"), -investment_wdi_num_eco)))
+
+kmo_eco2 = KMO(fa_data_wdi_frame_mice_inv %>% 
+                 select_at(vars(ends_with("eco"), -investment_wdi_num_eco, -Balance_wdi_num_eco))) 
 corrplot(cor(fa_data_wdi_frame_mice_inv %>% 
-               select_at(vars(ends_with("eco"))) , use="pairwise"), method="number")
+               select_at(vars(ends_with("eco"))) %>% 
+               rename_all(funs(gsub("_num_eco","",.))) , use="pairwise"), method="number")
+
+KMO_table(kmo_eco1, kmo_eco2)
+
 
 
 ### Factor Analysis
 
 fa_eco_wdi_data = fa_data_wdi_frame_mice_inv %>% 
-  select_at(vars(ends_with("eco"), -investment_wdi_num_eco, -Balance_wdi_num_eco))
+  select_at(vars(ends_with("eco"), -investment_wdi_num_eco, -Balance_wdi_num_eco)) %>% 
+  rename_all(funs(gsub("_num_eco","",.)))
 
 par(mfrow=c(1,1))
 paran(na.omit(fa_eco_wdi_data), iterations=100, graph=T, cfa=T, centile=95)
-fa.parallel(fa_eco_wdi_data, fm="ml")
+
+paran_ggplot(fa.parallel(fa_eco_wdi_data, fm="ml"))
+
+
+
 vss(fa_eco_wdi_data, fm="mle", rotate="none")$map %>% 
   round(.,3)
 vss(fa_eco_wdi_data, fm="mle", rotate="none")
@@ -41,7 +51,8 @@ vss(fa_eco_wdi_data, fm="mle", rotate="none")
 
 # Exploratory Factor Analysis
 fa_wdi_eco = fa(fa_eco_wdi_data, 2, rotate="oblimin", missing=F, fm="mle", scores="Bartlett")
-fa.diagram(fa_wdi_eco, cut=0)
+fa.diagram(fa_wdi_eco, cut=0, main="Diagram for Economic Performance")
+
 # pattern matrix
 fa_wdi_eco$loadings
 # structure matrix
@@ -67,6 +78,8 @@ fa_table(fa_wdi_eco)
 
 # Reliability
 omega(as.matrix(fa_eco_wdi_data), nfactors=2, fm="mle")
+alpha(fa_eco_wdi_data)
+
 
 ## Calculate Factor Scores
 performance_wdi_eco = fa_data_wdi_frame_mice_inv %>% 

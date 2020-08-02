@@ -62,6 +62,12 @@ performance_all = V_dem %>%
               select(country_text_id, year,  pubsafe_ds), by=c("country_text_id", "year")) %>%
   left_join(performance_pc %>%
               select(country_text_id, year,  conf_pc), by=c("country_text_id", "year"))  %>% 
+  # rename, becomes obsolete with new calculation of indices
+  rename(resources_env = abstraction_env,
+         arate_ccp_ga = GA_ccp_ga,
+         arate_lutz_ga = GA_lutz_ga,
+         domsec_ds = pubsafe_ds
+         ) %>% 
   mutate_at(vars(ends_with("_eco"), 
                  ends_with("_env"), 
                  ends_with("_soc"), 

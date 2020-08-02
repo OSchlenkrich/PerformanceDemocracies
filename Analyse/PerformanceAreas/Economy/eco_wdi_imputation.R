@@ -26,9 +26,9 @@ fa_data_wdi_frame_mice = fa_data_eco_frame %>%
   mutate_at(vars(ends_with("_eco")), funs(
     "lag"= dplyr::lag(.,1),
     "lead"= dplyr::lead(.,1))
-    ) %>%
+  ) %>%
   ungroup()  %>%
-
+  
   filter(classification_core == "Deficient Democracy" |  classification_core == "Working Democracy") %>% 
   dplyr::arrange(country_text_id, year) %>% 
   # analyse time range: 1970 - 2017
@@ -36,7 +36,11 @@ fa_data_wdi_frame_mice = fa_data_eco_frame %>%
   mutate(year_0 = year - min(year)) %>% 
   filter(missing_SUM != max(missing_SUM, na.rm=T)) %>% 
   select(-country, -classification_core, -missing_SUM) 
-  
+
+# names of auxilary variables
+fa_data_wdi_frame_mice %>% 
+  select_at(vars(matches("_aux"))) %>% 
+  names()
 
 
 mice_data = as.data.frame(fa_data_wdi_frame_mice) %>% 
@@ -57,39 +61,78 @@ nr_imputations = 10
 nr_cores = 10
 
 a.out_wdi <- amelia(mice_data, 
-                m = nr_imputations, 
-                ts = "year_0", 
-                cs = "country_text_id", 
-                polytime = 1,
-                intercs = T,
-                p2s = 2,
-                parallel = "snow",
-                ncpus	= nr_cores,
-                empri = .025*nrow(mice_data)
-                )
+                    m = nr_imputations, 
+                    ts = "year_0", 
+                    cs = "country_text_id", 
+                    polytime = 1,
+                    intercs = T,
+                    p2s = 2,
+                    parallel = "snow",
+                    ncpus	= nr_cores,
+                    empri = .025*nrow(mice_data)
+)
 
 a.out_wdi
 
+# saveRDS(a.out_wdi, "Analyse/PerformanceAreas/Economy/a.out_wdi.RDS")
+a.out_wdi = readRDS("Analyse/PerformanceAreas/Economy/a.out_wdi.RDS")
+
+
 if (Plot_Impu == T) {
   # convergence
-  par(mfrow=c(1,1))
-  disperse(a.out_wdi, dims = 1, m = 5)
+  disp_eco = disperse(a.out_wdi, dims = 1, m = 5)
+  # saveRDS(disp_eco, "Analyse/PerformanceAreas/Economy/Diag/disp_eco.RDS")
+  disp_eco = readRDS("Analyse/PerformanceAreas/Economy/Diag/disp_eco.RDS")
+  convergence_amelia(disp_eco)  +
+    ggtitle("Economic Performance: Overdispersed Starting Values")
   
   # obs vs. imp
-  par(mfrow=c(2,2))
-  compare.density(a.out_wdi, var = c("GDP_capita_wdi_num_eco"), main= "Observed vs. Imputed Values of GDP per capita (WDI)")
-  compare.density(a.out_wdi, var = c("Inflation_wdi_num_eco"), main= "Observed vs. Imputed Values of Inflation (WDI)")
-  compare.density(a.out_wdi, var = c("Interest_wdi_num_eco"), main= "Observed vs. Imputed Values of Interest Rate (WDI)")
-  compare.density(a.out_wdi, var = c("Unemployment_pr_wdi_num_eco"), main= "Observed vs. Imputed Values of Unemployment (WDI)")
-
+  ggarrange(
+    compare.density_own(a.out_wdi, var = "investment_wdi_num_eco", main= "GDP per capita (WDI)"),
+    compare.density_own(a.out_wdi, var = "Balance_wdi_num_eco", main= "Inflation (WDI)"),
+    compare.density_own(a.out_wdi, var = c("consumption_cap_wdi_num_eco"), main= " Interest Rate (WDI)"),
+    compare.density_own(a.out_wdi, var = c("unemployment_pr_imf_num_eco"), main= " Unemployment (WDI)"),
+    compare.density_own(a.out_wdi, var = c("gdp_cap_ppp_imf_num_eco"), main= "Unemployment (WDI)"),
+    compare.density_own(a.out_wdi, var = c("inflation_imf_num_eco"), main= "nemployment (WDI)"),
+    compare.density_own(a.out_wdi, var = c("gdp_imf_num_eco"), main= "Unemployment (WDI)"),
+    compare.density_own(a.out_wdi, var = c("grosscapitalformation_pwt_num_eco"), main= "Unemployment (WDI)"),
+    common.legend = T,
+    legend = "bottom"
+  )
+  
   # predictive capability
-
-  par(mfrow=c(2,2))
-  Amelia::overimpute(a.out_wdi, var = "GDP_capita_wdi_num_eco", main= "Observed vs. Imputed Values of GDP per capita (WDI)")
-  Amelia::overimpute(a.out_wdi, var = "Inflation_wdi_num_eco", main= "Observed vs. Imputed Values of Inflation (WDI)")
-  Amelia::overimpute(a.out_wdi, var = "Interest_wdi_num_eco", main= "Observed vs. Imputed Values of Interest Rate (WDI)")
-  Amelia::overimpute(a.out_wdi, var = "Unemployment_pr_wdi_num_eco", main= "Observed vs. Imputed Values of Unemployment (WDI)")
-
+  
+  inv_imp = Amelia::overimpute(a.out_wdi, var = "investment_wdi_num_eco")
+  # saveRDS(inv_imp, "Analyse/PerformanceAreas/Economy/Diag/inv_imp.RDS")
+  bal_imp = Amelia::overimpute(a.out_wdi, var = "Balance_wdi_num_eco")
+  # saveRDS(bal_imp, "Analyse/PerformanceAreas/Economy/Diag/bal_imp.RDS")
+  con_imp = Amelia::overimpute(a.out_wdi, var = "consumption_cap_wdi_num_eco")
+  # saveRDS(con_imp, "Analyse/PerformanceAreas/Economy/Diag/con_imp.RDS")
+  unemp_imp = Amelia::overimpute(a.out_wdi, var = "unemployment_pr_imf_num_eco")
+  # saveRDS(unemp_imp, "Analyse/PerformanceAreas/Economy/Diag/unemp_imp.RDS")
+  gdpcap_imp = Amelia::overimpute(a.out_wdi, var = "gdp_cap_ppp_imf_num_eco")
+  # saveRDS(gdpcap_imp, "Analyse/PerformanceAreas/Economy/Diag/gdpcap_imp.RDS")
+  inf_imp = Amelia::overimpute(a.out_wdi, var = "inflation_imf_num_eco")
+  # saveRDS(inf_imp, "Analyse/PerformanceAreas/Economy/Diag/inf_imp.RDS")
+  gdp_imp = Amelia::overimpute(a.out_wdi, var = "gdp_imf_num_eco")
+  # saveRDS(gdp_imp, "Analyse/PerformanceAreas/Economy/Diag/gdp_imp.RDS")
+  gross_imp = Amelia::overimpute(a.out_wdi, var = "grosscapitalformation_pwt_num_eco")
+  # saveRDS(gross_imp, "Analyse/PerformanceAreas/Economy/Diag/gross_imp.RDS")
+  
+  
+  ggarrange(
+    overimpute_gglot(inv_imp, "investment_wdi"),
+    overimpute_gglot(bal_imp, "Balance_wdi"),
+    overimpute_gglot(con_imp, "consumption_cap_wdi"),
+    overimpute_gglot(unemp_imp, "unemployment_pr_imf"),
+    overimpute_gglot(gdpcap_imp, "gdp_cap_ppp_imf"),
+    overimpute_gglot(inf_imp, "inflation_imf"),
+    overimpute_gglot(gdp_imp, "gdp_imf"),
+    overimpute_gglot(gross_imp, "grosscapitalformation_pwt")
+  )
+  
+  
+  
   
   par(mfrow=c(1,1))
   tscsPlot(a.out_wdi, cs = "IND",
@@ -102,7 +145,7 @@ if (Plot_Impu == T) {
            var = "GDP_capita_wdi_num_eco")
   tscsPlot(a.out_wdi, cs = "DEU",
            var = "GDP_capita_wdi_num_eco")
-
+  
 }
 
 ## Combine Imputation into Long Format
