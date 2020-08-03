@@ -10,7 +10,7 @@ scale_this <- function(x){
 }
 
 
-dimensions_plot = function(dataset, clustering) {
+dimensions_plot = function(dataset, clustering, title) {
   dataset %>%
     mutate(cluster = as.factor(clustering)) %>%
     mutate(cluster = fct_reorder(cluster,  wealth_eco)) %>%
@@ -26,6 +26,7 @@ dimensions_plot = function(dataset, clustering) {
                               "productivity_eco",
                               "air_env",
                               "resources_env",
+                              "arate_ccp_ga",
                               "eco_inequal_soc",
                               "soc_inequal_soc",
                               "domsec_ds",
@@ -33,55 +34,76 @@ dimensions_plot = function(dataset, clustering) {
     ggplot(aes(x=cluster, y=value, fill=name)) +
     geom_boxplot() +
     scale_fill_grey(start = 0.5, end = 1) +
+    geom_hline(yintercept = 0, alpha=0.5, linetype="dashed") +
     theme_bw() +
     xlab("") +
-    ylab("") +
+    ylab("Performance") +
     theme(legend.position = "bottom", legend.title = element_blank()) +
-    ggtitle("Boxplot")
+    ggtitle(title)
 }
 
 
-plot_countries_overtime = function(No_countries = 5) {
+principal_plot = function(cluster, label) {
+  data.frame(predict(prcomp(cluster_data))[,1:2]) %>%  
+    bind_cols(data.frame(Cluster = as.factor(cluster))) %>%  
+    bind_cols(performance_data_noNAS %>% select(country_text_id)) %>%
+    mutate(label = paste(country_text_id, "\n",cluster),
+           cluster = as.factor(cluster)) %>%
+    ggplot(aes(x=PC1, y=PC2, col=cluster)) +
+    geom_text(size=3, aes(label=label), show.legend = FALSE) +  
+    scale_color_grey(name="", start = 0, end = 0.65) +
+    ggtitle(label) +
+    theme_bw()  +
+    #theme(legend.position = c("none")) +
+    geom_hline(yintercept = 0, alpha=0.5, linetype="dashed") +
+    geom_vline(xintercept = 0, alpha=0.5, linetype="dashed")
+}
+
+create_world_map_cat_perf= function(dataset, label = NULL, cat_label) {
+  require(RColorBrewer)
   
-  if (is.numeric(No_countries)==T) {
-    random_countries = sample(n_distinct(cluster_time$country_text_id), No_countries)
-    selected_countries = unique(cluster_time$country_text_id)[random_countries]
+  # dmy_year$country[dmy_year$country=="Burma/Myanmar"] = "Burma"
+  # dmy_year$country[dmy_year$country=="Republic of Vietnam"] = "Vietnam"
+  # dmy_year$country[dmy_year$country=="São Tomé and Príncipe"] = "Sao Tome and Principe"
+  
+  merged_map_data <- joinCountryData2Map(dataset,
+                                         joinCode = "NAME",
+                                         nameJoinColumn = "country",
+                                         verbose = TRUE)
+  
+  
+  
+  cnt = as.character(merged_map_data$NAME[merged_map_data$NAME != "Antarctica"])
+  cnt = as.character(cnt[cnt != "Greenland"])
+  
+  merged_map_data <- subset(merged_map_data, NAME  %in%  cnt)
+  
+  
+  colourPalette <- brewer.pal(length(unique(dataset$cluster)), "Set3")
+  
+  if (is.null(label) == T) {
+    mapParams = mapCountryData(merged_map_data,
+                               nameColumnToPlot="cluster",
+                               colourPalette=colourPalette,
+                               catMethod="categorical", 
+                               addLegend = F, 
+                               #lwd=1,
+                               mapTitle = "")    
   } else {
-    selected_countries = No_countries
+    mapParams = mapCountryData(merged_map_data,
+                               nameColumnToPlot="cluster",
+                               colourPalette=colourPalette,
+                               catMethod="categorical", 
+                               addLegend = F, 
+                               #lwd=1,
+                               mapTitle = label)
   }
   
   
-  plotted_country = cluster_time %>%
-    filter(country_text_id %in% selected_countries) %>%
-    filter(year >= 1945) %>% 
-    mutate(country_text_id = fct_relevel(country_text_id, selected_countries)) %>% 
-    select(country_text_id, year, cluster5) %>% 
-    pivot_longer(cols="cluster5") %>% 
-    mutate(value = as.factor(value),
-           value = fct_relevel(value, levels(cluster_time$cluster5))
-    ) %>% 
-    mutate(y=1)
+  do.call( addMapLegendBoxes, c(mapParams, title=cat_label))
   
-  levels(plotted_country$country_text_id) <- gsub(" ", "\n", levels(plotted_country$country_text_id))
-  
-  gap_years = unique(plotted_country$year)[order(unique(plotted_country$year))]
-  
-  gap_years = gap_years[2] - gap_years[1]
-  
-  p1 = ggplot(plotted_country, aes(x=year,  y=y, fill=value)) + 
-    geom_rect(aes(xmin=year, xmax = year + gap_years, ymin=0, ymax=1)) + 
-    facet_wrap(country_text_id~. , nrow=length(selected_countries), strip.position="left") + 
-    theme_bw() +
-    scale_fill_brewer(name="Cluster", type="qual", palette="Paired") +
-    scale_y_continuous(breaks=c(0,1)) +
-    scale_x_continuous(limits=c(1940, 2020), breaks=seq(1900, 2020, 10)) + 
-    theme(axis.text.x = element_text(angle=90, size=10), strip.text = element_text(size=12, face="bold"),
-          axis.text.y = element_blank(),
-          axis.ticks.y=element_blank()) + 
-    xlab("") + 
-    ylab("")
-  return(p1)
 }
+
 
 
 # Load Dataset ####
@@ -92,7 +114,7 @@ performance_cluster_data = performance_all %>%
          productivity_eco,
          air_env,
          resources_env,
-         #GA_ccp_ga,
+         arate_ccp_ga,
          eco_inequal_soc,
          soc_inequal_soc,
          domsec_ds,
@@ -107,15 +129,10 @@ performance_cluster_data = performance_all %>%
   ungroup() 
 
 
-performance_cluster_data %>% 
+performance_cluster_data %>%
+  select(-country_text_id) %>% 
   group_by(year) %>% 
-  select_at(vars(ends_with("_eco"), 
-                 ends_with("_env"), 
-                 #ends_with("_ga"), 
-                 ends_with("_soc"), 
-                 ends_with("_ds"), 
-                 ends_with("_pc"))) %>% 
-  summarise_all(funs(1-pMiss_01(.))) %>% 
+  summarise_all(funs(pMiss_01(.))) %>% 
   melt(id.vars="year") %>% 
   ggplot(aes(x=year, y=value, fill=variable)) +
   geom_bar(stat="identity", width=1) +
@@ -135,6 +152,8 @@ performance_data_noNAS = performance_cluster_data %>%
 
 cluster_data = performance_data_noNAS %>%
   select(-country_text_id, -year )
+
+length(unique(performance_data_noNAS$country_text_id))
 
 
 # Benchmark ####
@@ -160,8 +179,8 @@ bench_results = fpc::clusterbenchstats(cluster_data, G=2:10,
                        useallg = F, 
                        trace = T)
 
-# saveRDS(bench_results, file="Analyse/Descriptive Analysis Performance/bench_results.RDS")
-bench_results = readRDS(file="Analyse/Descriptive Analysis Performance/bench_results.RDS")
+# saveRDS(bench_results, file="Analyse/Descriptive Analysis Performance/bench_results_ga.RDS")
+bench_results = readRDS(file="Analyse/Descriptive Analysis Performance/bench_results_ga.RDS")
 
 aggregated_indizes = print(bench_results$sstat,
                            aggregate=TRUE,
@@ -232,52 +251,138 @@ a4 = bench_results_df %>%
   geom_hline(yintercept = 0) +
   theme_bw()
 
-ggarrange(a1,a2,a3, a4, common.legend = T)  %>% 
+ggarrange(a1,a2,a3, common.legend = T)  %>% 
   annotate_figure(top="Z-score calibration based on the same K")
 
 
 # Stability ####
+cboot_kmeans_2_boot <- clusterboot(cluster_data,B=100, bootmethod=
+                                     c("boot"),clustermethod=kmeansCBI,
+                                   k=2, seed=15555)
+
+cboot_kmeans_2_boot
 cboot_kmeans_3_boot <- clusterboot(cluster_data,B=100, bootmethod=
                                   c("boot"),clustermethod=kmeansCBI,
                                 k=3, seed=15555)
 
 cboot_kmeans_3_boot
+cboot_kmeans_4_boot <- clusterboot(cluster_data,B=100, bootmethod=
+                                     c("boot"),clustermethod=kmeansCBI,
+                                   k=4, seed=15555)
+
+cboot_kmeans_4_boot
 
 
-cboot_PAM_3_boot <- clusterboot(cluster_data,B=100, bootmethod=
+cboot_PAM_5_boot <- clusterboot(cluster_data,B=100, bootmethod=
                                   c("boot"),clustermethod=pamkCBI,
-                                k=8, seed=15555)
-cboot_PAM_3_boot
+                                k=5, seed=15555)
+cboot_PAM_5_boot
+
+cboot_PAM_6_boot <- clusterboot(cluster_data,B=100, bootmethod=
+                                  c("boot"),clustermethod=pamkCBI,
+                                k=6, seed=15555)
+cboot_PAM_6_boot
+cboot_PAM_7_boot <- clusterboot(cluster_data,B=100, bootmethod=
+                                  c("boot"),clustermethod=pamkCBI,
+                                k=7, seed=15555)
+cboot_PAM_7_boot
 
 # Solutions
 
 PAM_6 = pamk(cluster_data, 6, seed=1234)
+PAM_7 = pamk(cluster_data, 7, seed=1234)
+
 kmeans_2 = kmeans(cluster_data, 2, nstart =20)
 kmeans_3 = kmeans(cluster_data, 3, nstart =20)
 
+table(PAM_6$pamobject$clustering)
+table(PAM_7$pamobject$clustering)
 
+performance_cluster = performance_data_noNAS %>% 
+  bind_cols(cluster2 = as.factor(kmeans_2$cluster)) %>% 
+  bind_cols(cluster3 = as.factor(kmeans_3$cluster)) %>% 
+  bind_cols(cluster6 = as.factor(PAM_6$pamobject$clustering)) %>% 
+  bind_cols(cluster7 = as.factor(PAM_7$pamobject$clustering)) %>% 
+  mutate(cluster2 = fct_recode(cluster2, "Top Performer" = "2", "Laggard" = "1"),
+         cluster2 = fct_relevel(cluster2, "Top Performer", "Laggard"),
+         cluster3 = fct_recode(cluster3, "Top Performer" = "1", "Middle Performer" = "3", "Laggard" = "2"),
+         cluster3 = fct_relevel(cluster3, "Top Performer", "Middle Performer", "Laggard"),
+         cluster6 = fct_recode(cluster6, 
+                               "Top Performer (high AR)" = "4", "Top Performer (low AR)" = "6",
+                               "Middle Performer" = "5", "Middle Performer (low SP)" = "3",
+                               "Laggard" = "2", "Extreme Laggard" = "1"),
+         cluster6 = fct_relevel(cluster6, "Top Performer (high AR)", "Top Performer (low AR)","Middle Performer", "Middle Performer (low SP)", "Laggard"),
+         cluster7 = fct_recode(cluster7, 
+                               "Top Performer (high AR)" = "4", "Top Performer (low AR)" = "7",
+                               "Middle Performer" = "5", "Middle Performer (low SP)" = "3",
+                               "Laggard" = "2", "Extreme Laggard (low CP)" = "1", "Extreme Laggard (high CP)" = "6"),
+         cluster7 = fct_relevel(cluster7, "Top Performer (high AR)", "Top Performer (low AR)","Middle Performer", "Middle Performer (low SP)", "Laggard"))
 
 # Principal Component Plot ####
-principal_plot = function(cluster, label) {
-  data.frame(predict(prcomp(cluster_data))[,1:2]) %>%  
-    bind_cols(data.frame(Cluster = as.factor(cluster))) %>% 
-    ggplot(aes(x=PC1, y=PC2, col=Cluster)) +
-    geom_point() +
-    ggtitle(label) +
-    theme_bw()  +
-    theme(legend.position = c("none")) 
-}
 
 
-p1 = principal_plot(kmeans_2$cluster, "KMEANS 2")
-p2 = principal_plot(kmeans_3$cluster, "KMEANS 3")
-p3 = principal_plot(PAM_6$pamobject$clustering, "PAM 6")
+p1_pc = principal_plot(kmeans_2$cluster, "")
+p2_pc = principal_plot(kmeans_3$cluster, "")
+p3_pc = principal_plot(PAM_6$pamobject$clustering, "")
+p4_pc = principal_plot(PAM_7$pamobject$clustering, "")
 
-ggarrange(p1,p2, p3, ncol=1,nrow=2, common.legend = F)
+ggarrange(p1_pc,p2_pc, p3_pc, p4_pc, ncol=2,nrow=2, common.legend = F)
 
-dimensions_plot(performance_data_noNAS, kmeans_2$cluster)
-dimensions_plot(performance_data_noNAS, kmeans_3$cluster)
-dimensions_plot(performance_data_noNAS, PAM_6$pamobject$clustering)
 
+p1_dim = dimensions_plot(performance_data_noNAS, kmeans_2$cluster, "")
+p2_dim = dimensions_plot(performance_data_noNAS, kmeans_3$cluster, "")
+p3_dim = dimensions_plot(performance_data_noNAS, PAM_6$pamobject$clustering, "")
+p4_dim = dimensions_plot(performance_data_noNAS, PAM_7$pamobject$clustering, "")
+ggarrange(p1_dim,p2_dim, p3_dim, p4_dim, ncol=2,nrow=2, common.legend = T, legend ="bottom")
+
+
+# Describing Cluster Solutions ####
+ggarrange(p1_pc,p1_dim, ncol=1,nrow=2, common.legend = F, legend ="bottom") 
+create_world_map_cat_perf(performance_cluster %>%  
+                            group_by(country_text_id) %>% 
+                            top_n(1, year) %>% 
+                            ungroup() %>% 
+                            rename(cluster = cluster2,
+                                   country = country_text_id), label = "", cat_label = "Cluster")
+
+
+ggarrange(p2_pc,p2_dim, ncol=1,nrow=2, common.legend = F, legend ="bottom")
+create_world_map_cat_perf(performance_cluster %>%  
+                            group_by(country_text_id) %>% 
+                            top_n(1, year) %>% 
+                            ungroup() %>% 
+                            rename(cluster = cluster3,
+                                   country = country_text_id), label = "", cat_label = "Cluster")
+
+
+ggarrange(p3_pc,p3_dim, ncol=1,nrow=2, common.legend = F, legend ="bottom")
+create_world_map_cat_perf(performance_cluster %>%  
+                            group_by(country_text_id) %>% 
+                            top_n(1, year) %>% 
+                            ungroup() %>% 
+                            rename(cluster = cluster6,
+                                   country = country_text_id), label = "", cat_label = "Cluster")
+
+ggarrange(p4_pc,p4_dim, ncol=1,nrow=2, common.legend = F, legend ="bottom")
+create_world_map_cat_perf(performance_cluster %>%  
+                            group_by(country_text_id) %>% 
+                            top_n(1, year) %>% 
+                            ungroup() %>% 
+                            rename(cluster = cluster7,
+                                   country = country_text_id), label = "", cat_label = "Cluster")
+# World Map ####
+
+mapdata1990 = performance_data_noNAS %>% 
+  bind_cols(cluster = PAM_5$pamobject$clustering) %>% 
+  filter(year == 1990) %>% 
+  rename(country = country_text_id)
+mapdata2010 = performance_data_noNAS %>% 
+  bind_cols(cluster = PAM_5$pamobject$clustering) %>% 
+  filter(year == 2010) %>% 
+  rename(country = country_text_id)
+
+
+create_world_map_cat_perf(mapdata1990, label = "1990", cat_label = "Cluster")
+create_world_map_cat_perf(mapdata2010, label = "2010", cat_label = "Cluster")
 
 
