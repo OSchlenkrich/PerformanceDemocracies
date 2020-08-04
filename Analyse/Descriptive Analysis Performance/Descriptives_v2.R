@@ -341,6 +341,37 @@ create_world_map_cat= function(dataset, label = NULL, cat_label) {
   
 }
 
+create_world_map_cont= function(dataset, label = NULL) {
+  require(RColorBrewer)
+  
+  
+  merged_map_data <- joinCountryData2Map(dataset,
+                                         joinCode = "NAME",
+                                         nameJoinColumn = "country",
+                                         verbose = TRUE)
+  
+  
+  
+  cnt = as.character(merged_map_data$NAME[merged_map_data$NAME != "Antarctica"])
+  cnt = as.character(cnt[cnt != "Greenland"])
+  
+  merged_map_data <- subset(merged_map_data, NAME  %in%  cnt)
+  
+  colourPalette <- brewer.pal(10,'RdYlGn')
+  
+  mapParams = mapCountryData(merged_map_data,
+                             nameColumnToPlot="variable",
+                             colourPalette=colourPalette,
+                             catMethod=seq(0,100,25), 
+                             addLegend = F, 
+                             lwd=1,
+                             mapTitle = paste(label))
+  do.call( addMapLegend, c(mapParams, legendWidth=0.5,legendMar = 4,horiz=T))
+  
+}
+
+
+
 # NA values ####
 test = performance_all %>% 
   group_by(year) %>% 
@@ -575,8 +606,6 @@ lineplot(variable_abs_env, OECD=T)
 # GOAL-ATTAINMENT ####
 # Amendmend-Rate
 
-names(performance_all)
-
 performance_all %>% 
   select_at(vars(country_text_id, year, matches("_ga_index"))) %>% 
   filter(year > 1990, is.na(arate_ccp_ga_index) == F) %>% 
@@ -627,6 +656,26 @@ performance_all %>%
   select(country_text_id, arate_ccp_ga) %>% 
   arrange(-arate_ccp_ga) %>% 
   top_n(5, arate_ccp_ga)
+
+test = performance_all %>% 
+  select(country, year, variable = arate_lutz_ga_index) %>%
+  na.omit() %>% 
+  group_by(country) %>% 
+  top_n(1, year) %>% 
+  ungroup()
+
+create_world_map_cont(performance_all %>% 
+                        select(country, year, variable = arate_lutz_ga_index) %>%
+                        na.omit() %>% 
+                        group_by(country) %>% 
+                        top_n(1, year) %>% 
+                        ungroup(), label="Amendment Rate Lutz")
+create_world_map_cont(performance_all %>% 
+                        select(country, year, variable = arate_ccp_ga_index) %>%
+                        na.omit() %>% 
+                        group_by(country) %>% 
+                        top_n(1, year) %>% 
+                        ungroup(), label="Amendment Rate CCP")
 
 
 
