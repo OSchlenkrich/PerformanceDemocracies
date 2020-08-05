@@ -23,7 +23,7 @@ dmx_trade_cluster = fread(file="Datasets/performance_data/dmx_trade_cluster_v8.c
 
 # source("Analyse/PerformanceAreas/Economy/eco_FA_v2.R")
 # source("Analyse/PerformanceAreas/Environment/env_FA.R") # takes some time due to download of OECD data
-# source("Analyse/PerformanceAreas/GoalA/ga_variables.R")
+# source("Analyse/PerformanceAreas/GoalA/ga_variables_v2.R")
 # source("Analyse/PerformanceAreas/Social/soc_FA_v2.R")
 # source("Analyse/PerformanceAreas/DomesticSecurity/ds_FA.R")
 # source("Analyse/PerformanceAreas/Confidence/conf_FA_v2.R")
@@ -51,7 +51,7 @@ performance_all = V_dem %>%
   left_join(performance_eco %>%
               select(country_text_id, year, wealth_eco, productivity_eco), by=c("country_text_id", "year")) %>%
   left_join(performance_env %>%
-              select(country_text_id, year, air_env, abstraction_env), by=c("country_text_id", "year")) %>%
+              select(country_text_id, year, GEP_env), by=c("country_text_id", "year")) %>%
   # left_join(performance_wdi_env %>%
   #             select(country_text_id, year, air_wdi_env), by=c("country_text_id", "year")) %>%
   left_join(performance_ga %>%
@@ -59,23 +59,19 @@ performance_all = V_dem %>%
   left_join(performance_soc %>%
               select(country_text_id, year, eco_inequal_soc, soc_inequal_soc), by=c("country_text_id", "year")) %>%
   left_join(performance_ds %>%
-              select(country_text_id, year,  pubsafe_ds), by=c("country_text_id", "year")) %>%
+              select(country_text_id, year,  domsec_ds), by=c("country_text_id", "year")) %>%
   left_join(performance_pc %>%
               select(country_text_id, year,  conf_pc), by=c("country_text_id", "year"))  %>% 
   # rename, becomes obsolete with new calculation of indices
-  rename(resources_env = abstraction_env,
-         arate_ccp_ga = GA_ccp_ga,
-         arate_lutz_ga = GA_lutz_ga,
-         domsec_ds = pubsafe_ds
+  rename(arate_ccp_ga = GA_ccp_ga,
+         arate_lutz_ga = GA_lutz_ga
          ) %>% 
   mutate_at(vars(ends_with("_eco"), 
                  ends_with("_env"), 
                  ends_with("_soc"), 
                  ends_with("_ds"), 
                  ends_with("_pc"), 
-                 ends_with("_ga")),funs("index" = EPI_fun(., lower = 0.01, upper=0.99)))  %>% 
-  mutate_at(vars(matches("abstraction_env")),funs("index" = EPI_fun(., lower = 0.025, upper=0.975)))
-
+                 ends_with("_ga")),funs("index" = EPI_fun(., lower = 0.01, upper=0.99))) 
 # Other Democracy Profiles ####
 source("Analyse/Cluster/OtherDemocracyProfiles.R")
 

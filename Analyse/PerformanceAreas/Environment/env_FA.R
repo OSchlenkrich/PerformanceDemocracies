@@ -28,12 +28,16 @@ corrplot(cor(fa_data_oecd_frame_mice_inv %>%
                select_at(vars(ends_with("env"), -CO2_ugdp_oecd_num_env, -CH4_ugdp_oecd_num_env,-N2O_ugdp_oecd_num_env, -NMVOC_ugdp_oecd_num_env)) %>% 
                rename_all(funs(gsub("_num_env","",.)))  , use="pairwise"), method="number")
 
-KMO_table(KMO(fa_data_oecd_frame_mice_inv %>% 
-                select_at(vars(ends_with("env"), -CO2_ugdp_oecd_num_env, -CH4_ugdp_oecd_num_env,-N2O_ugdp_oecd_num_env, -NMVOC_ugdp_oecd_num_env))))
+allind_env = KMO(fa_data_oecd_frame_mice_inv %>% 
+                   select_at(vars(ends_with("env"), -CO2_ugdp_oecd_num_env, -CH4_ugdp_oecd_num_env,-N2O_ugdp_oecd_num_env, -NMVOC_ugdp_oecd_num_env)))
+nowaste_env = KMO(fa_data_oecd_frame_mice_inv %>% 
+                   select_at(vars(ends_with("env"), -CO2_ugdp_oecd_num_env, -CH4_ugdp_oecd_num_env,-N2O_ugdp_oecd_num_env, -NMVOC_ugdp_oecd_num_env, -waste_ugdp_cap_oecd_num_env)))
+
+KMO_table(allind_env,nowaste_env)
 
 ### Factor Analysis
 fa_env_data = fa_data_oecd_frame_mice_inv %>% 
-  select_at(vars(ends_with("env"), -CO2_ugdp_oecd_num_env, -CH4_ugdp_oecd_num_env,-N2O_ugdp_oecd_num_env, -NMVOC_ugdp_oecd_num_env)) %>% 
+  select_at(vars(ends_with("env"), -CO2_ugdp_oecd_num_env, -waste_ugdp_cap_oecd_num_env,-CH4_ugdp_oecd_num_env,-N2O_ugdp_oecd_num_env, -NMVOC_ugdp_oecd_num_env)) %>% 
   rename_all(funs(gsub("_num_env","",.)))
 
 
@@ -52,7 +56,7 @@ vss(fa_env_data, fm="mle", rotate="none")$map %>%
 vss(fa_env_data, fm="mle", rotate="none") 
 
 # Factor Analysis
-fa_oecd_env = fa(fa_env_data, 2, rotate="oblimin", missing=F, fm="mle", scores = "Bartlett")
+fa_oecd_env = fa(fa_env_data, 1, rotate="oblimin", missing=F, fm="mle", scores = "Bartlett")
 fa_oecd_env
 
 
@@ -77,4 +81,35 @@ fa_table(fa_oecd_env)
 # model_plot$graphAttributes$Nodes$labels["Factor1"] = "air_env"
 # model_plot$graphAttributes$Nodes$labels["Factor2"] = "abstraction_env"
 # 
-# plot(model_plot) %>% 
+# plot(model_plot) 
+
+# Reliability Score
+omega(fa_env_data, nfactors=1, fm="mle", option="second")
+
+
+## Calculate Factor Scores
+performance_env = fa_data_oecd_frame_mice_inv %>% 
+  mutate(GEP_env = scale(fa_oecd_env$scores[,1])[,1]
+  )
+
+###
+
+samples = c("CAN","DEU", "USA", "SWE", "IND", "FIN", "DNK")
+samples = c("BRA", "RUS", "CHE", "IND", "DEU", "AUS")
+
+samples = c("ISL", "USA", "CHE", "SWE", "DEU")
+
+performance_env %>% 
+  select_at(vars(country_text_id, year, GEP_env)) %>% 
+  filter(country_text_id %in% samples) %>% 
+  melt(id.vars=c("country_text_id", "year")) %>% 
+  ggplot(aes(x=year, y=value, col=country_text_id)) + 
+  geom_line(size=1) +
+  #geom_errorbar(aes(ymin=lower, ymax=upper)) + 
+  theme_bw() +
+  scale_y_continuous(name="Economic Performance")  +
+  scale_x_continuous(name=NULL, breaks=seq(1950,2020, 10)) +
+  facet_wrap(variable~.)
+
+
+write.csv(performance_env, file="Datasets/performance_data/ImputedDatasets/performance_env.csv", row.names = F, fileEncoding ="UTF-8")

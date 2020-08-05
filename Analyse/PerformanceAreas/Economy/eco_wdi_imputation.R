@@ -74,15 +74,15 @@ a.out_wdi <- amelia(mice_data,
 
 a.out_wdi
 
-# saveRDS(a.out_wdi, "Analyse/PerformanceAreas/Economy/a.out_wdi.RDS")
-a.out_wdi = readRDS("Analyse/PerformanceAreas/Economy/a.out_wdi.RDS")
+# saveRDS(a.out_wdi, "Analyse/PerformanceAreas/Economy/a.out_wdi_debt.RDS")
+a.out_wdi = readRDS("Analyse/PerformanceAreas/Economy/a.out_wdi_debt.RDS")
 
 
 if (Plot_Impu == T) {
   # convergence
   disp_eco = disperse(a.out_wdi, dims = 1, m = 5)
-  # saveRDS(disp_eco, "Analyse/PerformanceAreas/Economy/Diag/disp_eco.RDS")
-  disp_eco = readRDS("Analyse/PerformanceAreas/Economy/Diag/disp_eco.RDS")
+  # saveRDS(disp_eco, "Analyse/PerformanceAreas/Economy/Diag/disp_eco_debt.RDS")
+  disp_eco = readRDS("Analyse/PerformanceAreas/Economy/Diag/disp_eco_debt.RDS")
   convergence_amelia(disp_eco)  +
     ggtitle("Economic Performance: Overdispersed Starting Values")
   
@@ -94,8 +94,9 @@ if (Plot_Impu == T) {
     compare.density_own(a.out_wdi, var = c("unemployment_pr_imf_num_eco"), main= " Unemployment (WDI)"),
     compare.density_own(a.out_wdi, var = c("gdp_cap_ppp_imf_num_eco"), main= "Unemployment (WDI)"),
     compare.density_own(a.out_wdi, var = c("inflation_imf_num_eco"), main= "nemployment (WDI)"),
-    compare.density_own(a.out_wdi, var = c("gdp_imf_num_eco"), main= "Unemployment (WDI)"),
+    #compare.density_own(a.out_wdi, var = c("gdp_imf_num_eco"), main= "Unemployment (WDI)"),
     compare.density_own(a.out_wdi, var = c("grosscapitalformation_pwt_num_eco"), main= "Unemployment (WDI)"),
+    compare.density_own(a.out_wdi, var = c("generaldebt_imf_num_eco"), main= "Unemployment (WDI)"),
     common.legend = T,
     legend = "bottom"
   )
@@ -103,21 +104,23 @@ if (Plot_Impu == T) {
   # predictive capability
   
   inv_imp = Amelia::overimpute(a.out_wdi, var = "investment_wdi_num_eco")
-  # saveRDS(inv_imp, "Analyse/PerformanceAreas/Economy/Diag/inv_imp.RDS")
+  # saveRDS(inv_imp, "Analyse/PerformanceAreas/Economy/Diag/inv_imp_debt.RDS")
   bal_imp = Amelia::overimpute(a.out_wdi, var = "Balance_wdi_num_eco")
-  # saveRDS(bal_imp, "Analyse/PerformanceAreas/Economy/Diag/bal_imp.RDS")
+  # saveRDS(bal_imp, "Analyse/PerformanceAreas/Economy/Diag/bal_imp_debt.RDS")
   con_imp = Amelia::overimpute(a.out_wdi, var = "consumption_cap_wdi_num_eco")
-  # saveRDS(con_imp, "Analyse/PerformanceAreas/Economy/Diag/con_imp.RDS")
+  # saveRDS(con_imp, "Analyse/PerformanceAreas/Economy/Diag/con_imp_debt.RDS")
   unemp_imp = Amelia::overimpute(a.out_wdi, var = "unemployment_pr_imf_num_eco")
-  # saveRDS(unemp_imp, "Analyse/PerformanceAreas/Economy/Diag/unemp_imp.RDS")
+  # saveRDS(unemp_imp, "Analyse/PerformanceAreas/Economy/Diag/unemp_imp_debt.RDS")
   gdpcap_imp = Amelia::overimpute(a.out_wdi, var = "gdp_cap_ppp_imf_num_eco")
-  # saveRDS(gdpcap_imp, "Analyse/PerformanceAreas/Economy/Diag/gdpcap_imp.RDS")
+  # saveRDS(gdpcap_imp, "Analyse/PerformanceAreas/Economy/Diag/gdpcap_imp_debt.RDS")
   inf_imp = Amelia::overimpute(a.out_wdi, var = "inflation_imf_num_eco")
-  # saveRDS(inf_imp, "Analyse/PerformanceAreas/Economy/Diag/inf_imp.RDS")
-  gdp_imp = Amelia::overimpute(a.out_wdi, var = "gdp_imf_num_eco")
-  # saveRDS(gdp_imp, "Analyse/PerformanceAreas/Economy/Diag/gdp_imp.RDS")
+  # saveRDS(inf_imp, "Analyse/PerformanceAreas/Economy/Diag/inf_imp_debt.RDS")
+  # gdp_imp = Amelia::overimpute(a.out_wdi, var = "gdp_imf_num_eco")
+  # saveRDS(gdp_imp, "Analyse/PerformanceAreas/Economy/Diag/gdp_imp_debt.RDS")
   gross_imp = Amelia::overimpute(a.out_wdi, var = "grosscapitalformation_pwt_num_eco")
-  # saveRDS(gross_imp, "Analyse/PerformanceAreas/Economy/Diag/gross_imp.RDS")
+  # saveRDS(gross_imp, "Analyse/PerformanceAreas/Economy/Diag/gross_imp_debt.RDS")
+  debt_imp = Amelia::overimpute(a.out_wdi, var = "generaldebt_imf_num_eco")
+  # saveRDS(debt_imp, "Analyse/PerformanceAreas/Economy/Diag/debt_imp_debt.RDS")
   
   
   ggarrange(
@@ -127,8 +130,9 @@ if (Plot_Impu == T) {
     overimpute_gglot(unemp_imp, "unemployment_pr_imf"),
     overimpute_gglot(gdpcap_imp, "gdp_cap_ppp_imf"),
     overimpute_gglot(inf_imp, "inflation_imf"),
-    overimpute_gglot(gdp_imp, "gdp_imf"),
-    overimpute_gglot(gross_imp, "grosscapitalformation_pwt")
+    #overimpute_gglot(gdp_imp, "gdp_imf"),
+    overimpute_gglot(gross_imp, "grosscapitalformation_pwt"),
+    overimpute_gglot(debt_imp, "debt_imf")
   )
   
   

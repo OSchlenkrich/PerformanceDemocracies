@@ -55,8 +55,8 @@ Environment_Performance = QoC_data %>%
          #sulphur_oecd = oecd_soxnox_t1a,
          #nitrogen_oecd = oecd_soxnox_t1b,
          #co2_oecd = oecd_airqty_t1,
-         water_ugdp_oecd = oecd_water_t1b,
-         waste_ugdp_oecd = oecd_waste_t1b,
+         water_ugdp_cap_oecd = oecd_water_t1b,
+         waste_ugdp_cap_oecd = oecd_waste_t1b,
          population = oecd_evopop_t1,
          greenhouse_ugdp_wdi = wdi_co2,
          GDP_capita = oecd_sizegdp_t1,
@@ -83,7 +83,7 @@ Environment_Performance = QoC_data %>%
   #Senegal has a negative number
   mutate(greenhouse_ugdp_wdi = abs(greenhouse_ugdp_wdi)) %>% 
   # Iceland's water abstraction rises from 267.8157 to 2551.7594	in 5 years. This does not make sense
-  mutate(water_ugdp_oecd = ifelse(country_text_id == "ISL" & year >= 2010, NA, water_ugdp_oecd)) %>% 
+  mutate(water_ugdp_cap_oecd = ifelse(country_text_id == "ISL" & year >= 2010, NA, water_ugdp_cap_oecd)) %>% 
   
   
   filter(country_text_id %in% unique(dmx_trade_cluster$country_text_id)) %>% 
@@ -105,18 +105,23 @@ Environment_Performance = QoC_data %>%
 
 Environment_Performance %>% 
   group_by(year) %>% 
-  select_at(vars(ends_with("oecd"), ends_with("wdi"))) %>% 
+  select_at(vars(GHG_ugdp_oecd,
+                 SOX_ugdp_oecd,
+                 NOX_ugdp_oecd,
+                 CO2_ugdp_oecd,
+                 water_ugdp_cap_oecd,
+                 waste_ugdp_cap_oecd)) %>% 
   summarise_all(pMiss_01) %>% 
-  melt(id.vars="year") %>% 
-  ggplot(aes(x=year, y=value, fill=variable)) +
+  pivot_longer(cols=-year) %>% 
+  ggplot(aes(x=year, y=value, fill=name)) +
   geom_bar(stat="identity", width=1) +
-  facet_wrap(variable~.) +
+  facet_wrap(name~.) +
   scale_y_continuous(name=NULL, breaks=seq(0,1, 0.25), limit=c(0,1), labels=percent)  +
   scale_x_continuous(name=NULL, breaks=seq(1950,2020, 10)) + 
-  theme_bw()  +
+  scale_fill_grey(start = 0.4, end = 0.4) +
+  theme_bw() +
   theme(axis.text.x = element_text(angle=90), legend.position = "none") +
-  ggtitle("Missings in Democracy Profile Sample - Environmental")
-
+  ggtitle("Missings in Democracy Profile Sample")
 
 
 #### Linear Interpolation ####
@@ -156,8 +161,8 @@ Environment_Performance_IP %>%
 
 Environment_Performance_IP %>% 
   select_at(vars(ends_with("oecd"), ends_with("wdi"))) %>% 
-  select(water_ugdp_oecd,
-         waste_ugdp_oecd, 
+  select(water_ugdp_cap_oecd,
+         waste_ugdp_cap_oecd, 
          GHG_ugdp_oecd,
          SOX_ugdp_oecd,   
          NOX_ugdp_oecd,
@@ -184,12 +189,12 @@ Environment_Performance_IP_norm = Environment_Performance_IP  %>%
   mutate_at(vars(CH4_ugdp_oecd,
                  N2O_ugdp_oecd,
                  CO2_ugdp_oecd,
-                 water_ugdp_oecd,
+                 water_ugdp_cap_oecd,
                  SOX_ugdp_oecd,
                  NOX_ugdp_oecd,
                  NMVOC_ugdp_oecd), funs(trim(., 0.01, minimum=T))) %>% 
   mutate_at(vars(greenhouse_ugdp_wdi), funs(trim(., 0.025, minimum=T))) %>% 
-  mutate_at(vars(waste_ugdp_oecd), funs(trim(., 0.02, minimum=T))) %>%
+  mutate_at(vars(waste_ugdp_cap_oecd), funs(trim(., 0.02, minimum=T))) %>%
   mutate_at(vars(GHG_ugdp_oecd, CO_ugdp_oecd), funs(trim(., 0.01, minimum=T, only=T))) %>%
   mutate_all(funs(ladder_fun(.))) %>% 
   mutate_all(scale)
@@ -198,8 +203,8 @@ Environment_Performance_IP_norm = Environment_Performance_IP  %>%
 
 Environment_Performance_IP_norm %>% 
   select_at(vars(ends_with("oecd"), ends_with("wdi"))) %>% 
-  select(water_ugdp_oecd,
-         waste_ugdp_oecd, 
+  select(water_ugdp_cap_oecd,
+         waste_ugdp_cap_oecd, 
          GHG_ugdp_oecd,
          SOX_ugdp_oecd,   
          NOX_ugdp_oecd,

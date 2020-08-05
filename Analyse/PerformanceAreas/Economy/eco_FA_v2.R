@@ -19,22 +19,28 @@ names(imputed_wdi_eco_vars)
 dim(fa_data_wdi_frame_mice_inv)
 
 kmo_eco1 = KMO(fa_data_wdi_frame_mice_inv %>% 
-                 select_at(vars(ends_with("eco"), -investment_wdi_num_eco)))
+                 select_at(vars(ends_with("eco"), -investment_wdi_num_eco, -gdp_imf_num_eco)))
 
 kmo_eco2 = KMO(fa_data_wdi_frame_mice_inv %>% 
-                 select_at(vars(ends_with("eco"), -investment_wdi_num_eco, -Balance_wdi_num_eco))) 
-corrplot(cor(fa_data_wdi_frame_mice_inv %>% 
-               select_at(vars(ends_with("eco"))) %>% 
-               rename_all(funs(gsub("_num_eco","",.))) , use="pairwise"), method="number")
+                 select_at(vars(ends_with("eco"), -investment_wdi_num_eco, -Balance_wdi_num_eco, -gdp_imf_num_eco))) 
+kmo_eco3 = KMO(fa_data_wdi_frame_mice_inv %>% 
+                 select_at(vars(ends_with("eco"), -investment_wdi_num_eco, -Balance_wdi_num_eco, -gdp_imf_num_eco, -generaldebt_imf_num_eco))) 
 
-KMO_table(kmo_eco1, kmo_eco2)
+KMO_table(kmo_eco1, kmo_eco2, kmo_eco3)
+
+corrplot(cor(fa_data_wdi_frame_mice_inv %>% 
+               select_at(vars(ends_with("eco"), -gdp_imf_num_eco)) %>% 
+               rename_all(funs(gsub("_num_eco","",.))) %>% 
+               rename_all(funs(gsub("_pr","",.))) , use="pairwise"), method="number")
+
+
 
 
 
 ### Factor Analysis
 
 fa_eco_wdi_data = fa_data_wdi_frame_mice_inv %>% 
-  select_at(vars(ends_with("eco"), -investment_wdi_num_eco, -Balance_wdi_num_eco)) %>% 
+  select_at(vars(ends_with("eco"), -investment_wdi_num_eco, -Balance_wdi_num_eco, -generaldebt_imf_num_eco, -gdp_imf_num_eco)) %>% 
   rename_all(funs(gsub("_num_eco","",.)))
 
 par(mfrow=c(1,1))
@@ -92,7 +98,7 @@ performance_wdi_eco = fa_data_wdi_frame_mice_inv %>%
 samples = c("DEU", "USA", "SWE", "IND", "FIN", "DNK")
 samples = c("DEU", "CHE", "BEL", "SWE")
 samples = c("BRA", "RUS", "CHE", "IND", "DEU")
-samples = c("DEU", "TWN")
+samples = c("DEU", "TWN", "CHE")
 
 performance_wdi_eco %>% 
   select_at(vars(country_text_id, year, wealth_eco, productivity_eco)) %>% 

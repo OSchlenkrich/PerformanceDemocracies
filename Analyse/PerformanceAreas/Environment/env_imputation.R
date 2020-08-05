@@ -75,8 +75,8 @@ a.out <- amelia(mice_data,
 
 a.out
 
-# saveRDS(a.out, "Analyse/PerformanceAreas/Environment/a.out.RDS")
-a.out = readRDS("Analyse/PerformanceAreas/Environment/a.out.RDS")
+# saveRDS(a.out, "Analyse/PerformanceAreas/Environment/a.out_cap.RDS")
+a.out = readRDS("Analyse/PerformanceAreas/Environment/a.out_cap.RDS")
 
 
 
@@ -85,16 +85,16 @@ if (Plot_Impu == T) {
   par(mfrow=c(1,1))
   disp_env = disperse(a.out, dims = 1, m = 5)
   
-  # saveRDS(disp_env, "Analyse/PerformanceAreas/Environment/Diag/disp_env.RDS")
-  disp_env = readRDS("Analyse/PerformanceAreas/Environment/Diag/disp_env.RDS")
+  # saveRDS(disp_env, "Analyse/PerformanceAreas/Environment/Diag/disp_env_cap.RDS")
+  disp_env = readRDS("Analyse/PerformanceAreas/Environment/Diag/disp_env_cap.RDS")
   convergence_amelia(disp_env)  +
     ggtitle("Environmental Performance: Overdispersed Starting Values")
   
   
   # obs vs. imp
   ggarrange(
-    compare.density_own(a.out, var = "water_ugdp_oecd_num_env"),
-    compare.density_own(a.out, var = "waste_ugdp_oecd_num_env"),
+    compare.density_own(a.out, var = "water_ugdp_cap_oecd_num_env"),
+    compare.density_own(a.out, var = "waste_ugdp_cap_oecd_num_env"),
     compare.density_own(a.out, var = c("GHG_ugdp_oecd_num_env")),
     compare.density_own(a.out, var = c("SOX_ugdp_oecd_num_env")),
     compare.density_own(a.out, var = c("NOX_ugdp_oecd_num_env")),
@@ -106,10 +106,10 @@ if (Plot_Impu == T) {
   
   # predictive capability
   
-  water_imp_env = Amelia::overimpute(a.out, var = "water_ugdp_oecd_num_env")
-  # saveRDS(water_imp_env, "Analyse/PerformanceAreas/Environment/Diag/water_imp_env.RDS")
-  waste_imp_env = Amelia::overimpute(a.out, var = "waste_ugdp_oecd_num_env")
-  # saveRDS(waste_imp_env, "Analyse/PerformanceAreas/Environment/Diag/waste_imp_env.RDS")
+  water_imp_env = Amelia::overimpute(a.out, var = "water_ugdp_cap_oecd_num_env")
+  # saveRDS(water_imp_env, "Analyse/PerformanceAreas/Environment/Diag/water_imp_env_cap.RDS")
+  waste_imp_env = Amelia::overimpute(a.out, var = "waste_ugdp_cap_oecd_num_env")
+  # saveRDS(waste_imp_env, "Analyse/PerformanceAreas/Environment/Diag/waste_imp_env_cap.RDS")
   GHG_imp_env = Amelia::overimpute(a.out, var = "GHG_ugdp_oecd_num_env")
   # saveRDS(GHG_imp_env, "Analyse/PerformanceAreas/Environment/Diag/GHG_imp_env.RDS")
   SOX_imp_env = Amelia::overimpute(a.out, var = "SOX_ugdp_oecd_num_env")
@@ -161,7 +161,7 @@ imputed_env %>%
   ggplot(aes(x=GDP_capita_wdi_gen_num_aux, y = NOX_ugdp_oecd_num_env, col=is_na)) +
   geom_point() +
   scale_color_grey(name="") +
-  xlab("GDP per Capita") +
+  xlab("GDP per capita") +
   ylab("NOx") +
   theme_bw() +
   theme(legend.position = "bottom")

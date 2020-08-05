@@ -52,14 +52,14 @@ confidence_IVS %>%
   arrange(country_text_id, year_study) %>% 
   group_by(country_text_id, name)%>% 
   tidyr::complete(country_text_id, year_study = full_seq(year_study, 1)) %>% 
-  group_by(country_text_id) %>% 
-  mutate(cases_lag1 = dplyr::lag(cases,1),
-         cases_lag2 = dplyr::lag(cases,2),
-         cases_lag3 = dplyr::lag(cases,3),
-         cases_lead1 = dplyr::lead(cases,1),
-         cases_lead2 = dplyr::lead(cases,2),
-         cases_lead3 = dplyr::lead(cases,3)
-  ) %>% 
+  # group_by(country_text_id) %>% 
+  # mutate(cases_lag1 = dplyr::lag(cases,1),
+  #        cases_lag2 = dplyr::lag(cases,2),
+  #        cases_lag3 = dplyr::lag(cases,3),
+  #        cases_lead1 = dplyr::lead(cases,1),
+  #        cases_lead2 = dplyr::lead(cases,2),
+  #        cases_lead3 = dplyr::lead(cases,3)
+  # ) %>% 
   filter_at(vars(starts_with("cases")), any_vars(is.na(.)==F)) %>% 
   dplyr::select(country_text_id, year = year_study, name) %>% 
   mutate(helper_ivs = 1) %>% 
@@ -69,17 +69,19 @@ confidence_IVS %>%
   pivot_wider(names_from = name,
               values_from = helper_ivs) %>% 
   group_by(year) %>% 
-  select_at(vars(ends_with("_ivs"), weights)) %>% 
-  summarise_all(pMiss) %>% 
+  select_at(vars(ends_with("_ivs"), -weights)) %>% 
+  summarise_all(pMiss_01) %>% 
   pivot_longer(cols=-year) %>% 
   ggplot(aes(x=year, y=value, fill=name)) +
   geom_bar(stat="identity", width=1) +
   facet_wrap(name~.) +
-  scale_y_continuous(breaks=seq(0,100, 10), limit=c(0,100))  +
-  scale_x_continuous(breaks=seq(1950,2020, 10), limits=c(1980, 2020)) +
-  theme_bw()  +
-  theme(axis.text.x = element_text(angle=90), legend.position = "bottom") +
-  ggtitle("Missings in Democracy Profile Sample - IVS (WVS/EVS)")
+  scale_y_continuous(name=NULL, breaks=seq(0,1, 0.25), limit=c(0,1), labels=percent)  +
+  scale_x_continuous(name=NULL, breaks=seq(1950,2020, 10)) + 
+  scale_fill_grey(start = 0.4, end = 0.4) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle=90), legend.position = "none") +
+  ggtitle("Missings in Democracy Profile Sample")
+
 
 
 confidence_IVS %>%

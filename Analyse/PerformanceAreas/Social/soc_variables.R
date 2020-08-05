@@ -61,16 +61,17 @@ Integration_Performance = QoC_data %>%
 Integration_Performance %>% 
   group_by(year) %>% 
   select_at(vars(ends_with("_GI"), ends_with("_vdem"), ends_with("_lis"), ends_with("_wdi") )) %>% 
-  summarise_all(pMiss) %>% 
-  melt(id.vars="year") %>% 
-  ggplot(aes(x=year, y=value, fill=variable)) +
+  summarise_all(pMiss_01) %>% 
+  pivot_longer(cols=-year) %>% 
+  ggplot(aes(x=year, y=value, fill=name)) +
   geom_bar(stat="identity", width=1) +
-  facet_wrap(variable~.) +
-  scale_y_continuous(breaks=seq(0,100, 10), limit=c(0,100))  +
-  scale_x_continuous(breaks=seq(1950,2020, 10)) +
-  theme_bw()  +
-  theme(axis.text.x = element_text(angle=90), legend.position = "bottom") +
-  ggtitle("Missings in Democracy Profile Sample - Social Outcomes")
+  facet_wrap(name~.) +
+  scale_y_continuous(name=NULL, breaks=seq(0,1, 0.25), limit=c(0,1), labels=percent)  +
+  scale_x_continuous(name=NULL, breaks=seq(1950,2020, 10)) + 
+  scale_fill_grey(start = 0.4, end = 0.4) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle=90), legend.position = "none") +
+  ggtitle("Missings in Democracy Profile Sample")
 
 
 
@@ -85,21 +86,26 @@ Integration_Performance_IP = Integration_Performance %>%
   # mutate_at(vars(ends_with("vdem")), .funs = list(~na_interpol2(.))) %>% 
   ungroup()
 
+test = 
+  Integration_Performance_IP %>% 
+  group_by(year) %>% 
+  select_at(vars(ends_with("_GI"), ends_with("_vdem"), ends_with("_lis"), ends_with("_wdi") )) %>% 
+  summarise_all(pMiss_01) 
 
 Integration_Performance_IP %>% 
   group_by(year) %>% 
   select_at(vars(ends_with("_GI"), ends_with("_vdem"), ends_with("_lis"), ends_with("_wdi") )) %>% 
-  summarise_all(pMiss) %>% 
-  melt(id.vars="year") %>% 
-  ggplot(aes(x=year, y=value, fill=variable)) +
+  summarise_all(pMiss_01) %>% 
+  pivot_longer(cols=-year) %>% 
+  ggplot(aes(x=year, y=value, fill=name)) +
   geom_bar(stat="identity", width=1) +
-  facet_wrap(variable~.) +
-  scale_y_continuous(breaks=seq(0,100, 10), limit=c(0,100))  +
-  scale_x_continuous(breaks=seq(1950,2020, 10)) +
-  theme_bw()  +
-  theme(axis.text.x = element_text(angle=90), legend.position = "bottom") +
-  ggtitle("Missings in Democracy Profile Sample - Social Outcomes")
-
+  facet_wrap(name~.) +
+  scale_y_continuous(name=NULL, breaks=seq(0,1, 0.25), limit=c(0,1), labels=percent)  +
+  scale_x_continuous(name=NULL, breaks=seq(1950,2020, 10)) + 
+  scale_fill_grey(start = 0.4, end = 0.4) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle=90), legend.position = "none") +
+  ggtitle("Missings in Democracy Profile Sample")
 
 ###
 

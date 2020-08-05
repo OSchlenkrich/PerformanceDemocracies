@@ -475,7 +475,7 @@ GCS_Police = fread("Datasets/gcs_rps.csv", fill = T) %>%
   pivot_wider(names_from = Indicator, values_from = value) %>% 
   mutate(name = gsub("-.*", "", name),
          name = as.numeric(name)) %>% 
-  rename(year = name, orgacrime_gcs = `Organized crime`, reliab_police_gcs = `Reliability of police services`)
+  rename(year = name, orgacrime_gcr = `Organized crime`, reliab_police_gcr = `Reliability of police services`)
 
 ### Create Main Dataset ####
 domestic_security =  QoC_data %>% 
@@ -507,32 +507,37 @@ domestic_security =  QoC_data %>%
 ##### NA-Plots ####
 domestic_security %>% 
   group_by(year) %>% 
-  select_at(vars(ends_with("oecd"), ends_with("unodc"), ends_with("gcs"), ends_with("gwp"))) %>% 
-  summarise_all(pMiss) %>% 
-  melt(id.vars="year") %>% 
-  ggplot(aes(x=year, y=value, fill=variable)) +
+  select_at(vars(order_safety_gdpcapita_oecd,
+                 hom_rate_unodc,
+                 theft_rate_unodc, 
+                 reliab_police_gcr)) %>% 
+  summarise_all(pMiss_01) %>% 
+  pivot_longer(cols=-year) %>% 
+  ggplot(aes(x=year, y=value, fill=name)) +
   geom_bar(stat="identity", width=1) +
-  facet_wrap(variable~.) +
-  scale_y_continuous(breaks=seq(0,100, 10), limit=c(0,100))  +
-  scale_x_continuous(breaks=seq(1950,2020, 10)) +
-  theme_bw()  +
-  theme(axis.text.x = element_text(angle=90), legend.position = "bottom") +
-  ggtitle("Missings in Democracy Profile Sample - OECD/UNODC")
+  facet_wrap(name~.) +
+  scale_y_continuous(name=NULL, breaks=seq(0,1, 0.25), limit=c(0,1), labels=percent)  +
+  scale_x_continuous(name=NULL, breaks=seq(1950,2020, 10)) + 
+  scale_fill_grey(start = 0.4, end = 0.4) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle=90), legend.position = "none") +
+  ggtitle("Missings in Democracy Profile Sample")
 
 
 domestic_security %>% 
   group_by(year) %>% 
   select_at(vars(ends_with("ucdp"), ends_with("wgi"))) %>% 
-  summarise_all(pMiss) %>% 
-  melt(id.vars="year") %>% 
-  ggplot(aes(x=year, y=value, fill=variable)) +
+  summarise_all(pMiss_01) %>% 
+  pivot_longer(cols=-year) %>% 
+  ggplot(aes(x=year, y=value, fill=name)) +
   geom_bar(stat="identity", width=1) +
-  facet_wrap(variable~.) +
-  scale_y_continuous(breaks=seq(0,100, 10), limit=c(0,100))  +
-  scale_x_continuous(breaks=seq(1950,2020, 10)) +
-  theme_bw()  +
-  theme(axis.text.x = element_text(angle=90), legend.position = "bottom") +
-  ggtitle("Missings in Democracy Profile Sample - UCDP")
+  facet_wrap(name~.) +
+  scale_y_continuous(name=NULL, breaks=seq(0,1, 0.25), limit=c(0,1), labels=percent)  +
+  scale_x_continuous(name=NULL, breaks=seq(1950,2020, 10)) + 
+  scale_fill_grey(start = 0.4, end = 0.4) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle=90), legend.position = "none") +
+  ggtitle("Missings in Democracy Profile Sample")
 
 
 ##### Linear Interpolation
@@ -548,46 +553,50 @@ domestic_security_IP = domestic_security %>%
 
 domestic_security_IP %>% 
   group_by(year) %>% 
-  select_at(vars(ends_with("oecd"), ends_with("unodc"))) %>% 
-  summarise_all(pMiss) %>% 
-  melt(id.vars="year") %>% 
-  ggplot(aes(x=year, y=value, fill=variable)) +
+  select_at(vars(order_safety_gdpcapita_oecd,
+                 hom_rate_unodc,
+                 theft_rate_unodc, 
+                 reliab_police_gcr, ends_with("gwp"))) %>% 
+  summarise_all(pMiss_01) %>% 
+  pivot_longer(cols=-year) %>% 
+  ggplot(aes(x=year, y=value, fill=name)) +
   geom_bar(stat="identity", width=1) +
-  facet_wrap(variable~.) +
-  scale_y_continuous(breaks=seq(0,100, 10), limit=c(0,100))  +
-  scale_x_continuous(breaks=seq(1950,2020, 10)) +
-  theme_bw()  +
-  theme(axis.text.x = element_text(angle=90), legend.position = "bottom") +
-  ggtitle("Missings in Democracy Profile Sample - OECD/UNODC")
+  facet_wrap(name~.) +
+  scale_y_continuous(name=NULL, breaks=seq(0,1, 0.25), limit=c(0,1), labels=percent)  +
+  scale_x_continuous(name=NULL, breaks=seq(1950,2020, 10)) + 
+  scale_fill_grey(start = 0.4, end = 0.4) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle=90), legend.position = "none") +
+  ggtitle("Missings in Democracy Profile Sample")
 
 
 domestic_security_IP %>% 
   group_by(year) %>% 
   select_at(vars(ends_with("ucdp"), ends_with("wgi"))) %>% 
-  summarise_all(pMiss) %>% 
-  melt(id.vars="year") %>% 
-  ggplot(aes(x=year, y=value, fill=variable)) +
+  summarise_all(pMiss_01) %>% 
+  pivot_longer(cols=-year) %>% 
+  ggplot(aes(x=year, y=value, fill=name)) +
   geom_bar(stat="identity", width=1) +
-  facet_wrap(variable~.) +
-  scale_y_continuous(breaks=seq(0,100, 10), limit=c(0,100))  +
-  scale_x_continuous(breaks=seq(1950,2020, 10)) +
-  theme_bw()  +
-  theme(axis.text.x = element_text(angle=90), legend.position = "bottom") +
-  ggtitle("Missings in Democracy Profile Sample - UCDP")
+  facet_wrap(name~.) +
+  scale_y_continuous(name=NULL, breaks=seq(0,1, 0.25), limit=c(0,1), labels=percent)  +
+  scale_x_continuous(name=NULL, breaks=seq(1950,2020, 10)) + 
+  scale_fill_grey(start = 0.4, end = 0.4) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle=90), legend.position = "none") +
+  ggtitle("Missings in Democracy Profile Sample")
 
 
 
 ###
 
-
-
 domestic_security_IP %>% 
-  select_at(vars(ends_with("oecd"), ends_with("unodc"), ends_with("gcs"), ends_with("gwp"))) %>% 
+  select_at(vars(ends_with("oecd"), ends_with("unodc"), ends_with("gcr"), ends_with("gwp"))) %>% 
   select(order_safety_gdpcapita_oecd,
          hom_rate_unodc,
          theft_rate_unodc,
-         reliab_police_gcs,
-         trust_gwp) %>% 
+         reliab_police_gcr,
+         #trust_gwp
+         ) %>% 
   melt() %>% 
   ggplot(aes(x=value)) + 
   geom_histogram()  +
@@ -618,21 +627,22 @@ domestic_security_IP %>%
 # WGI: its normalized already
 # UCDP: almost binary variable
 domestic_security_IP_norm = domestic_security_IP %>% 
-  select_at(vars(ends_with("oecd"), ends_with("unodc"), ends_with("ucdp"), ends_with("wgi"), ends_with("gcs"), ends_with("gwp"))) %>% 
+  select_at(vars(ends_with("oecd"), ends_with("unodc"), ends_with("ucdp"), ends_with("wgi"), ends_with("gcr"), ends_with("gwp"))) %>% 
   
   mutate_at(vars(order_safety_gdp_perc_oecd), funs(trim(., 0.01, minimum=T))) %>%
   
   mutate_at(vars(matches("_perc")), ~folded_ladder_fun(., plotting=F)) %>% 
-  mutate_at(vars(ends_with("unodc"), ends_with("gcs"), ends_with("gwp")), ladder_fun) %>% 
-  mutate_at(vars(ends_with("oecd"), ends_with("unodc"), ends_with("wgi"), ends_with("gcs"), ends_with("gwp")), scale)
+  mutate_at(vars(ends_with("unodc"), ends_with("gcr"), ends_with("gwp")), ladder_fun) %>% 
+  mutate_at(vars(ends_with("oecd"), ends_with("unodc"), ends_with("wgi"), ends_with("gcr"), ends_with("gwp")), scale)
   
 domestic_security_IP_norm %>% 
-  select_at(vars(ends_with("oecd"), ends_with("unodc"), ends_with("gcs"), ends_with("gwp"))) %>% 
+  select_at(vars(ends_with("oecd"), ends_with("unodc"), ends_with("gcr"), ends_with("gwp"))) %>% 
   select(order_safety_gdpcapita_oecd,
          hom_rate_unodc,
          theft_rate_unodc,
-         reliab_police_gcs,
-         trust_gwp) %>% 
+         reliab_police_gcr,
+         #trust_gwp
+         ) %>% 
   melt() %>% 
   ggplot(aes(x=value)) + 
   geom_histogram()  +
@@ -661,7 +671,7 @@ domestic_security_IP_norm %>%
 
 ### NA Frame: OECD
 NA_frame_ds_oecd = domestic_security_IP_norm %>% 
-  select_at(vars(-ends_with("ucdp"), -ends_with("wgi"), ends_with("gcs"), ends_with("gwp"))) %>% 
+  select_at(vars(-ends_with("ucdp"), -ends_with("wgi"), ends_with("gcr"), ends_with("gwp"))) %>% 
   mutate_all(funs(is_na = ifelse(is.na(.)==T, 1,0))) %>% 
   bind_cols(domestic_security %>%  select(country, country_text_id, year)) %>%
   filter(year>=1950) %>% 

@@ -212,7 +212,7 @@ Economy_Perfomance = QoC_data %>%
   
   # add IMF source
   left_join(WB_current, by=c("country_text_id", "year")) %>% 
-  # left_join(imf_debt, by=c("country_text_id", "year")) %>%  
+  left_join(imf_debt, by=c("country_text_id", "year")) %>%  
   left_join(imf_unempl, by=c("country_text_id", "year")) %>%  
   left_join(imf_gdpppp, by=c("country_text_id", "year")) %>%  
   left_join(imf_inflation, by=c("country_text_id", "year")) %>%  
@@ -249,15 +249,19 @@ Economy_Perfomance = QoC_data %>%
 
 ##### NA-Plots ####
 
+test = Economy_Perfomance %>% 
+  group_by(year) %>% 
+  select_at(vars(ends_with("oecd"), ends_with("imf"), ends_with("pwt"), ends_with("wdi"), -GDP_capita_gen_num_wdi)) %>% 
+  summarise_all(pMiss_01) 
 
 Economy_Perfomance %>% 
   group_by(year) %>% 
-  select_at(vars(ends_with("oecd"), ends_with("imf"), ends_with("pwt"), ends_with("wdi"))) %>% 
+  select_at(vars(ends_with("oecd"), ends_with("imf"), ends_with("pwt"), ends_with("wdi"), -GDP_capita_gen_num_wdi, -gdp_imf)) %>% 
   summarise_all(pMiss_01) %>% 
-  melt(id.vars="year") %>% 
-  ggplot(aes(x=year, y=value, fill=variable)) +
+  pivot_longer(cols=-year) %>% 
+  ggplot(aes(x=year, y=value, fill=name)) +
   geom_bar(stat="identity", width=1) +
-  facet_wrap(variable~.) +
+  facet_wrap(name~.) +
   scale_y_continuous(name=NULL, breaks=seq(0,1, 0.25), limit=c(0,1), labels=percent)  +
   scale_x_continuous(name=NULL, breaks=seq(1950,2020, 10)) + 
   scale_fill_grey(start = 0.4, end = 0.4) +
@@ -305,7 +309,7 @@ Economy_Perfomance_IP %>%
 
 
 Economy_Perfomance_IP %>% 
-  select_at(vars(ends_with("oecd"), ends_with("imf"), ends_with("pwt"), ends_with("wdi"))) %>% 
+  select_at(vars(ends_with("oecd"), ends_with("imf"), ends_with("pwt"), ends_with("wdi"), -gdp_imf)) %>% 
   select(-GDP_capita_gen_num_wdi) %>% 
   melt() %>% 
   ggplot(aes(x=value)) + 
@@ -333,7 +337,7 @@ Economy_Perfomance_IP_norm = Economy_Perfomance_IP  %>%
   mutate_all(scale)
 
 Economy_Perfomance_IP_norm %>% 
-  select_at(vars(ends_with("oecd"), ends_with("imf"), ends_with("pwt"), ends_with("wdi"))) %>% 
+  select_at(vars(ends_with("oecd"), ends_with("imf"), ends_with("pwt"), ends_with("wdi"), -gdp_imf)) %>% 
   select(-GDP_capita_gen_num_wdi) %>% 
   melt() %>% 
   ggplot(aes(x=value)) + 

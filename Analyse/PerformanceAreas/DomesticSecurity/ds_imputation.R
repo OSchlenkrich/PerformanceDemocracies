@@ -7,7 +7,7 @@ fa_data_ds_frame_mice = fa_data_ds_frame %>%
   select_at(vars(-ends_with("is_na"),  "missing_SUM")) %>% 
   rename_all(funs(sub("_oecd", "_oecd_num_ds", .))) %>% 
   rename_all(funs(sub("_unodc", "_unodc_num_ds", .))) %>% 
-  rename_all(funs(sub("_gcs", "_gcs_num_ds", .))) %>% 
+  rename_all(funs(sub("_gcr", "_gcr_num_ds", .))) %>% 
   rename_all(funs(sub("_gwp", "_gwp_num_ds", .))) %>% 
   # include auxiliary and analyse variables
   left_join(aux_vars %>%  select_at(vars(country_text_id, year, 
@@ -77,8 +77,8 @@ a.out_ds
 
 
 
-# saveRDS(a.out_ds, "Analyse/PerformanceAreas/DomesticSecurity/a.out_ds.RDS")
-a.out_ds = readRDS("Analyse/PerformanceAreas/DomesticSecurity/a.out_ds.RDS")
+# saveRDS(a.out_ds, "Analyse/PerformanceAreas/DomesticSecurity/a.out_ds_trust.RDS")
+a.out_ds = readRDS("Analyse/PerformanceAreas/DomesticSecurity/a.out_ds_trust.RDS")
 
 
 if (Plot_Impu == T) {
@@ -86,8 +86,8 @@ if (Plot_Impu == T) {
   par(mfrow=c(1,1))
   disp_ds = disperse(a.out_ds, dims = 1, m = 5)
   
-  # saveRDS(disp_ds, "Analyse/PerformanceAreas/DomesticSecurity/Diag/disp_ds.RDS")
-  disp_ds = readRDS("Analyse/PerformanceAreas/DomesticSecurity/Diag/disp_ds.RDS")
+  # saveRDS(disp_ds, "Analyse/PerformanceAreas/DomesticSecurity/Diag/disp_ds_v2.RDS")
+  disp_ds = readRDS("Analyse/PerformanceAreas/DomesticSecurity/Diag/disp_ds_v2.RDS")
   
   convergence_amelia(disp_ds)  +
     ggtitle("Domestic Security Performance: Overdispersed Starting Values")
@@ -98,8 +98,8 @@ if (Plot_Impu == T) {
     compare.density_own(a.out_ds, var = "order_safety_gdpcapita_oecd_num_ds"),
     compare.density_own(a.out_ds, var = "hom_rate_unodc_num_ds"),
     compare.density_own(a.out_ds, var = "theft_rate_unodc_num_ds"), 
-    compare.density_own(a.out_ds, var = "reliab_police_gcs_num_ds"),
-    compare.density_own(a.out_ds, var = "trust_gwp_num_ds"),
+    compare.density_own(a.out_ds, var = "reliab_police_gcr_num_ds"),
+    #compare.density_own(a.out_ds, var = "trust_gwp_num_ds"),
     common.legend = T,
     legend = "bottom"
   )
@@ -111,9 +111,9 @@ if (Plot_Impu == T) {
   # saveRDS(hom_imp_ds, "Analyse/PerformanceAreas/DomesticSecurity/Diag/hom_imp_ds.RDS")
   theft_imp_ds = Amelia::overimpute(a.out_ds, var = "theft_rate_unodc_num_ds")
   # saveRDS(theft_imp_ds, "Analyse/PerformanceAreas/DomesticSecurity/Diag/theft_imp_ds.RDS")
-  reliab_imp_ds = Amelia::overimpute(a.out_ds, var = "reliab_police_gcs_num_ds")
+  reliab_imp_ds = Amelia::overimpute(a.out_ds, var = "reliab_police_gcr_num_ds")
   # saveRDS(reliab_imp_ds, "Analyse/PerformanceAreas/DomesticSecurity/Diag/reliab_imp_ds.RDS")
-  trust_imp_ds = Amelia::overimpute(a.out_ds, var = "trust_gwp_num_ds")
+  # trust_imp_ds = Amelia::overimpute(a.out_ds, var = "trust_gwp_num_ds")
   # saveRDS(trust_imp_ds, "Analyse/PerformanceAreas/DomesticSecurity/Diag/trust_imp_ds.RDS")
   
   
@@ -121,8 +121,8 @@ if (Plot_Impu == T) {
     overimpute_gglot(order_imp_ds, "order_safety_gdpcapita_oecd"),
     overimpute_gglot(hom_imp_ds, "hom_rate_unodc"),
     overimpute_gglot(theft_imp_ds, "theft_rate_unodc"),
-    overimpute_gglot(reliab_imp_ds, "reliab_police_gcs"),
-    overimpute_gglot(trust_imp_ds, "trust_gwp")
+    overimpute_gglot(reliab_imp_ds, "reliab_police_gcr")
+    #overimpute_gglot(trust_imp_ds, "trust_gwp")
   )
   
   
@@ -151,8 +151,8 @@ imputed_ds_vars = imputed_ds %>%
             by = c("country_text_id", "year_0")) %>% 
   left_join(fa_data_ds_frame, by=c("country_text_id", "year"))  %>% 
   select_at(vars(country, country_text_id, year, imp, 
-                 ends_with("_oecd_num_ds"), ends_with("_unodc_num_ds"), ends_with("_gcs_num_ds"), ends_with("_gwp_num_ds"),
-                 ends_with("oecd_is_na"), ends_with("unodc_is_na"), ends_with("_gcs_is_na"), ends_with("_gwp_is_na"),
+                 ends_with("_oecd_num_ds"), ends_with("_unodc_num_ds"), ends_with("_gcr_num_ds"), ends_with("_gwp_num_ds"),
+                 ends_with("oecd_is_na"), ends_with("unodc_is_na"), ends_with("_gcr_is_na"), ends_with("_gwp_is_na"),
                  "missing_SUM"))
 
 
