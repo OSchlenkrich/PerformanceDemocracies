@@ -1427,7 +1427,7 @@ vdem_caus = vdem_main %>%
 reg_coder_df = vdem_main %>% 
   select_at(vars(country_text_id, year,  ends_with("_nr"))) %>%
   select_at(vars(country_text_id, year,  starts_with("v2"))) %>%
-  select_at(vars(-ends_with("bin_nr"))) %>%
+  #select_at(vars(-ends_with("bin_nr"))) %>%
   filter(year >= 1900) %>% 
   pivot_longer(cols=starts_with("v2")) %>% 
   mutate(name = gsub("_nr", "", name)) %>% 

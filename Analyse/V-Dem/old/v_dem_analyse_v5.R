@@ -84,6 +84,20 @@ mean_coder_df %>%
   theme_bw() +
   ggtitle("Average Number of Coders per Update")
 
+mean_coder_df %>% 
+  mutate(name = gsub("_nr", "", name)) %>% 
+  left_join(length_varname %>% rename(name = varname), by="name")  %>% 
+  group_by(sections) %>% 
+  summarise(mean_indicator = mean(value, na.rm=T)) %>% 
+  ungroup() %>% 
+  mutate(sections = fct_reorder(sections, mean_indicator)) %>% 
+  na.omit() %>%  
+  ggplot(aes(x=sections, y=mean_indicator)) +
+  geom_bar(stat="identity") +
+  theme_bw() +
+  ggtitle("Mean Number of Coders per Country-Year for each Section") +
+  xlab("") +
+  ylab("")
 
 ### Average Confidence ####
 
@@ -145,19 +159,26 @@ conf_rater_vdem  %>%
   scale_x_continuous(breaks=seq(1900,2020, 20)) +
   theme_bw() +
   ylim(0.5,1) +
-  ggtitle("Average Confidence of Coders per year")
+  ggtitle("Average Confidence of Coders per Year") +
+  xlab("") +
+  ylab("Confidence")
 
 
 conf_rater_vdem %>% 
   left_join(length_varname %>%  rename(name = varname), by="name") %>% 
   group_by(sections) %>% 
-  summarise(mean_indicator = mean(value, na.rm=T)) %>%
+  summarise(mean_conf_sec = mean(value, na.rm=T),
+            lower = quantile(value, prob=0.25, na.rm=T),
+            upper = quantile(value, prob=0.75, na.rm=T)) %>% 
   na.omit() %>% 
-  mutate(sections = fct_reorder(sections, mean_indicator)) %>% 
-  ggplot(aes(x=sections, y=mean_indicator)) +
+  mutate(sections = fct_reorder(sections, mean_conf_sec)) %>% 
+  ggplot(aes(x=sections, y=mean_conf_sec)) +
   geom_bar(stat="identity") +
+  #geom_errorbar(aes(ymin=lower, ymax=upper)) +
   theme_bw() +
-  ggtitle("Average Confidence of Coders per section")
+  ggtitle("Average Confidence of Coders per section") +
+  xlab("") +
+  ylab("Confidence")
 
 
 
@@ -168,11 +189,8 @@ all_v2_coders = vdem_vars %>%
   filter(year >= 1900)   %>% 
   na.omit() %>% 
   group_by(name, coder_id, country_text_id) %>% 
-  partition(cluster) %>% 
   summarise(coded_years_per_country = n()) %>% 
-  collect() %>% 
   ungroup()
-
 
 
 
@@ -192,7 +210,9 @@ ctry_years_per_coder %>%
   ylab("")  +
   theme_bw() +
   theme(axis.text.x = element_blank()) +
-  geom_hline(aes(yintercept = median(coded_year)))
+  geom_hline(aes(yintercept = median(coded_year)), size= 1.1, linetype = "dashed") +
+  xlab("Coders") +
+  theme(axis.text.y = element_text(size=11))
 
 #Cumulative Percentage Plot
 ctry_years_per_coder %>% 
@@ -270,8 +290,10 @@ all_v2_coders %>%
   ggplot(aes(x=coder_id, y=countriespercoder)) +
   scale_y_continuous(breaks=seq(0,50,5)) +
   geom_bar(stat="identity", width=10) +
-  theme(axis.text.y = element_blank()) +
-  theme_bw()
+  theme_bw() +
+  theme(axis.text.x = element_blank()) +
+  ylab("Countries per Coder") +
+  xlab("Coders")
 
 all_v2_coders %>% 
   select(coder_id, country_text_id) %>%
@@ -301,9 +323,11 @@ all_v2_coders %>%
   ggplot(aes(x=coder_id, y=varspercoder)) +
   scale_y_continuous(breaks=seq(0,250,20)) +
   geom_bar(stat="identity", width=10) +
-  theme(axis.text.y = element_blank()) +
-  xlab("") +
-  theme_bw()
+  theme_bw() +
+  theme(axis.text.x = element_blank()) +
+  ylab("Variables per Coder") +
+  xlab("Coders")
+
 
 all_v2_coders %>% 
   select(coder_id, name) %>%
@@ -321,7 +345,7 @@ all_v2_coders %>%
   ungroup() %>% 
   arrange(-varspercoder)
 
-### Identify Historic/Bridge/Lateral Coder
+### Coder Types ####
 
 historic_coders_df = vdem_vars  %>% 
   select(name, country_text_id, coder_id, year) %>%
@@ -409,33 +433,39 @@ country_coder_type %>%
 
 # Type of Coders per year
 
+# type_plot_Data = year_type_df %>% 
+#   mutate(coder_type = as.factor(coder_type)) %>% 
+#   group_by(name, year, country_text_id, coder_type) %>%
+#   summarise(no = n())  %>% 
+#   group_by(name,country_text_id, year, coder_type) %>% 
+#   summarise(sum_country = sum(no, na.rm=T)) %>% 
+#   group_by(name,country_text_id, year) %>% 
+#   mutate(total_country = sum(sum_country)) %>% 
+#   group_by(year,  coder_type) %>% 
+#   summarise(mean_country = sum(sum_country, na.rm=T)) %>% 
+#   group_by(year) %>% 
+#   mutate(total_country = sum(mean_country) ) %>% 
+#   mutate(perc = mean_country/total_country) %>% 
+#   left_join(mean_coder_df %>% 
+#               group_by(year, country_name) %>% 
+#               summarise(mean_country = mean(value, na.rm=T)) %>% 
+#               group_by(year) %>% 
+#               summarise(mean_coder = mean(mean_country, na.rm=T)), by ="year") %>% 
+#   mutate(part = mean_coder * perc) 
 
-year_type_df %>% 
-  mutate(coder_type = as.factor(coder_type)) %>% 
-  group_by(name, year, country_text_id, coder_type) %>%
-  summarise(no = n())  %>% 
-  group_by(name,country_text_id, year, coder_type) %>% 
-  summarise(sum_country = sum(no, na.rm=T)) %>% 
-  group_by(name,country_text_id, year) %>% 
-  mutate(total_country = sum(sum_country)) %>% 
-  group_by(year,  coder_type) %>% 
-  summarise(mean_country = sum(sum_country, na.rm=T)) %>% 
-  group_by(year) %>% 
-  mutate(total_country = sum(mean_country) ) %>% 
-  mutate(perc = mean_country/total_country) %>% 
-  left_join(mean_coder_df %>% 
-              group_by(year, country_name) %>% 
-              summarise(mean_country = mean(value, na.rm=T)) %>% 
-              group_by(year) %>% 
-              summarise(mean_coder = mean(mean_country, na.rm=T)), by ="year") %>% 
-  mutate(part = mean_coder * perc) %>% 
+# saveRDS(type_plot_Data, file="Analyse/V-Dem/robjects/type_plot_Data.RDS")
+type_plot_Data = readRDS(file="Analyse/V-Dem/robjects/type_plot_Data.RDS")
+
+
+type_plot_Data %>% 
   ggplot(aes(x=year, y=part, fill=coder_type)) +
   geom_area(size=1.1) +
-  scale_y_continuous(breaks=seq(0,20, 2)) +
-  scale_x_continuous(breaks=seq(1900,2020, 20)) +
-  geom_hline(yintercept = 5) +
+  geom_hline(yintercept = 5, size = 1.1, linetype="dashed") +
   theme_bw() +
-  ggtitle("Number of Coders per codertype per year")
+  scale_y_continuous(breaks=seq(0,20, 2), name = "") +
+  scale_x_continuous(breaks=seq(1900,2020, 20), name = "") +
+  scale_fill_discrete(name = "") +
+  ggtitle("Codertypes per Year")
 
 
 t2 %>% 
@@ -546,8 +576,9 @@ c_disagree %>%
   geom_line(size=1) +
   theme(legend.position = "none") +
   scale_x_continuous(breaks=seq(1900,2020, 20)) +
-  xlab("") +
-  theme_bw()  
+  theme_bw()  +
+  ylab("Disagreement") +
+  xlab("")
 
 c_disagree %>% 
   group_by(country_text_id) %>% 
@@ -587,7 +618,9 @@ c_disagree %>%
   ggplot(aes(x=sections, y=disagree)) +
   geom_bar(stat="identity") +
   theme(legend.position = "none") +
-  theme_bw()
+  theme_bw() +
+  ylab("Disagreement") +
+  xlab("")
 
 c_disagree %>% 
   left_join(vartype, by="name") %>% 
@@ -600,7 +633,9 @@ c_disagree %>%
   geom_bar(stat="identity") +
   theme(legend.position = "none") +
   theme_bw() +
-  ggtitle("Only Indicators with 5 answer categories")
+  ggtitle("Only Indicators with 5 answer categories") +
+  ylab("Disagreement") +
+  xlab("")
 
 
 # disareement between historic and other coder types
@@ -610,9 +645,7 @@ hc_vs_other = year_type_df %>%
   filter(name %in% vartype$name ) %>%
   filter(name %in% (length_varname %>% filter(codetype  == "C") %>% pull(varname))) %>% 
   filter(name %!in% multiplechoice_values ) %>% 
-  mutate(CC_coder = ifelse(coder_type == "CC", "CC", NA),
-         #year = floor(year/10) * 10
-         ) %>%
+  mutate(CC_coder = ifelse(coder_type == "CC", "CC", NA)) %>%
   #na.omit() %>% 
   group_by(name, year, country_text_id, coder_type) %>% 
   mutate(mean_CC = mean(value, na.rm=T),
@@ -624,6 +657,14 @@ hc_vs_other = year_type_df %>%
   group_by(name, year, country_text_id, coder_type) %>% 
   summarise(difference_mean = mean(difference, na.rm=T)) 
   
+# saveRDS(hc_vs_other, file="Analyse/V-Dem/robjects/hc_vs_other.RDS")
+hc_vs_other = readRDS(file="Analyse/V-Dem/robjects/hc_vs_other.RDS")
+
+test = hc_vs_other %>% 
+  group_by(year, coder_type ) %>% 
+  summarise(mean_value = mean(difference_mean, na.rm=T)) %>% 
+  mutate(rounded = round(mean_value, 3))
+
 hc_vs_other %>% 
   group_by(year, coder_type ) %>% 
   summarise(mean_value = mean(difference_mean, na.rm=T)) %>%  
@@ -634,7 +675,8 @@ hc_vs_other %>%
   scale_color_grey(start = 0.1, end = 0.7) +
   scale_x_continuous(breaks=seq(1900,2020, 20)) +
   xlab("") +
-  theme_bw()
+  theme_bw() +
+  ylab("Difference to Country Coders")
 
 
 # Regression Setup ####
@@ -718,16 +760,17 @@ vdem_caus = vdem_main %>%
 
 # Regression 1: Nr Coders ####
 
+
 reg_data = year_type_df %>% 
   select(country_text_id, name, coder_id, coder_type) %>% 
   group_by(name, country_text_id) %>% 
   distinct() %>% 
   ungroup() %>% 
   na.omit() %>% 
+  filter(coder_type == "CC") %>% 
   group_by(name, country_text_id) %>% 
   summarize(nr_coder = n()) %>% 
   right_join(regression_vars %>% rename(name = varname), by="name")
-
 
 reg_data_caus = reg_data %>% 
   left_join(vdem_caus, by="country_text_id") %>% 
@@ -909,7 +952,7 @@ anova(m0_p, m1_ncl, m2_nc) %>%
   make_anova_table()
 
 # Control + Difficulty + Importance + DiffQuestion
-m3_nc <- glmmTMB(nr_coder ~ 1 + 
+m3_nc <- glmmTMB(nr_coder ~ 1 +
                    update_caus +   
                    # Difficulty
                    mean_loggdp_wdi_caus + 
@@ -1840,7 +1883,9 @@ dataset2 %>%
   geom_area() +
   geom_vline(xintercept = c(2012), alpha=0.5, linetype="dashed") +
   ylab("mean") +
-  scale_x_continuous(breaks=seq(1900, 2020, 20), name="") +
+  scale_x_continuous(breaks=seq(1900, 2020, 20), name="") + 
+  scale_fill_grey(name = "") +
   theme_bw() +
-  theme(legend.position = "bottom", legend.title = "")
+  theme(legend.position = "bottom") +
+  ylab("")
   

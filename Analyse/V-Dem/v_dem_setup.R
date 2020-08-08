@@ -187,6 +187,8 @@ length_varname = var_data %>%
 # saveRDS(vartype, file="Analyse/V-Dem/robjects/vartype.RDS")
 vartype = readRDS(file="Analyse/V-Dem/robjects/vartype.RDS")
 
+
+
 # variable_caus_1 = vdem_ds %>% 
 #   select_at(vars(country_text_id, coder_id, year, historical_date, starts_with("v2"))) %>% 
 #   select_at(vars(-ends_with("_beta"),
