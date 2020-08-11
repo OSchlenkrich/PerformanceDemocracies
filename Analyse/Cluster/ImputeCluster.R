@@ -48,22 +48,15 @@ dmx_data_trade_mice = dmx_data %>%
   mutate(classification_core_dp_num_aux = ifelse(classification_core == "Deficient Democracy", 1, 0))
 
 
+# auxilary variables
+dmx_data_trade_mice %>% 
+  select_at(vars(matches("_aux"))) %>% 
+  names()
+
 
 dmx_data_trade_mice$na_count = rowSums(is.na(dmx_data_trade_mice %>% 
                 select_at(vars(ends_with("_trade_off")))))
 
-# x = dmx_data_trade_mice$decision_freedom_trade_off
-# test = ladder_fun(x)
-# hist(x)
-# hist(test)
-# 
-# 
-# minimum = min(x, na.rm=T)
-# constant = abs(minimum) 
-# 
-# (x-constant+1)^1.975
-# 
-# test^(1/1.975)+constant-1
 
 
 mice_data = as.data.frame(dmx_data_trade_mice) %>% 
@@ -71,11 +64,15 @@ mice_data = as.data.frame(dmx_data_trade_mice) %>%
 mice_data[] <- lapply(mice_data, function(x) { attributes(x) <- NULL; x })
 
 
+
 # corrplot
 corrplot(cor(dmx_data_trade_mice %>% 
                select_if(is.numeric) %>% 
                select_at(vars(-ends_with("lag"),-ends_with("lead"), -na_count)), use="pairwise"))
 
+missd_pattern(mice_data %>% 
+                select_at(vars(ends_with("trade_off")))%>% 
+                rename_all(funs(gsub("_trade_off","",.))) )
 
 
 nr_imputations = 10
@@ -96,43 +93,83 @@ a.out_trade <- amelia(mice_data,
 
 a.out_trade
 
+save(a.out_trade, file = "Analyse/Cluster/RObjects/a.out_trade.Rdata")
+
+
+
 
 if (Plot_Impu == T) {
   # convergence
   par(mfrow=c(1,1))
-  disperse(a.out_trade, dims = 1, m = 5)
+  disp_trade = disperse(a.out_trade, dims = 1, m = 5)
+  
+  
+  # saveRDS(disp_trade, "Analyse/Cluster/RObjects/disp_trade.RDS")
+  disp_trade = readRDS("Analyse/Cluster/RObjects/disp_trade.RDS")
+  convergence_amelia(disp_trade)  +
+    ggtitle("Trade-Off Indicators: Overdispersed Starting Values")
   
   # obs vs. imp
-  par(mfrow=c(2,2), mar=c(4,4,4,4))
-  compare.density(a.out_trade, var = c("decision_freedom_trade_off"), main= "Observed vs. Imputed Values of Homicides per 100.000")
-  compare.density(a.out_trade, var = c("decision_equality_trade_off"), main= "Observed vs. Imputed Values of Homicides per 100.000")
-  compare.density(a.out_trade, var = c("decision_control_trade_off"), main= "Observed vs. Imputed Values of Homicides per 100.000")
-  
-  compare.density(a.out_trade, var = c("intermediate_freedom_trade_off"), main= "Observed vs. Imputed Values of Robberies per 100.000")
-  compare.density(a.out_trade, var = c("intermediate_equality_trade_off"), main= "Observed vs. Imputed Values of Robberies per 100.000")
-  compare.density(a.out_trade, var = c("intermediate_control_trade_off"), main= "Observed vs. Imputed Values of Robberies per 100.000")
-  
-  compare.density(a.out_trade, var = c("communication_freedom_trade_off"), main= "Observed vs. Imputed Values of Ratio prison population/convictions")
-  compare.density(a.out_trade, var = c("communication_equality_trade_off"), main= "Observed vs. Imputed Values of Ratio prison population/convictions")
-  compare.density(a.out_trade, var = c("communication_control_trade_off"), main= "Observed vs. Imputed Values of Ratio prison population/convictions")
-  
-  compare.density(a.out_trade, var = c("rights_freedom_trade_off"), main= "Observed vs. Imputed Values of Ratio prison population/convictions")
-  compare.density(a.out_trade, var = c("rights_equality_trade_off"), main= "Observed vs. Imputed Values of Ratio prison population/convictions")
-  compare.density(a.out_trade, var = c("rights_control_trade_off"), main= "Observed vs. Imputed Values of Ratio prison population/convictions")
-  
-  compare.density(a.out_trade, var = c("rule_settlement_freedom_trade_off"), main= "Observed vs. Imputed Values of General government spending – Public order and safety")
-  compare.density(a.out_trade, var = c("rule_settlement_equality_trade_off"), main= "Observed vs. Imputed Values of General government spending – Public order and safety")
-  compare.density(a.out_trade, var = c("rule_settlement_control_trade_off"), main= "Observed vs. Imputed Values of General government spending – Public order and safety")
-  
-  
-  # predictive capability
-  par(mfrow=c(2,2))
-  Amelia::overimpute(a.out_trade, var = "decision_freedom_trade_off", main= "Observed vs. Imputed Values of PD Freedom TO")
-  Amelia::overimpute(a.out_trade, var = "decision_equality_trade_off", main= "Observed vs. Imputed Values of PD Equality TO")
-  Amelia::overimpute(a.out_trade, var = "rule_settlement_freedom_trade_off", main= "Observed vs. Imputed Values of RS Freedom TO")
-  Amelia::overimpute(a.out_trade, var = "rule_settlement_control_trade_off", main= "Observed vs. Imputed Values of RS Control TO")
+  ggarrange(
+    compare.density_own(a.out_trade, var = "decision_freedom_trade_off"),
+    compare.density_own(a.out_trade, var = "decision_equality_trade_off"),
+    #compare.density_own(a.out_trade, var = c("decision_control_trade_off")),
+    # compare.density_own(a.out_trade, var = c("intermediate_freedom_trade_off")),
+    # compare.density_own(a.out_trade, var = c("intermediate_equality_trade_off")),
+    # compare.density_own(a.out_trade, var = c("intermediate_control_trade_off")),
+    # compare.density_own(a.out_trade, var = c("communication_freedom_trade_off")),
+    # compare.density_own(a.out_trade, var = c("communication_equality_trade_off")),
+    # compare.density_own(a.out_trade, var = c("communication_control_trade_off")),
+    # compare.density_own(a.out_trade, var = c("rights_freedom_trade_off")),
+    # compare.density_own(a.out_trade, var = c("rights_equality_trade_off")),
+    # compare.density_own(a.out_trade, var = c("rights_control_trade_off")),
+    compare.density_own(a.out_trade, var = c("rule_settlement_freedom_trade_off")),
+    #compare.density_own(a.out_trade, var = c("rule_settlement_equality_trade_off")),
+    compare.density_own(a.out_trade, var = c("rule_settlement_control_trade_off")),
+    common.legend = T,
+    legend = "bottom"
+  )
   
   
+  dec_f_trade = Amelia::overimpute(a.out_trade, var = "decision_freedom_trade_off")
+  # saveRDS(dec_f_trade, "Analyse/Cluster/RObjects/dec_f_trade.RDS")
+  dec_e_trade = Amelia::overimpute(a.out_trade, var = "decision_equality_trade_off")
+  # saveRDS(dec_e_trade, "Analyse/Cluster/RObjects/dec_e_trade.RDS")
+  dec_c_trade = Amelia::overimpute(a.out_trade, var = "decision_control_trade_off")
+  # saveRDS(dec_c_trade, "Analyse/Cluster/RObjects/dec_c_trade.RDS")
+  int_f_trade = Amelia::overimpute(a.out_trade, var = "intermediate_freedom_trade_off")
+  # saveRDS(int_f_trade, "Analyse/Cluster/RObjects/int_f_trade.RDS")
+  int_e_trade = Amelia::overimpute(a.out_trade, var = "intermediate_equality_trade_off")
+  # saveRDS(int_e_trade, "Analyse/Cluster/RObjects/int_e_trade.RDS")
+  int_c_trade = Amelia::overimpute(a.out_trade, var = "intermediate_control_trade_off")
+  # saveRDS(int_c_trade, "Analyse/Cluster/RObjects/int_c_trade.RDS")
+  com_f_trade = Amelia::overimpute(a.out_trade, var = "communication_freedom_trade_off")
+  # saveRDS(com_f_trade, "Analyse/Cluster/RObjects/com_f_trade.RDS")
+  com_e_trade = Amelia::overimpute(a.out_trade, var = "communication_equality_trade_off")
+  # saveRDS(com_e_trade, "Analyse/Cluster/RObjects/com_e_trade.RDS")
+  com_c_trade = Amelia::overimpute(a.out_trade, var = "communication_control_trade_off")
+  # saveRDS(com_c_trade, "Analyse/Cluster/RObjects/com_c_trade.RDS")
+  gr_f_trade = Amelia::overimpute(a.out_trade, var = "rights_freedom_trade_off")
+  # saveRDS(gr_f_trade, "Analyse/Cluster/RObjects/gr_f_trade.RDS")
+  gr_e_trade = Amelia::overimpute(a.out_trade, var = "rights_equality_trade_off")
+  # saveRDS(gr_e_trade, "Analyse/Cluster/RObjects/gr_e_trade.RDS")
+  gr_c_trade = Amelia::overimpute(a.out_trade, var = "rights_control_trade_off")
+  # saveRDS(gr_c_trade, "Analyse/Cluster/RObjects/gr_c_trade.RDS")
+  rs_f_trade = Amelia::overimpute(a.out_trade, var = "rule_settlement_freedom_trade_off")
+  # saveRDS(rs_f_trade, "Analyse/Cluster/RObjects/rs_f_trade.RDS")
+  rs_e_trade = Amelia::overimpute(a.out_trade, var = "rule_settlement_equality_trade_off")
+  # saveRDS(rs_e_trade, "Analyse/Cluster/RObjects/rs_e_trade.RDS")
+  rs_c_trade = Amelia::overimpute(a.out_trade, var = "rule_settlement_control_trade_off")
+  # saveRDS(rs_c_trade, "Analyse/Cluster/RObjects/rs_c_trade.RDS")
+  
+  ggarrange(
+    overimpute_gglot(dec_f_trade, "Decision Freedom", xylims=c(0,1)),
+    overimpute_gglot(dec_e_trade, "Decision Equality", xylims=c(0,1)),
+    overimpute_gglot(rs_f_trade, "Rules Settlement Freedom", xylims=c(0,1)),
+    overimpute_gglot(rs_c_trade, "Rules Settlement Equality", xylims=c(0,1))
+  )
+  
+
   
   tscsPlot(a.out_trade, cs = "AUS",
            var = "order_safety_gdp_oecd_num_ds")
@@ -150,6 +187,7 @@ if (Plot_Impu == T) {
 imputed_trade = mapply(cbind, a.out_trade$imputations, ".imp" = 1:nr_imputations, SIMPLIFY = FALSE) %>% 
   bind_rows() %>% 
   mutate(.imp = as.factor(.imp))
+
 
 
 sample = c("AUT", "DEU", "BRB")

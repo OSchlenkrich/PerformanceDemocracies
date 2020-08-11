@@ -72,9 +72,10 @@ missd_pattern = function(data) {
     geom_tile(color="black") +
     scale_x_discrete(position = "top", name=NULL, expand = c(0.05,0.5)) +
     scale_y_discrete(expand = c(0.25,0), labels = rows_n_frame$rows_n) +
+    scale_fill_grey(name = "") +
     ylab("No. of Missings") +
     theme_bw() +
-    theme(axis.text.x = element_text(angle=90), legend.position = "right") +
+    theme(axis.text.x = element_text(angle=90), legend.position = "bottom") +
     annotate("text", x = cols_n$variable, label= cols_n$value, y=0.2, size=3) +
     annotate("text", x = x_annotate, label= rows_n_frame$missing_vars, y=rows_n_frame$id, size=3) 
   
@@ -810,7 +811,7 @@ compare.density_own <- function(output, var, col = c("indianred", "dodgerblue"),
 
 
 
-overimpute_gglot = function(overimpute_out, gglabel) {
+overimpute_gglot = function(overimpute_out, gglabel, xylims = c(-4,4)) {
   
   
   my_cuts =  cut(overimpute_out$prcntmiss, 
@@ -833,8 +834,8 @@ overimpute_gglot = function(overimpute_out, gglabel) {
     xlab("Observed Values") +
     ylab("Imputed Values") +
     theme(legend.position = "bottom") +
-    ylim(-4,4) +
-    xlim(-4,4) +
+    ylim(xylims) +
+    xlim(xylims) +
     ggtitle(gglabel)
   
 }

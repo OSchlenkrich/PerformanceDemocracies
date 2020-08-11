@@ -81,7 +81,7 @@ plot_random_countries_dim = function(No_countries) {
 }
 
 
-plot_random_countries_dim_improved = function(complete_data_dimensions, No_countries) {
+plot_random_countries_dim_improved = function(complete_data_dimensions, No_countries, cluster_var) {
   
   if (is.numeric(No_countries)==T) {
     random_countries = sample(n_distinct(complete_data_dimensions$country), No_countries)
@@ -94,9 +94,10 @@ plot_random_countries_dim_improved = function(complete_data_dimensions, No_count
     filter(country %in% selected_countries) %>%
     filter(year >= 1945) %>% 
     mutate(country = fct_relevel(country, No_countries)) %>% 
-    melt(id.vars=c("country", "year"), measure.vars="FKMmed_6_cluster") %>% 
-    mutate(value = as.factor(value),
-           value = fct_relevel(value, levels(dmx_trade_cluster$FKMmed_6_cluster))) %>% 
+    select(country, year, cluster = cluster_var) %>% 
+    pivot_longer(cols = -c("country", "year")) %>% 
+    # mutate(value = as.factor(value),
+    #        value = fct_relevel(value, levels(dmx_trade_cluster$FKMmed_6_cluster))) %>% 
     mutate(y=1)
   
   levels(plotted_country$country) <- gsub(" ", "\n", levels(plotted_country$country))
@@ -109,7 +110,46 @@ plot_random_countries_dim_improved = function(complete_data_dimensions, No_count
     scale_x_continuous(limits=c(1940, 2020), breaks=seq(1900, 2020, 10)) + 
     theme(axis.text.x = element_text(angle=90, size=10), strip.text = element_text(size=12, face="bold"),
           axis.text.y = element_blank(),
-          axis.ticks.y=element_blank()) + 
+          axis.ticks.y=element_blank(),
+          legend.position = "bottom") + 
+    xlab("") + 
+    ylab("")
+  return(p1)
+}
+
+plot_random_countries_mp_improved = function(complete_data_dimensions, No_countries, cluster_var) {
+  
+  if (is.numeric(No_countries)==T) {
+    random_countries = sample(n_distinct(complete_data_dimensions$country), No_countries)
+    selected_countries = unique(complete_data_dimensions$country)[random_countries]
+  } else {
+    selected_countries = No_countries
+  }
+  
+  MPlabel = paste("mp_", cluster_var, sep="")
+  
+  plotted_country = complete_data_dimensions %>%
+    filter(country %in% selected_countries) %>%
+    filter(year >= 1945) %>% 
+    mutate(country = fct_relevel(country, No_countries)) %>% 
+    select_at(vars(country, year, starts_with(MPlabel))) %>% 
+    pivot_longer(cols = -c("country", "year")) %>% 
+    mutate(name = gsub(paste(MPlabel, "_", sep=""),"", name))
+  
+  levels(plotted_country$country) <- gsub(" ", "\n", levels(plotted_country$country))
+
+  
+  p1 =   ggplot(plotted_country, aes(x=year,  y=value, fill=name)) + 
+    geom_area(stat="identity")  + 
+    facet_wrap(country~. , nrow=length(selected_countries), strip.position="left") + 
+    theme_bw() +
+    scale_fill_brewer(name="Cluster", type="qual", palette="Paired") +
+    scale_y_continuous(breaks=c(0,1)) +
+    scale_x_continuous(limits=c(1940, 2020), breaks=seq(1900, 2020, 10)) + 
+    theme(axis.text.x = element_text(angle=90, size=10), strip.text = element_text(size=12, face="bold"),
+          axis.text.y = element_blank(),
+          axis.ticks.y=element_blank(),
+          legend.position = "bottom") + 
     xlab("") + 
     ylab("")
   return(p1)
@@ -120,16 +160,20 @@ plot_random_countries_dim_improved = function(complete_data_dimensions, No_count
 create_world_map= function(dataset, selected_var, selected_year, label, mode=F) {
   if (mode == T) {  
     dmy_year = dataset %>% 
-      filter(year>=1974) %>%
+      filter(year>=selected_year[1], year <= selected_year[2]) %>%
       select(country, variable = selected_var) %>%
       mutate(country = as.character(country)) %>% 
       group_by(country) %>% 
       summarise(variable = getmode(variable))
+    
+    year_label = paste(selected_year[1], "-", selected_year[2], sep="")
   } else {
     dmy_year = dataset %>% 
       filter(year == selected_year) %>%
       select(country, variable = selected_var) %>%
       mutate(country = as.character(country))
+    
+    year_label = selected_year
   }
   
   dmy_year$country[dmy_year$country=="Burma/Myanmar"] = "Burma"
@@ -156,7 +200,7 @@ create_world_map= function(dataset, selected_var, selected_year, label, mode=F) 
                              addLegend = T,
                              borderCol= "black",
                              lwd=1, 
-                             mapTitle = paste(label, selected_year),
+                             mapTitle = paste(label, year_label),
                              missingCountryCol="lightgrey",
                              #mapRegion = "Europe"
   )

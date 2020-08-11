@@ -66,6 +66,58 @@ stat_box_count <- function(y, upper_limit = 0.3) {
   )
 }
 
+timedev_plot = function(clustering)  {
+  plot_data = dmx_data_trade_cluster %>% 
+    rename(Cluster = clustering)
+  
+  
+  plot_types_N = dmx_data_trade_cluster %>%
+    dplyr::select(clustering, year) %>%
+    group_by(year) %>%
+    summarise(n_total=n())
+  
+  complete_data_cluster = data.frame(Cluster = rep(unique(plot_data$Cluster), each=length(unique(plot_data$year))),
+                                     year = rep(unique(plot_data$year), length(unique(plot_data$Cluster))))
+  
+  plot_types_yearly = plot_data %>%
+    dplyr::select(Cluster, year) %>%
+    group_by(year, Cluster) %>%
+    summarise(n=n()) %>%
+    ungroup() %>%
+    full_join(complete_data_cluster, by=c("year", "Cluster")) %>%
+    arrange(year, Cluster) %>%
+    mutate(
+      n = ifelse(is.na(n) == T, 0, n)
+    ) %>%
+    left_join(plot_types_N, by="year") %>%
+    mutate(percent = n/n_total)
+  
+  
+  
+  p1 = ggplot(plot_types_yearly, aes(x=year, y=n, fill=Cluster)) + 
+    geom_area(stat="identity", col="black") + 
+    theme_classic() +
+    scale_x_continuous(breaks=seq(1900, 2020, 20)) + 
+    theme(legend.position = "bottom", axis.text.x = element_text(angle=90, size=10), plot.title = element_text(hjust=0.5), plot.subtitle = element_text(hjust=0.5)) + 
+    xlab("") +
+    coord_cartesian(expand=0) + 
+    scale_fill_brewer(name="", type="qual", palette="Paired") + 
+    ggtitle("", subtitle = "Count") + ylab("Count") 
+  
+  
+  p2 = ggplot(plot_types_yearly, aes(x=year, y=percent, fill=Cluster)) + geom_area(stat="identity", col="black", size=0.8) + theme_classic() +
+    scale_x_continuous(breaks=seq(1900, 2000, 20), limits=c(1900, 2020)) + 
+    theme(legend.position = "bottom", axis.text.y = element_text(size=12), axis.text.x = element_text(angle=90, size=12), plot.title = element_text(hjust=0.5), plot.subtitle = element_text(hjust=0.5)) + xlab("") +
+    coord_cartesian(expand=0) + 
+    scale_fill_brewer(name="", type="qual", palette="Paired") + 
+    ggtitle("", subtitle = "Percent") + 
+    scale_y_continuous(labels=percent, name="")
+  
+  fp = ggarrange(p1, p2, common.legend = T, legend = "bottom") %>% 
+    annotate_figure(top = "Temporal Distribution of Democracy Profiles")
+  return(fp)
+}
+
 # Imputation ####
 Plot_Impu = F
 #source("Analyse/Cluster/ImputeCluster.R")
@@ -496,7 +548,7 @@ load((file = "Analyse/Cluster/RObjects/FKM_5_nomean_nomed.Rdata"))
 load((file = "Analyse/Cluster/RObjects/FKM_6_nomean_nomed.Rdata"))
 
 # Visualize Cluster Solutions ####
-
+# PCA ####
 summary(prcomp(cluster_data))
 # FKM
 FKM_2_plot = data.frame(predict(prcomp(cluster_data))[,1:2]) %>%  
@@ -543,20 +595,7 @@ FKM_6_plot = data.frame(predict(prcomp(cluster_data))[,1:2]) %>%
 grid.arrange(FKM_2_plot, FKM_3_plot, FKM_4_plot, FKM_5_plot)
 
 
-# Compare to Clusterboot
-data.frame(predict(prcomp(my_data))[,1:2]) %>% 
-  bind_cols(data.frame(Cluster = cboot_FKM_5$partition)) %>% 
-  ggplot(aes(x=PC1, y=PC2, col=as.factor(Cluster))) +
-  geom_point() +
-  ggtitle("FKM 5")
-
-data.frame(predict(prcomp(cluster_data))[,1:2]) %>% 
-  bind_cols(data.frame(Cluster = cboot_FKM_6$partition)) %>% 
-  ggplot(aes(x=PC1, y=PC2, col=as.factor(Cluster))) +
-  geom_point() +
-  ggtitle("FKM 6")
-
-##
+## Boxplots ####
 dmx_data_trade_cluster = dmx_data_trade %>%
   rename(freedom = freedom_dim_index_trade_off,
          equality = equality_dim_index_trade_off,
@@ -565,10 +604,25 @@ dmx_data_trade_cluster = dmx_data_trade %>%
   bind_cols(data.frame(Cluster3 = as.factor(FKM_3$clus[,1]))) %>%
   bind_cols(data.frame(Cluster4 = as.factor(FKM_4$clus[,1]))) %>%
   bind_cols(data.frame(Cluster5 = as.factor(FKM_5$clus[,1]))) %>% 
-  mutate(Cluster2 = fct_recode(Cluster2, "fEC" = "1", "FeC" = "2")) %>% 
+  mutate(Cluster2 = fct_recode(Cluster2, "fEc" = "1", "Fec" = "2")) %>% 
   mutate(Cluster3 = fct_recode(Cluster3, "fEC" = "2", "FeC" = "1", "FEc" = "3")) %>% 
   mutate(Cluster4 = fct_recode(Cluster4, "fEC" = "3", "FeC" = "4", "Fec" = "2", "fEc" = "1")) %>% 
-  mutate(Cluster5 = fct_recode(Cluster5, "FEC" = "1", "fEC" = "5", "FeC" = "4", "Fec" = "3", "fEc" = "2"))
+  mutate(Cluster5 = fct_recode(Cluster5, "FEC" = "1", "fEC" = "5", "FeC" = "4", "Fec" = "3", "fEc" = "2")) %>% 
+  bind_cols(data.frame(FKM_5$U) %>% 
+              rename(mp_Cluster5_FEC = Clus.1,
+                     mp_Cluster5_fEc = Clus.2,
+                     mp_Cluster5_Fec = Clus.3,
+                     mp_Cluster5_FeC = Clus.4,
+                     mp_Cluster5_fEC = Clus.5))
+
+# PCA to compare
+
+data.frame(predict(prcomp(cluster_data))[,1:2]) %>%  
+  bind_cols(dmx_data_trade_cluster %>%  select(Cluster = Cluster3)) %>% 
+  ggplot(aes(x=PC1, y=PC2, col=Cluster)) +
+  geom_point() +
+  ggtitle("FKM 2") +
+  theme_bw() 
 
 FKM_2_dim_plot = dmx_data_trade_cluster %>% 
   pivot_longer(cols=c("freedom", "equality", "control")) %>% 
@@ -623,56 +677,98 @@ FKM_5_dim_plot = dmx_data_trade_cluster %>%
 ggarrange(FKM_2_dim_plot, FKM_3_dim_plot, FKM_4_dim_plot, FKM_5_dim_plot, nrow=2, ncol=2, common.legend = T, legend = "bottom")
 
 
-PAM_3_dim_plot = dmx_data_trade %>%
-  rename(freedom = freedom_dim_index_trade_off,
-         equality = equality_dim_index_trade_off,
-         control = control_dim_index_trade_off) %>%
-  bind_cols(data.frame(Cluster = as.factor(cboot_PAM_3$partition))) %>% 
-  pivot_longer(cols=c("freedom", "equality", "control")) %>% 
-  mutate(name = fct_relevel(name, "freedom","equality","control")) %>% 
-  ggplot(aes(x=Cluster, y=value, fill=name))+
-  geom_boxplot() +
-  theme_bw() +
-  ggtitle("FKM 3")
 
-PAM_4_dim_plot = dmx_data_trade %>%
-  rename(freedom = freedom_dim_index_trade_off,
-         equality = equality_dim_index_trade_off,
-         control = control_dim_index_trade_off) %>%
-  bind_cols(data.frame(Cluster = as.factor(cboot_PAM_4$partition))) %>% 
-  pivot_longer(cols=c("freedom", "equality", "control")) %>% 
-  mutate(name = fct_relevel(name, "freedom","equality","control")) %>% 
-  ggplot(aes(x=Cluster, y=value, fill=name))+
-  geom_boxplot() +
-  theme_bw() +
-  ggtitle("FKM 4")
-
-PAM_5_dim_plot = dmx_data_trade %>%
-  rename(freedom = freedom_dim_index_trade_off,
-         equality = equality_dim_index_trade_off,
-         control = control_dim_index_trade_off) %>%
-  bind_cols(data.frame(Cluster = as.factor(cboot_PAM_5$partition))) %>% 
-  pivot_longer(cols=c("freedom", "equality", "control")) %>% 
-  mutate(name = fct_relevel(name, "freedom","equality","control")) %>% 
-  ggplot(aes(x=Cluster, y=value, fill=name))+
-  geom_boxplot() +
-  theme_bw() +
-  ggtitle("FKM 5")
+# Descriptive Statistics ####
+countries_cluster = dmx_trade_cluster %>% 
+  select(FKMmed_6_cluster, country) %>% 
+  group_by(FKMmed_6_cluster) %>% 
+  distinct(country) %>% 
+  summarise(No = n())
 
 
-PAM_6_dim_plot = dmx_data_trade %>%
-  rename(freedom = freedom_dim_index_trade_off,
-         equality = equality_dim_index_trade_off,
-         control = control_dim_index_trade_off) %>%
-  bind_cols(data.frame(Cluster = as.factor(cboot_PAM_6$partition))) %>% 
-  pivot_longer(cols=c("freedom", "equality", "control")) %>% 
-  mutate(name = fct_relevel(name, "freedom","equality","control")) %>% 
-  ggplot(aes(x=Cluster, y=value, fill=name))+
-  geom_boxplot() + 
-  theme_bw() +
-  ggtitle("FKM 6")
+cluster_year = dmx_trade_cluster %>% 
+  select(FKMmed_6_cluster, country, year) %>% 
+  group_by(FKMmed_6_cluster, country) %>% 
+  summarise(No = n()) %>% 
+  summarise(mean = round(mean(No), 0),
+            min = min(No),
+            max = max(No))
 
-grid.arrange(PAM_3_dim_plot, PAM_4_dim_plot, PAM_5_dim_plot, PAM_6_dim_plot, nrow=4)
+string_clusters = paste(countries_cluster$FKMmed_6_cluster,
+                         ": ",
+                         countries_cluster$No, 
+                         " countries",
+                         " (average years: ", cluster_year$mean,
+                         ")", sep="")
+
+
+write.csv(paste(string_clusters, collapse = "; "), "Analyse/Cluster/Text/cluster_info.csv", row.names = F, fileEncoding = "UTF-8")
+
+string_clusters_year = dmx_trade_cluster %>% 
+  select(FKMmed_6_cluster, country) %>% 
+  group_by(FKMmed_6_cluster) %>% 
+  distinct(country) %>% 
+  arrange(FKMmed_6_cluster) %>% 
+  left_join(dmx_trade_cluster %>% 
+              select(FKMmed_6_cluster, country) %>% 
+              group_by(FKMmed_6_cluster, country) %>%
+              summarise(No = n()), 
+            by=c("FKMmed_6_cluster", "country")) %>% 
+  mutate(string = paste(country, " (", No, ")", sep=""))
+write.csv(paste(string_clusters_year$string, collapse = ", "), "Analyse/Cluster/Text/cluster_country_year.csv", row.names = F, fileEncoding = "UTF-8")
+
+
+
+
+### Visualization of Democracy Profiles
+
+dmx_data_trade_cluster
+
+# Plotting: Random Countries
+
+plot_random_countries_dim_improved(dmx_data_trade_cluster, c("United Kingdom", "Netherlands", "United States of America", "Germany", "Denmark"), "Cluster5")
+plot_random_countries_dim_improved(dmx_data_trade_cluster, c("Cape Verde","Ghana","New Zealand", "Austria", "Switzerland", "Turkey"), "Cluster5")
+plot_random_countries_dim_improved(dmx_data_trade_cluster, c("United Kingdom", "Germany", "New Zealand", "Switzerland"), "Cluster5")
+plot_random_countries_dim_improved(dmx_data_trade_cluster, c("United Kingdom", "Germany", "New Zealand", "Switzerland"), "Cluster2")
+
+plot_random_countries_dim_improved(dmx_data_trade_cluster, 
+                                   c("United Kingdom", "Netherlands", "United States of America", "Germany", "Denmark", "Sweden"), 
+                                   "Cluster2")
+plot_random_countries_mp_improved(dmx_data_trade_cluster , c("United States of America", "United Kingdom", "Germany", "New Zealand", "Switzerland"), "Cluster5")
+plot_random_countries_mp_improved(dmx_data_trade_cluster , c("India","Ghana","New Zealand", "Austria", "Switzerland", "Turkey"), "Cluster5")
+
+# Plotting: Time Development ####
+
+
+timedev_plot("Cluster2")
+timedev_plot("Cluster3")
+timedev_plot("Cluster4")
+timedev_plot("Cluster5")
+
+# Plotting World Map ####
+create_world_map(dmx_data_trade_cluster, "Cluster2", "1974-2017", 
+                 "Spatial Distribution of Democracy Profiles \n", mode=T)
+create_world_map(dmx_data_trade_cluster, "Cluster2", "2017", 
+                 "Spatial Distribution of Democracy Profiles \n", mode=F)
+
+create_world_map(dmx_data_trade_cluster, "Cluster3", "1974-2017", 
+                 "Spatial Distribution of Democracy Profiles \n", mode=T)
+create_world_map(dmx_data_trade_cluster, "Cluster3", "2017", 
+                 "Spatial Distribution of Democracy Profiles \n", mode=F)
+
+create_world_map(dmx_data_trade_cluster, "Cluster4", "1974-2017", 
+                 "Spatial Distribution of Democracy Profiles \n", mode=T)
+create_world_map(dmx_data_trade_cluster, "Cluster4", "2017", 
+                 "Spatial Distribution of Democracy Profiles \n", mode=F)
+
+par(mfrow=c(1,1))
+create_world_map(dmx_data_trade_cluster, "Cluster5", c(1900, 1926), 
+                 "Spatial Distribution of Democracy Profiles \n", mode=T)
+create_world_map(dmx_data_trade_cluster, "Cluster5", c(1945, 1962), 
+                 "Spatial Distribution of Democracy Profiles \n", mode=T)
+create_world_map(dmx_data_trade_cluster, "Cluster5", c(1974, 2017), 
+                 "Spatial Distribution of Democracy Profiles \n", mode=T)
+
 
 # Create Dataset ####
 
@@ -690,7 +786,7 @@ dmx_trade_cluster = dmx_data_trade %>%
                                "FeC" = "1",  
                                "fEC" = "2",  
                                "FEc" = "3")
-    ) %>% 
+  ) %>% 
   rename(
     FKM_3_mb_FeC = Clus.1,
     FKM_3_mb_fEC = Clus.2,
@@ -755,165 +851,8 @@ dmx_trade_cluster = dmx_data_trade %>%
   select(country, country_text_id, year, regions, na_count, everything())
 
 
-lab_FKM_3_dim_plot = dmx_trade_cluster %>%
-  pivot_longer(cols=c("freedom", "equality", "control")) %>% 
-  mutate(name = fct_relevel(name, "freedom","equality","control")) %>% 
-  ggplot(aes(x=FKM_3_cluster, y=value, fill=name))+
-  geom_boxplot() +
-  theme_bw()
-
-lab_FKM_4_dim_plot = dmx_trade_cluster %>%
-  pivot_longer(cols=c("freedom", "equality", "control")) %>% 
-  mutate(name = fct_relevel(name, "freedom","equality","control")) %>% 
-  ggplot(aes(x=FKM_4_cluster, y=value, fill=name))+
-  geom_boxplot() +
-  theme_bw()
-lab_FKM_5_dim_plot = dmx_trade_cluster %>%
-  pivot_longer(cols=c("freedom", "equality", "control")) %>% 
-  mutate(name = fct_relevel(name, "freedom","equality","control")) %>% 
-  ggplot(aes(x=FKM_5_cluster, y=value, fill=name)) +
-  geom_boxplot() +
-  theme_bw()
-lab_FKM_6_dim_plot = dmx_trade_cluster %>%
-  pivot_longer(cols=c("freedom", "equality", "control")) %>% 
-  mutate(name = fct_relevel(name, "freedom","equality","control")) %>% 
-  ggplot(aes(x=FKM_6_cluster, y=value, fill=name))+
-  geom_boxplot() +
-  theme_bw()
-
-
-
-grid.arrange(lab_FKM_3_dim_plot, lab_FKM_4_dim_plot, lab_FKM_5_dim_plot, lab_FKM_6_dim_plot, nrow=4)
-
 # CSV Save
 write.csv(dmx_trade_cluster, file="Datasets/performance_data/dmx_trade_cluster_v8.csv", row.names = F, fileEncoding ="UTF-8")
-
-
-# Basic information about clusters:
-countries_cluster = dmx_trade_cluster %>% 
-  select(FKMmed_6_cluster, country) %>% 
-  group_by(FKMmed_6_cluster) %>% 
-  distinct(country) %>% 
-  summarise(No = n())
-
-
-cluster_year = dmx_trade_cluster %>% 
-  select(FKMmed_6_cluster, country, year) %>% 
-  group_by(FKMmed_6_cluster, country) %>% 
-  summarise(No = n()) %>% 
-  summarise(mean = round(mean(No), 0),
-            min = min(No),
-            max = max(No))
-
-string_clusters = paste(countries_cluster$FKMmed_6_cluster,
-                         ": ",
-                         countries_cluster$No, 
-                         " countries",
-                         " (average years: ", cluster_year$mean,
-                         ")", sep="")
-
-
-write.csv(paste(string_clusters, collapse = "; "), "Analyse/Cluster/Text/cluster_info.csv", row.names = F, fileEncoding = "UTF-8")
-
-string_clusters_year = dmx_trade_cluster %>% 
-  select(FKMmed_6_cluster, country) %>% 
-  group_by(FKMmed_6_cluster) %>% 
-  distinct(country) %>% 
-  arrange(FKMmed_6_cluster) %>% 
-  left_join(dmx_trade_cluster %>% 
-              select(FKMmed_6_cluster, country) %>% 
-              group_by(FKMmed_6_cluster, country) %>%
-              summarise(No = n()), 
-            by=c("FKMmed_6_cluster", "country")) %>% 
-  mutate(string = paste(country, " (", No, ")", sep=""))
-write.csv(paste(string_clusters_year$string, collapse = ", "), "Analyse/Cluster/Text/cluster_country_year.csv", row.names = F, fileEncoding = "UTF-8")
-
-# Split by Classification
-
-dmx_trade_cluster %>%
-  mutate(cluster = as.factor(FKMmed_6_cluster)) %>%
-  dplyr::select(freedom, equality, control, cluster, classification_core) %>%
-  melt(id.vars=c("classification_core", "cluster")) %>% 
-  ggplot(aes(x=cluster, y=value, fill=variable)) + geom_boxplot()  + theme_bw() +
-  ylim(0.25,1) + 
-  stat_summary(fun.data = stat_box_count, geom = "text", hjust = 0.5, vjust = 0.9) +
-  ylab("") + 
-  xlab("Cluster")  + 
-  scale_fill_discrete(name = "Dimensions", labels=c("Freedom", "Equality", "Control")) +
-  ggtitle(paste("Boxplot ", "PAM (5 Clusters)", sep="")) + 
-  theme(plot.title = element_text(hjust=0.5))  + 
-  geom_vline(xintercept = 1.5) + geom_vline(xintercept = 2.5) + geom_vline(xintercept = 3.5) +
-  geom_vline(xintercept = 4.5) +
-  facet_wrap(classification_core ~ .)
-
-
-### Visualization of Democracy Profiles
-
-# Plotting: Random Countries
-# plot_random_countries_dim_improved(dmx_trade_cluster, 5)
-# plot_random_countries_dim_improved(dmx_trade_cluster, c("Germany", "Sweden","United Kingdom", "New Zealand"))
-# plot_random_countries_dim_improved(dmx_trade_cluster, c("United States of America", "Switzerland", "Venezuela"))
-
-plot_random_countries_dim_improved(dmx_trade_cluster, c("United Kingdom", "Netherlands", "United States of America", "Germany", "Denmark"))
-plot_random_countries_dim_improved(dmx_trade_cluster, c("Cape Verde","Ghana","New Zealand", "Austria", "Switzerland", "Turkey"))
-plot_random_countries_dim_improved(dmx_trade_cluster, c("United Kingdom", "Germany", "New Zealand", "Switzerland"))
-
-
-# Plotting: Time Development ####
-
-plot_types_N = dmx_trade_cluster %>%
-  dplyr::select(FKMmed_6_cluster, year) %>%
-  group_by(year) %>%
-  summarise(n_total=n())
-
-complete_data_cluster = data.frame(FKMmed_6_cluster = rep(unique(dmx_trade_cluster$FKMmed_6_cluster), each=length(unique(dmx_trade_cluster$year))),
-                                   year = rep(unique(dmx_trade_cluster$year), length(unique(dmx_trade_cluster$FKMmed_6_cluster))))
-
-plot_types_yearly = dmx_trade_cluster %>%
-  dplyr::select(FKMmed_6_cluster, year) %>%
-  group_by(year, FKMmed_6_cluster) %>%
-  summarise(n=n()) %>%
-  ungroup() %>%
-  full_join(complete_data_cluster, by=c("year", "FKMmed_6_cluster")) %>%
-  arrange(year, FKMmed_6_cluster) %>%
-  mutate(
-    n = ifelse(is.na(n) == T, 0, n)
-  ) %>%
-  left_join(plot_types_N, by="year") %>%
-  mutate(percent = n/n_total)
-
-
-
-ggplot(plot_types_yearly, aes(x=year, y=n, fill=FKMmed_6_cluster)) + 
-  geom_area(stat="identity", col="black") + 
-  theme_classic() +
-  scale_x_continuous(breaks=seq(1900, 2020, 20)) + 
-  theme(legend.position = "bottom", axis.text.x = element_text(angle=90, size=10), plot.title = element_text(hjust=0.5), plot.subtitle = element_text(hjust=0.5)) + 
-  xlab("") +
-  coord_cartesian(expand=0) + 
-  scale_fill_brewer(name="", type="qual", palette="Paired") + 
-  ggtitle("Temporal Distribution of Democracy Profiles", subtitle = "Count") + ylab("Count") 
-
-
-ggplot(plot_types_yearly, aes(x=year, y=percent, fill=FKMmed_6_cluster)) + geom_area(stat="identity", col="black", size=0.8) + theme_classic() +
-  scale_x_continuous(breaks=seq(1900, 2000, 20), limits=c(1900, 2020)) + 
-  theme(legend.position = "bottom", axis.text.y = element_text(size=12), axis.text.x = element_text(angle=90, size=12), plot.title = element_text(hjust=0.5), plot.subtitle = element_text(hjust=0.5)) + xlab("") +
-  coord_cartesian(expand=0) + 
-  scale_fill_brewer(name="", type="qual", palette="Paired") + 
-  ggtitle("Temporal Distribution of Democracy Profiles", subtitle = "Percent") + 
-  scale_y_continuous(labels=percent, name="")
-
-
-# Plotting World Map ####
-create_world_map(dmx_trade_cluster, "FKMmed_3_cluster", "1974-2017", 
-                 "Spatial Distribution of Democracy Profiles \n", mode=T)
-create_world_map(dmx_trade_cluster, "FKMmed_3_cluster", "2017", 
-                 "Spatial Distribution of Democracy Profiles \n", mode=F)
-
-create_world_map(dmx_trade_cluster, "FKMmed_6_cluster", "1974-2017", 
-                 "Spatial Distribution of Democracy Profiles \n", mode=T)
-create_world_map(dmx_trade_cluster, "FKMmed_6_cluster", "2017", 
-                 "Spatial Distribution of Democracy Profiles \n", mode=F)
 
 
 # Cleaning
