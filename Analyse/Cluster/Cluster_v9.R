@@ -191,8 +191,6 @@ cluster_data = dmx_data_trade %>%
   select(-mean_dim_uv) %>% 
   select_at(vars(ends_with("_uv")))
 
-cluster_data_dist = dist(cluster_data, method = "euclidean")
-
 
 # Cluster Benchmark ####
 # I use the modified version
@@ -470,7 +468,7 @@ grid.arrange(a1_ak,a2_ak,a3_ak,a4_ak)
 
 # Stability ####
 # Fuzzy K Means
-cboot_FKM_2 <- clusterboot(cluster_data,B=50,bootmethod=
+cboot_FKM_2 <- clusterboot(cluster_data,B=100,bootmethod=
                              c("boot"),clustermethod=interface_FKM,
                            k=2, seed=15555)
 # save(cboot_FKM_2, file = "Analyse/Cluster/RObjects/cboot_FKM_2_nomean_nomed.Rdata")
@@ -478,28 +476,28 @@ load(file = "Analyse/Cluster/RObjects/cboot_FKM_2_nomean_nomed.Rdata")
 print(cboot_FKM_2)
 
 
-cboot_FKM_3 <- clusterboot(cluster_data,B=50,bootmethod=
+cboot_FKM_3 <- clusterboot(cluster_data,B=100,bootmethod=
                           c("boot"),clustermethod=interface_FKM,
                         k=3, seed=15555)
 # save(cboot_FKM_3, file = "Analyse/Cluster/RObjects/cboot_FKM_3_nomean_nomed.Rdata")
 load(file = "Analyse/Cluster/RObjects/cboot_FKM_3_nomean_nomed.Rdata")
 print(cboot_FKM_3)
 
-cboot_FKM_4 <- clusterboot(cluster_data,B=50,bootmethod=
+cboot_FKM_4 <- clusterboot(cluster_data,B=100,bootmethod=
                              c("boot"),clustermethod=interface_FKM,
                            k=4, seed=15555)
 # save(cboot_FKM_4, file = "Analyse/Cluster/RObjects/cboot_FKM_4_nomean_nomed.Rdata")
 load(file = "Analyse/Cluster/RObjects/cboot_FKM_4_nomean_nomed.Rdata")
 print(cboot_FKM_4)
 
-cboot_FKM_5 <- clusterboot(cluster_data,B=50,bootmethod=
+cboot_FKM_5 <- clusterboot(cluster_data,B=100,bootmethod=
                              c("boot"),clustermethod=interface_FKM,
                            k=5, seed=15555)
 # save(cboot_FKM_5, file = "Analyse/Cluster/RObjects/cboot_FKM_5_nomean_nomed.Rdata")
 load(file = "Analyse/Cluster/RObjects/cboot_FKM_5_nomean_nomed.Rdata")
 print(cboot_FKM_5)
 
-cboot_FKM_6 <- clusterboot(cluster_data,B=50,bootmethod=
+cboot_FKM_6 <- clusterboot(cluster_data,B=100,bootmethod=
                              c("boot"),clustermethod=interface_FKM,
                            k=6, seed=15555)
 # save(cboot_FKM_6, file = "Analyse/Cluster/RObjects/cboot_FKM_6_nomean_nomed.Rdata")
@@ -530,7 +528,7 @@ cboot_PAM_6 <- clusterboot(cluster_data,B=50,bootmethod=
 cboot_PAM_6
 
 
-# Cluster the Whole Dataset ####
+# Extract Clusters ####
 FKM_2 = FKM(X = cluster_data, 2, maxit=1400, stand=0, RS=30, seed=1234)
 FKM_3 = FKM(X = cluster_data, 3, maxit=1400, stand=0, RS=30, seed=1234)
 FKM_4 = FKM(X = cluster_data, 4, maxit=1400, stand=0, RS=30, seed=1234)
@@ -596,7 +594,7 @@ grid.arrange(FKM_2_plot, FKM_3_plot, FKM_4_plot, FKM_5_plot)
 
 
 ## Boxplots ####
-dmx_data_trade_cluster = dmx_data_trade %>%
+dmx_trade_cluster = dmx_data_trade %>%
   rename(freedom = freedom_dim_index_trade_off,
          equality = equality_dim_index_trade_off,
          control = control_dim_index_trade_off) %>%
@@ -608,23 +606,35 @@ dmx_data_trade_cluster = dmx_data_trade %>%
   mutate(Cluster3 = fct_recode(Cluster3, "fEC" = "2", "FeC" = "1", "FEc" = "3")) %>% 
   mutate(Cluster4 = fct_recode(Cluster4, "fEC" = "3", "FeC" = "4", "Fec" = "2", "fEc" = "1")) %>% 
   mutate(Cluster5 = fct_recode(Cluster5, "FEC" = "1", "fEC" = "5", "FeC" = "4", "Fec" = "3", "fEc" = "2")) %>% 
+  bind_cols(data.frame(FKM_2$U) %>% 
+              rename(mp_Cluster2_fEc = Clus.1,
+                     mp_Cluster2_Fec = Clus.2)) %>% 
+  bind_cols(data.frame(FKM_3$U) %>% 
+              rename(mp_Cluster3_FeC = Clus.1,
+                     mp_Cluster3_fEC = Clus.2,
+                     mp_Cluster3_FEc = Clus.3)) %>% 
+  bind_cols(data.frame(FKM_4$U) %>% 
+              rename(mp_Cluster4_fEc = Clus.1,
+                     mp_Cluster4_Fec = Clus.2,
+                     mp_Cluster4_fEC = Clus.3,
+                     mp_Cluster4_FeC = Clus.4)) %>% 
   bind_cols(data.frame(FKM_5$U) %>% 
               rename(mp_Cluster5_FEC = Clus.1,
                      mp_Cluster5_fEc = Clus.2,
                      mp_Cluster5_Fec = Clus.3,
                      mp_Cluster5_FeC = Clus.4,
-                     mp_Cluster5_fEC = Clus.5))
-
+                     mp_Cluster5_fEC = Clus.5)) 
+ 
 # PCA to compare
 
 data.frame(predict(prcomp(cluster_data))[,1:2]) %>%  
-  bind_cols(dmx_data_trade_cluster %>%  select(Cluster = Cluster3)) %>% 
+  bind_cols(dmx_trade_cluster %>%  select(Cluster = Cluster3)) %>% 
   ggplot(aes(x=PC1, y=PC2, col=Cluster)) +
   geom_point() +
   ggtitle("FKM 2") +
   theme_bw() 
 
-FKM_2_dim_plot = dmx_data_trade_cluster %>% 
+FKM_2_dim_plot = dmx_trade_cluster %>% 
   pivot_longer(cols=c("freedom", "equality", "control")) %>% 
   mutate(name = fct_relevel(name, "freedom","equality","control")) %>% 
   ggplot(aes(x=Cluster2, y=value, fill=name))+
@@ -636,7 +646,7 @@ FKM_2_dim_plot = dmx_data_trade_cluster %>%
   xlab("") +
   ylab("Democratic Quality")
 
-FKM_3_dim_plot = dmx_data_trade_cluster %>% 
+FKM_3_dim_plot = dmx_trade_cluster %>% 
   pivot_longer(cols=c("freedom", "equality", "control")) %>% 
   mutate(name = fct_relevel(name, "freedom","equality","control")) %>% 
   ggplot(aes(x=Cluster3, y=value, fill=name))+
@@ -648,7 +658,7 @@ FKM_3_dim_plot = dmx_data_trade_cluster %>%
   xlab("") +
   ylab("Democratic Quality")
 
-FKM_4_dim_plot = dmx_data_trade_cluster %>% 
+FKM_4_dim_plot = dmx_trade_cluster %>% 
   pivot_longer(cols=c("freedom", "equality", "control")) %>% 
   mutate(name = fct_relevel(name, "freedom","equality","control")) %>% 
   ggplot(aes(x=Cluster4, y=value, fill=name))+
@@ -660,7 +670,7 @@ FKM_4_dim_plot = dmx_data_trade_cluster %>%
   xlab("") +
   ylab("Democratic Quality")
 
-FKM_5_dim_plot = dmx_data_trade_cluster %>% 
+FKM_5_dim_plot = dmx_trade_cluster %>% 
   pivot_longer(cols=c("freedom", "equality", "control")) %>% 
   mutate(name = fct_relevel(name, "freedom","equality","control")) %>% 
   ggplot(aes(x=Cluster5, y=value, fill=name))+
@@ -722,20 +732,18 @@ write.csv(paste(string_clusters_year$string, collapse = ", "), "Analyse/Cluster/
 
 ### Visualization of Democracy Profiles
 
-dmx_data_trade_cluster
-
 # Plotting: Random Countries
 
-plot_random_countries_dim_improved(dmx_data_trade_cluster, c("United Kingdom", "Netherlands", "United States of America", "Germany", "Denmark"), "Cluster5")
-plot_random_countries_dim_improved(dmx_data_trade_cluster, c("Cape Verde","Ghana","New Zealand", "Austria", "Switzerland", "Turkey"), "Cluster5")
-plot_random_countries_dim_improved(dmx_data_trade_cluster, c("United Kingdom", "Germany", "New Zealand", "Switzerland"), "Cluster5")
-plot_random_countries_dim_improved(dmx_data_trade_cluster, c("United Kingdom", "Germany", "New Zealand", "Switzerland"), "Cluster2")
+plot_random_countries_dim_improved(dmx_trade_cluster, c("United Kingdom", "Netherlands", "United States of America", "Germany", "Denmark"), "Cluster5")
+plot_random_countries_dim_improved(dmx_trade_cluster, c("Cape Verde","Ghana","New Zealand", "Austria", "Switzerland", "Turkey"), "Cluster5")
+plot_random_countries_dim_improved(dmx_trade_cluster, c("United Kingdom", "Germany", "New Zealand", "Switzerland"), "Cluster5")
+plot_random_countries_dim_improved(dmx_trade_cluster, c("United Kingdom", "Germany", "New Zealand", "Switzerland"), "Cluster2")
 
-plot_random_countries_dim_improved(dmx_data_trade_cluster, 
+plot_random_countries_dim_improved(dmx_trade_cluster, 
                                    c("United Kingdom", "Netherlands", "United States of America", "Germany", "Denmark", "Sweden"), 
                                    "Cluster2")
-plot_random_countries_mp_improved(dmx_data_trade_cluster , c("United States of America", "United Kingdom", "Germany", "New Zealand", "Switzerland"), "Cluster5")
-plot_random_countries_mp_improved(dmx_data_trade_cluster , c("India","Ghana","New Zealand", "Austria", "Switzerland", "Turkey"), "Cluster5")
+plot_random_countries_mp_improved(dmx_trade_cluster , c("United States of America", "United Kingdom", "Germany", "New Zealand", "Switzerland"), "Cluster5")
+plot_random_countries_mp_improved(dmx_trade_cluster , c("India","Ghana","New Zealand", "Austria", "Switzerland", "Turkey"), "Cluster5")
 
 # Plotting: Time Development ####
 
@@ -746,113 +754,33 @@ timedev_plot("Cluster4")
 timedev_plot("Cluster5")
 
 # Plotting World Map ####
-create_world_map(dmx_data_trade_cluster, "Cluster2", "1974-2017", 
+create_world_map(dmx_trade_cluster, "Cluster2", "1974-2017", 
                  "Spatial Distribution of Democracy Profiles \n", mode=T)
-create_world_map(dmx_data_trade_cluster, "Cluster2", "2017", 
+create_world_map(dmx_trade_cluster, "Cluster2", "2017", 
                  "Spatial Distribution of Democracy Profiles \n", mode=F)
 
-create_world_map(dmx_data_trade_cluster, "Cluster3", "1974-2017", 
+create_world_map(dmx_trade_cluster, "Cluster3", "1974-2017", 
                  "Spatial Distribution of Democracy Profiles \n", mode=T)
-create_world_map(dmx_data_trade_cluster, "Cluster3", "2017", 
+create_world_map(dmx_trade_cluster, "Cluster3", "2017", 
                  "Spatial Distribution of Democracy Profiles \n", mode=F)
 
-create_world_map(dmx_data_trade_cluster, "Cluster4", "1974-2017", 
+create_world_map(dmx_trade_cluster, "Cluster4", "1974-2017", 
                  "Spatial Distribution of Democracy Profiles \n", mode=T)
-create_world_map(dmx_data_trade_cluster, "Cluster4", "2017", 
+create_world_map(dmx_trade_cluster, "Cluster4", "2017", 
                  "Spatial Distribution of Democracy Profiles \n", mode=F)
 
 par(mfrow=c(1,1))
-create_world_map(dmx_data_trade_cluster, "Cluster5", c(1900, 1926), 
+create_world_map(dmx_trade_cluster, "Cluster5", c(1900, 1926), 
                  "Spatial Distribution of Democracy Profiles \n", mode=T)
-create_world_map(dmx_data_trade_cluster, "Cluster5", c(1945, 1962), 
+create_world_map(dmx_trade_cluster, "Cluster5", c(1945, 1962), 
                  "Spatial Distribution of Democracy Profiles \n", mode=T)
-create_world_map(dmx_data_trade_cluster, "Cluster5", c(1974, 2017), 
+create_world_map(dmx_trade_cluster, "Cluster5", c(1974, 2017), 
                  "Spatial Distribution of Democracy Profiles \n", mode=T)
 
 
-# Create Dataset ####
-
-dmx_trade_cluster = dmx_data_trade %>%
-  select(country, year, regions,
-         classification_core,
-         freedom = freedom_dim_index_trade_off,
-         equality = equality_dim_index_trade_off,
-         control = control_dim_index_trade_off) %>% 
-  bind_cols(data.frame(FKM_3_cluster = as.factor(FKM_3$clus[,1]))) %>% 
-  bind_cols(data.frame(round(FKM_3$U,3))) %>% 
-  mutate(
-    FKM_3_cluster = as.factor(FKM_3_cluster),
-    FKM_3_cluster = fct_recode(FKM_3_cluster, 
-                               "FeC" = "1",  
-                               "fEC" = "2",  
-                               "FEc" = "3")
-  ) %>% 
-  rename(
-    FKM_3_mb_FeC = Clus.1,
-    FKM_3_mb_fEC = Clus.2,
-    FKM_3_mb_FEc = Clus.3
-  )  %>% 
-  bind_cols(data.frame(FKM_4_cluster = as.factor(FKM_4$clus[,1]))) %>% 
-  bind_cols(data.frame(round(FKM_4$U,3))) %>% 
-  mutate(
-    FKM_4_cluster = as.factor(FKM_4_cluster),
-    FKM_4_cluster = fct_recode(FKM_4_cluster, 
-                               "fEc" = "1",  
-                               "FEc" = "2",  
-                               "fEC" = "3",  
-                               "FeC" = "4")
-  ) %>% 
-  rename(
-    FKM_4_mb_fEc = Clus.1,
-    FKM_4_mb_FEc = Clus.2,
-    FKM_4_mb_fEC = Clus.3,
-    FKM_4_mb_FeC = Clus.4
-  )   %>% 
-  bind_cols(data.frame(FKM_5_cluster = as.factor(FKM_5$clus[,1]))) %>% 
-  bind_cols(data.frame(round(FKM_5$U,3))) %>% 
-  mutate(
-    FKM_5_cluster = as.factor(FKM_5_cluster),
-    FKM_5_cluster = fct_recode(FKM_5_cluster, 
-                               "FEC" = "1",  
-                               "fEc" = "2",  
-                               "Fec" = "3",  
-                               "FeC" = "4",  
-                               "fEC" = "5")
-  ) %>% 
-  rename(
-    FKM_5_mb_FEC = Clus.1,
-    FKM_5_mb_fEc = Clus.2,
-    FKM_5_mb_Fec = Clus.3,
-    FKM_5_mb_FeC = Clus.4,
-    FKM_5_mb_fEC = Clus.5
-  )  %>% 
-  bind_cols(data.frame(FKM_6_cluster = as.factor(FKM_6$clus[,1]))) %>% 
-  bind_cols(data.frame(round(FKM_6$U,3))) %>% 
-  mutate(
-    FKM_6_cluster = as.factor(FKM_6_cluster),
-    FKM_6_cluster = fct_recode(FKM_6_cluster, 
-                               "FeC" = "1",  
-                               "FEC" = "2",  
-                               "Fec" = "3",  
-                               "fEC" = "4",  
-                               "fEc" = "5",  
-                               "FEc" = "6")
-  ) %>% 
-  rename(
-    FKM_6_mb_FeC = Clus.1,
-    FKM_6_mb_FEC = Clus.2,
-    FKM_6_mb_Fec = Clus.3,
-    FKM_6_mb_fEC = Clus.4,
-    FKM_6_mb_fEc = Clus.5,
-    FKM_6_mb_FEc = Clus.6
-  ) %>% 
-  left_join(V_dem %>% select(country, year, country_text_id), by=c("country", "year")) %>%
-  left_join(dmx_data_trade %>% select(country, year, na_count), by=c("country", "year")) %>% 
-  select(country, country_text_id, year, regions, na_count, everything())
-
-
+# Save Dataset ####
 # CSV Save
-write.csv(dmx_trade_cluster, file="Datasets/performance_data/dmx_trade_cluster_v8.csv", row.names = F, fileEncoding ="UTF-8")
+write.csv(dmx_trade_cluster, file="Datasets/performance_data/dmx_trade_cluster_v9.csv", row.names = F, fileEncoding ="UTF-8")
 
 
 # Cleaning

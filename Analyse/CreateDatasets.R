@@ -12,7 +12,7 @@ Plot_Impu = F
 # source("Analyse/Cluster/Cluster_v5.R")
 # 
 
-dmx_trade_cluster = fread(file="Datasets/performance_data/dmx_trade_cluster_v8.csv", encoding = "UTF-8")
+dmx_trade_cluster = fread(file="Datasets/performance_data/dmx_trade_cluster_v9.csv", encoding = "UTF-8")
   # mutate(cluster_label_1st = relevel(as.factor(cluster_label_1st), ref="FeC")) %>% 
   # arrange(country, year) %>% 
   # rename(X_fEC = X1,
