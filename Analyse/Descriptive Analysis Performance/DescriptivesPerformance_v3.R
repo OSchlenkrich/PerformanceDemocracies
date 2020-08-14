@@ -644,7 +644,7 @@ create_world_map_cont(performance_all %>%
 
 # SOCIAL ####
 # Eco Inequality ####
-variable_equ_env = "eco_inequal_soc_index"
+variable_equ_env = "eco_equal_soc_index"
 # Ranking 
 table_equ = get_table(variable_equ_env) %>% 
   left_join(calculate_trend(variable_equ_env), by="country_text_id") %>% 
@@ -660,17 +660,17 @@ top_performer_table(variable_equ_env)
 
 
 # Development
-grid.arrange(development_plot(variable_equ_env, "Social Performance - \nEconomic Inequality (All Countries)", position="bottom"),
-             development_plot(variable_equ_env, "Social Performance - \nEconomic Inequality (OECD Founder)", OECD=T, "bottom"),
-             variationplot(variable_equ_env, "Social Performance - \nEconomic Inequality (All Countries)", OECD=F),
-             variationplot(variable_equ_env, "Social Performance - \nEconomic Inequality (OECD Founder)", OECD=T)
+grid.arrange(development_plot(variable_equ_env, "Social Performance - \nEconomic Equality (All Countries)", position="bottom"),
+             development_plot(variable_equ_env, "Social Performance - \nEconomic Equality (OECD Founder)", OECD=T, "bottom"),
+             variationplot(variable_equ_env, "Social Performance - \nEconomic Equality (All Countries)", OECD=F),
+             variationplot(variable_equ_env, "Social Performance - \nEconomic Equality (OECD Founder)", OECD=T)
 )
 lineplot(variable_equ_env, OECD=F)
 lineplot(variable_equ_env, OECD=T)
 
 
 # Social Inequality ####
-variable_squ_env = "soc_inequal_soc_index"
+variable_squ_env = "soc_equal_soc_index"
 
 # Ranking 
 table_squ = get_table(variable_squ_env) %>% 
@@ -695,10 +695,10 @@ performance_all %>%
   filter(year >= 1995)
 
 # Development
-grid.arrange(development_plot(variable_squ_env, "Social Performance - \nSocial Inequality (All Countries)", position="bottom"),
-             development_plot(variable_squ_env, "Social Performance - \nSocial Inequality (OECD Founder)", OECD=T, "bottom"),
-             variationplot(variable_squ_env, "Social Performance - \nSocial Inequality (All Countries)", OECD=F),
-             variationplot(variable_squ_env, "Social Performance - \nSocial Inequality (OECD Founder)", OECD=T)
+grid.arrange(development_plot(variable_squ_env, "Social Performance - \nSocial Equality (All Countries)", position="bottom"),
+             development_plot(variable_squ_env, "Social Performance - \nSocial Equality (OECD Founder)", OECD=T, "bottom"),
+             variationplot(variable_squ_env, "Social Performance - \nSocial Equality (All Countries)", OECD=F),
+             variationplot(variable_squ_env, "Social Performance - \nSocial Equality (OECD Founder)", OECD=T)
 )
 lineplot(variable_squ_env, OECD=F)
 lineplot(variable_squ_env, OECD=T)

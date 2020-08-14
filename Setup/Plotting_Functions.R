@@ -141,14 +141,14 @@ plot_random_countries_mp_improved = function(complete_data_dimensions, No_countr
   
   p1 =   ggplot(plotted_country, aes(x=year,  y=value, fill=name)) + 
     geom_area(stat="identity")  + 
-    facet_wrap(country~. , nrow=length(selected_countries), strip.position="left") + 
+    facet_wrap(country~. , nrow=length(selected_countries), strip.position="right") + 
     theme_bw() +
     scale_fill_brewer(name="Cluster", type="qual", palette="Paired") +
-    scale_y_continuous(breaks=c(0,1)) +
+    scale_y_continuous(labels=percent) +
     scale_x_continuous(limits=c(1940, 2020), breaks=seq(1900, 2020, 10)) + 
     theme(axis.text.x = element_text(angle=90, size=10), strip.text = element_text(size=12, face="bold"),
-          axis.text.y = element_blank(),
-          axis.ticks.y=element_blank(),
+          # axis.text.y = element_blank(),
+          # axis.ticks.y=element_blank(),
           legend.position = "bottom") + 
     xlab("") + 
     ylab("")
@@ -238,8 +238,22 @@ NA_plot = function(data, name_data, var_selection = NULL) {
 #* sd(pol_att_sub_dummy$age)
 # Odds Ratio Plot
 
-odds_ratio_plot = function(..., sign_niveau=0.05, vars_sel = NULL) {
-  diri_models = list(...)
+odds_ratio_plot = function(ref_model, sign_niveau=0.05, vars_sel = NULL) {
+  
+  nr_dep_vars = length(ref_model$varnames)
+  ref_labels = gsub("mp_", "ref_", ref_model$varnames)
+  
+  diri_models = list()
+  diri_models[[1]] = ref_model
+  for (i in 2:nr_dep_vars) {
+    new_formular = formula(paste(ref_labels[i], as.character(formula(ref_model))[3], sep ="~"))
+    print(new_formular)
+
+    diri_models[[i]] =  update(ref_model, formula=new_formular)
+    
+  }
+  
+  # diri_models = list(...)
   
   diri_model_ref = diri_models[[1]]
   nr_vars = diri_model_ref$n.vars[1]-1
@@ -311,7 +325,7 @@ odds_ratio_plot = function(..., sign_niveau=0.05, vars_sel = NULL) {
   
   
   # Calculate Marginal Effects
-  marg_eff = data.frame(array(NA, dim = c(4, nr_vars+1)))
+  marg_eff = data.frame(array(NA, dim = c(length(colnames(diri_model_ref$Y)), nr_vars+1)))
   names(marg_eff)[1] = "cat"
   names(marg_eff)[-1] = varnames
   
@@ -354,25 +368,30 @@ odds_ratio_plot = function(..., sign_niveau=0.05, vars_sel = NULL) {
     left_join(marg_eff, by=c("cat", "vars")) %>% 
     mutate(marg_eff_dir = if_else(marg_eff >= 0, "+","-"),
            cat = gsub("X_","",cat),
+           cat = gsub("mp_Cluster4_","",cat),
+           cat = gsub("mp_Cluster5_","",cat),
+           #vars = gsub("_caus","",vars),
            cat = paste(cat, marg_eff_dir, sep="")) 
 
   if (is.null(vars_sel) == F) {
     plot_data = plot_data %>% 
-      filter(vars == vars_sel)
+      filter(vars %in% vars_sel) 
     segment_data_plot = segment_data_plot %>% 
-      filter(vars == vars_sel)
+      filter(vars %in% vars_sel)
   }
   
   var_labels = plot_data %>% 
     group_by(vars) %>% 
     slice(1) %>% 
     pull(vars)
+  print(plot_data)
+  var_labels = gsub("_caus","",var_labels)
   
   if (length(var_labels) == 1) {
     plot_data %>% 
       ggplot(aes(x=logits, y=y_jitter, label=cat)) +
       geom_text(aes(size=abs(marg_eff))) +
-      scale_x_continuous(sec.axis = sec_axis(~ exp(.), breaks = seq(0,10,0.25))) +
+      scale_x_continuous(name = "Logits", sec.axis = sec_axis(~ exp(.), breaks = seq(0,10,0.25), name="Odds-Ratios")) +
       scale_y_continuous(name=var_labels) +
       scale_size(range = c(3,5)) +
       theme_bw() +
@@ -384,7 +403,7 @@ odds_ratio_plot = function(..., sign_niveau=0.05, vars_sel = NULL) {
     plot_data %>% 
       ggplot(aes(x=logits, y=y_jitter, label=cat)) +
       geom_text(aes(size=abs(marg_eff))) +
-      scale_x_continuous(sec.axis = sec_axis(~ exp(.), breaks = seq(0,10,0.25))) +
+      scale_x_continuous(name = "Logits", sec.axis = sec_axis(~ exp(.), breaks = seq(0,10,0.25), name="Odds-Ratios")) +
       scale_y_continuous(name=NULL, breaks=seq(1,length(var_labels),1), labels=var_labels) +
       scale_size(range = c(3,5)) +
       theme_bw() +

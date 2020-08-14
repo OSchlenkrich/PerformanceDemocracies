@@ -9,16 +9,12 @@ Plot_Impu = F
 
 
 #### Create All Datasets ########
-# source("Analyse/Cluster/Cluster_v5.R")
-# 
 
+# Cluster Democracy Profiles
 dmx_trade_cluster = fread(file="Datasets/performance_data/dmx_trade_cluster_v9.csv", encoding = "UTF-8")
-  # mutate(cluster_label_1st = relevel(as.factor(cluster_label_1st), ref="FeC")) %>% 
-  # arrange(country, year) %>% 
-  # rename(X_fEC = X1,
-  #        X_fEc = X2,
-  #        X_FeC = X3,
-  #        X_Fec = X4)
+
+# Cluster Performance Areas
+performance_cluster = fread("Datasets/performance_data/ImputedDatasets/performance_cluster.csv", encoding = "UTF-8")
 
 
 # source("Analyse/PerformanceAreas/Economy/eco_FA_v2.R")
@@ -64,7 +60,9 @@ performance_all = V_dem %>%
               select(country_text_id, year,  conf_pc), by=c("country_text_id", "year"))  %>% 
   # rename, becomes obsolete with new calculation of indices
   rename(arate_ccp_ga = GA_ccp_ga,
-         arate_lutz_ga = GA_lutz_ga
+         arate_lutz_ga = GA_lutz_ga,
+         eco_equal_soc = eco_inequal_soc,
+         soc_equal_soc = soc_inequal_soc,
          ) %>% 
   mutate_at(vars(ends_with("_eco"), 
                  ends_with("_env"), 
