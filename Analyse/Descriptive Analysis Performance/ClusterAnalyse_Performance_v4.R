@@ -26,8 +26,8 @@ dimensions_plot = function(dataset, clustering, title) {
                               "productivity_eco",
                               "GEP_env",
                               "arate_ccp_ga",
-                              "eco_inequal_soc",
-                              "soc_inequal_soc",
+                              "eco_equal_soc",
+                              "soc_equal_soc",
                               "domsec_ds",
                               "conf_pc")) %>% 
     ggplot(aes(x=cluster, y=value, fill=name)) +
@@ -113,8 +113,8 @@ performance_cluster_data = performance_all %>%
          productivity_eco,
          GEP_env,
          arate_ccp_ga,
-         eco_inequal_soc,
-         soc_inequal_soc,
+         eco_equal_soc,
+         soc_equal_soc,
          domsec_ds,
          conf_pc
   ) %>% 
@@ -296,21 +296,34 @@ kmeans_2 = kmeans(cluster_data, 2, nstart =20)
 kmeans_3 = kmeans(cluster_data, 3, nstart =20)
 kmeans_4 = kmeans(cluster_data, 4, nstart =20)
 
+# save(PAM_4, file = "Analyse/Descriptive Analysis Performance/ClusterObj/PAM_4_cluster.Rdata")
+# save(PAM_5, file = "Analyse/Descriptive Analysis Performance/ClusterObj/PAM_5_cluster.Rdata")
+# save(kmeans_2, file = "Analyse/Descriptive Analysis Performance/ClusterObj/kmeans_2_cluster.Rdata")
+# save(kmeans_3, file = "Analyse/Descriptive Analysis Performance/ClusterObj/kmeans_3_cluster.Rdata")
+# save(kmeans_4, file = "Analyse/Descriptive Analysis Performance/ClusterObj/kmeans_4_cluster.Rdata")
+load((file = "Analyse/Descriptive Analysis Performance/ClusterObj/PAM_4_cluster.Rdata"))
+load((file = "Analyse/Descriptive Analysis Performance/ClusterObj/PAM_5_cluster.Rdata"))
+load((file = "Analyse/Descriptive Analysis Performance/ClusterObj/kmeans_2_cluster.Rdata"))
+load((file = "Analyse/Descriptive Analysis Performance/ClusterObj/kmeans_3_cluster.Rdata"))
+load((file = "Analyse/Descriptive Analysis Performance/ClusterObj/kmeans_4_cluster.Rdata"))
+
+
 table(PAM_4$pamobject$clustering)
 table(PAM_5$pamobject$clustering)
 
+# Create Dataset ####
 performance_cluster = performance_data_noNAS %>% 
   bind_cols(cluster2 = as.factor(kmeans_2$cluster)) %>% 
   bind_cols(cluster3 = as.factor(kmeans_3$cluster)) %>% 
   bind_cols(cluster4 = as.factor(kmeans_4$cluster)) %>% 
   mutate(cluster2 = fct_recode(cluster2, "Top Performer" = "1", "Laggard" = "2"),
          cluster2 = fct_relevel(cluster2, "Top Performer", "Laggard")) %>% 
-  mutate(cluster3 = fct_recode(cluster3, "Top Performer" = "3", "Middle Performer" = "1", "Laggard" = "2"),
+  mutate(cluster3 = fct_recode(cluster3, "Top Performer" = "1", "Middle Performer" = "3", "Laggard" = "2"),
          cluster3 = fct_relevel(cluster3, "Top Performer", "Middle Performer", "Laggard")) %>% 
   mutate(cluster4 = fct_recode(cluster4, 
-                               "Top Performer" = "1", 
-                               "Middle Performer (low SP)" = "4", "Middle Performer (high SP)" = "3",
-                               "Laggard" = "2"),
+                               "Top Performer" = "4", 
+                               "Middle Performer (low SP)" = "2", "Middle Performer (high SP)" = "1",
+                               "Laggard" = "3"),
          cluster4 = fct_relevel(cluster4, "Top Performer", "Middle Performer (low SP)","Middle Performer (high SP)", "Laggard"))
 
 # Principal Component Plot ####
@@ -381,4 +394,8 @@ mapdata2010 = performance_data_noNAS %>%
 create_world_map_cat_perf(mapdata1990, label = "1990", cat_label = "Cluster")
 create_world_map_cat_perf(mapdata2010, label = "2010", cat_label = "Cluster")
 
+
+# CSV ####
+
+write.csv(performance_cluster, file="Datasets/performance_data/ImputedDatasets/performance_cluster.csv", row.names = F, fileEncoding ="UTF-8")
 

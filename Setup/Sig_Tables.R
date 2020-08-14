@@ -192,8 +192,8 @@ make_table_diri = function(..., oddsRatios = F) {
   
   make_dust_data = function(model_obj) {
     sum_obj = summary(model_obj)
-    
-    vars_per_profile = ((sum_obj$npar-1)/3)-1
+
+    vars_per_profile = ((sum_obj$npar-1)/(length(sum_obj$varnames)-1) )-1
     
     summary_table = data.frame(
       term = rownames(sum_obj$coef.mat),
@@ -226,19 +226,20 @@ make_table_diri = function(..., oddsRatios = F) {
     
     y_names = sum_obj$varnames
     y_names = gsub("X_", "", y_names )
-    summary_table_gaze$term[border_intercept[-which(border_intercept == max(border_intercept))]] = paste("Intercept", y_names[2:4])
-    summary_table_gaze$term[-border_intercept] = paste(summary_table_gaze$term[-border_intercept], rep(y_names[2:4], each = vars_per_profile))
+
+    summary_table_gaze$term[border_intercept[-which(border_intercept == max(border_intercept))]] = paste("Intercept", y_names[2:length(y_names)])
+    summary_table_gaze$term[-border_intercept] = paste(summary_table_gaze$term[-border_intercept], rep(y_names[2:length(y_names)], each = vars_per_profile))
 
     # change last intercept to phi
     summary_table_gaze$term[max(border_intercept)] = "phi"
     
-    # Profiles Separator    
-    new = matrix( cbind(y_names[2:4], ""), nrow=3, ncol=2)
+    # Profiles Separator  
+    new = matrix( cbind(y_names[-1], ""), nrow=length(y_names[-1]), ncol=2)
     adder = 1
     
     summary_table_gaze = rbind(new[1,], summary_table_gaze)
-    border_intercept_adapted = array(NA, (length(y_names[2:4])-1))
-    for (i in 2:length(y_names[2:4])) {
+    border_intercept_adapted = array(NA, (length(y_names[-1])-1))
+    for (i in 2:length(y_names[-1])) {
       
       border_intercept_adapted[i-1] = border_intercept[i] + adder
       
@@ -258,13 +259,13 @@ make_table_diri = function(..., oddsRatios = F) {
     
     foot_matrix = data.frame(name = rbind("LL",
                                           "AIC",
-                                          "R2",
+                                          # "R2",
                                           #"BIC", 
                                           "N", 
                                           paste("Ref.:", y_names[1])), 
                              values= rbind(LL, 
                                            AIC,
-                                           R2,
+                                           # R2,
                                            #BIC, 
                                            N,
                                            ""))
@@ -273,7 +274,7 @@ make_table_diri = function(..., oddsRatios = F) {
     return(list(summary_table_gaze, foot_matrix, border_intercept=border_intercept_adapted))
   }
   ####
-  
+
   # Input into list
   sum_obj = list(...)
   
@@ -289,7 +290,7 @@ make_table_diri = function(..., oddsRatios = F) {
         full_join(dust_data[[i]][[1]], by="term")
     }
   }
-
+  
   dust_data_join = dust_data_join %>% 
     separate(term, c("term", "profile"), sep=" ", fill="left") %>% 
     arrange(profile) %>% 
@@ -299,10 +300,14 @@ make_table_diri = function(..., oddsRatios = F) {
   #Rename Columns and Rows
   colnames(dust_data_join)[-1] = paste("M", 1:length(dust_data), sep="")
 
-  dust_data_join$term = gsub("_Fec", "", dust_data_join$term) 
-  dust_data_join$term = gsub("_fEc", "", dust_data_join$term) 
-  dust_data_join$term = gsub("_fEC", "", dust_data_join$term) 
-  dust_data_join$term = gsub("_FeC", "", dust_data_join$term) 
+  # dust_data_join$term = gsub("_Fec", "", dust_data_join$term) 
+  # dust_data_join$term = gsub("_fEc", "", dust_data_join$term) 
+  # dust_data_join$term = gsub("_fEC", "", dust_data_join$term) 
+  # dust_data_join$term = gsub("_FeC", "", dust_data_join$term) 
+  dust_data_join$term = gsub("mp_Cluster4_", "", dust_data_join$term) 
+  dust_data_join$term = gsub("mp_Cluster5_", "", dust_data_join$term) 
+  dust_data_join$term = gsub("_caus_FEC", "", dust_data_join$term, ignore.case = T) 
+  dust_data_join$term = gsub("Intercept_FEC", "Intercept", dust_data_join$term, ignore.case = T) 
   
   ####
   # Create foot DF
@@ -313,13 +318,14 @@ make_table_diri = function(..., oddsRatios = F) {
         full_join(dust_data[[i]][[2]], by="name")
     }  
   }
+  foot_data_join$name = gsub("mp_Cluster4_", "", foot_data_join$name) 
+  foot_data_join$name = gsub("mp_Cluster5_", "", foot_data_join$name) 
   
   border_intercept = dust_data_join %>% 
     select(term) %>% 
-    filter(grepl("caus", term) | grepl("Inter", term)) %>% 
-    summarise(rows = n()/3 + 1) %>% 
-    mutate(rows2 = 2*rows) %>% 
-    as.numeric() +1
+    filter(grepl("phi", term) == F) %>% 
+    summarise(rows = n()/(length(sum_obj[[1]]$varnames) - 1))
+  border_intercept = cumsum(rep(border_intercept$rows, length(sum_obj[[1]]$varnames) - 2)) +1
     
   
 
@@ -351,9 +357,6 @@ make_table_diri = function(..., oddsRatios = F) {
     sprinkle_print_method("html")
 }
 
-
-# make_table_diri(m1, m2, m3, oddsRatios=F)
-# make_table_diri(m1, m2, m3, m4, m5, m6, m7)
 
 # For Rendering in knitr, see Setup/knitR_tab/table_word.Rmd
 # my_table = make_table_diri(m1, m2, m3, m4, m5, m6, m7)
@@ -486,8 +489,21 @@ fa_table_umx = function(fa_solution, RMSEA, TLI, my_omega) {
 }
 
 
+
 # Anova Table
-make_anova_table = function(anova_output, truenames = T) {
+make_anova_table = function(anova_output, truenames = T, diri = F) {
+  if (diri == T) {
+    anova_output = data.frame(Df = anova_output$df,
+                              deviance = anova_output$Deviance,
+                              "Chisq" = anova_output$Difference,
+                              "Pr(>Chisq)" = anova_output$`Pr(>Chi)`,
+                              logLik = NA, 
+                              Chi.Df = NA) %>% 
+      rename("Pr(>Chisq)" = Pr..Chisq.) 
+    
+  }
+  
+  
   if (truenames == T) {
     modelnames = rownames(anova_output)
   } else {

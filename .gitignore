@@ -44,3 +44,4 @@
 ./Analyse/PerformanceAreas/Economy/Diag/disp_eco.RDS
 ./Analyse/PerformanceAreas/Social/Diag/disp_soc.RDS
 ./Analyse/V-Dem/robjects/c_disagree.RDS
+./Analyse/Cluster/RObjects
