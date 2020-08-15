@@ -1,21 +1,21 @@
-country;country_code;VoC_HS;Coord_Ind_1990;EA_1990;EA_1999
+country;country_code;VoC_HS;Coord_Ind_1990;Welfare1990_EA;Welfare1999_EA
 Australia;AUS;LME;0.36;Liberal;Residual
-Austria;AUT;CME;1;Social Democracy;Social Insurance
-Belgium;BEL;CME;0.74;Social Democracy;Social Insurance
+Austria;AUT;CME;1;Social Democratic;Social Insurance
+Belgium;BEL;CME;0.74;Social Democratic;Social Insurance
 Canada;CAN;LME;0.13;Liberal;Residual
 Denmark;DNK;CME;0.7;Social Democratic;Universalist
 Finland;FIN;CME;0.72;Conservative;Universalist
 France;FRA;Mixed;0.69;Conservative;Social Insurance
 Germany;DEU;CME;0.95;Conservative;Social Insurance
-Ireland;IRL;LME;0.29;Liberal;-
+Ireland;IRL;LME;0.29;Liberal;NA
 Italy;ITA;Mixed;0.87;Conservative;Social Insurance
 Japan;JPN;CME;0.74;Conservative;Social Insurance
 Netherlands;NLD;CME;0.66;Social Democratic;Universalist
 New Zealand;NZL;LME;0.21;Liberal;Residual
 Norway;NOR;CME;0.76;Social Democratic;Universalist
-Portugal;PRT;Mixed;0.72;-;-
-Spain;ESP;Mixed;0.57;-;Social Insurance
+Portugal;PRT;Mixed;0.72;NA;NA
+Spain;ESP;Mixed;0.57;NA;Social Insurance
 Sweden;SWE;CME;0.69;Social Democratic;Universalist
-Switzerland;CHE;CME;0.51;Conservative;-
+Switzerland;CHE;CME;0.51;Conservative;NA
 United Kingdom;GBR;LME;0.07;Liberal;Universalist/Residual
 United States of America;USA;LME;0;Liberal;Residual
