@@ -3,7 +3,7 @@ source("Analyse/CreateDatasets.R")
 
 # Democracy Profiles ####
 profiles_agg_cult = dmx_trade_cluster %>% 
-  filter(year >= 1974, year <= 1990) %>% 
+  filter(year >= 1990, year <= 2000) %>% 
   select_at(vars(country, starts_with("mp_cluster4"), starts_with("mp_cluster5"))) %>% 
   group_by(country) %>% 
   summarise_all(mean, na.omit=T) %>% 
@@ -46,7 +46,7 @@ p1 = PolicyRegime_data %>%
   na.omit() %>% 
   ggplot(aes(x=Welfare1990_EA, y=value, fill=name)) +
   scale_fill_discrete(name ="") +
-  xlab("Welfare 1990") +
+  xlab("Welfare States") +
   ylab("Membership Probability") +
   geom_boxplot() +
   theme_bw()
@@ -62,7 +62,7 @@ p2 = PolicyRegime_data %>%
   ggplot(aes(x=Welfare1999_EA, y=value, fill=name))+
   scale_fill_discrete(name ="") +
   geom_boxplot() +
-  xlab("Welfare 1999") +
+  xlab("Welfare States") +
   ylab("Membership Probability") +
   theme_bw()
 

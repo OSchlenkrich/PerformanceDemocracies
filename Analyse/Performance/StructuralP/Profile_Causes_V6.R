@@ -39,15 +39,9 @@ plot_residual_diri = function(model) {
   
   plot_data = data.frame(
     residuals_comp = residuals(model, "composite"),
-    # residuals_std_1 = residuals(model, "standardized")[,1],
-    # residuals_std_2 = residuals(model, "standardized")[,2],
-    # residuals_std_3 = residuals(model, "standardized")[,3],
-    # residuals_std_4 = residuals(model, "standardized")[,4],
     id = seq(1, dim(model$d)[1], 1),
     fitted = fitted(model),
     country = model$data$country)
-  
-  #names(plot_data)[2:5] = paste("res_std_", colnames(residuals(model, "standardized")), sep="")
   
   p1 = plot_data %>% 
     ggplot(aes(x=id, y=residuals_comp, label=country)) +
@@ -55,62 +49,47 @@ plot_residual_diri = function(model) {
     geom_text() +
     ylab("Composite Residuals") +
     theme_bw() 
+
+  return(p1)
+}
+
+stand_residuals = function(model) {
+  dep_dims = dim(residuals(model, "standardized"))[2]
   
-  # p2 = plot_data %>% 
-  #   select_at(vars(starts_with("res_std"), starts_with("fitted"), country)) %>% 
-  #   select_at(vars(matches("Fec", ignore.case = F), country)) %>%
-  #   mutate(country_out = ifelse(.[[1]] > 2 | .[[1]] < -2, as.character(country), NA_character_)) %>% 
-  #   ggplot(aes(x=.[,2], y=.[,1], label=country_out)) +
-  #   geom_point() +
-  #   geom_text_repel() +
-  #   geom_hline(yintercept = c(-2,0,2))  +
-  #   ggtitle("Fec") +
-  #   ylab("Standardized Residuals") +
-  #   xlab("Fitted Values")
-  # 
-  # 
-  # p3 = plot_data %>% 
-  #   select_at(vars(starts_with("res_std"), starts_with("fitted"), country)) %>% 
-  #   select_at(vars(matches("fEc", ignore.case = F), country)) %>% 
-  #   mutate(country_out = ifelse(.[[1]] > 2 | .[[1]] < -2, as.character(country), NA_character_)) %>% 
-  #   ggplot(aes(x=.[,2], y=.[,1], label=country_out)) +
-  #   geom_point() +
-  #   geom_text_repel() +
-  #   geom_hline(yintercept = c(-2,0,2))  +
-  #   ggtitle("fEc") +
-  #   ylab("Standardized Residuals")  +
-  #   xlab("Fitted Values")
-  # 
-  # 
-  # p4 = plot_data %>% 
-  #   select_at(vars(starts_with("res_std"), starts_with("fitted"), country)) %>% 
-  #   select_at(vars(matches("fEC", ignore.case = F), country)) %>%
-  #   mutate(country_out = ifelse(.[[1]] > 2 | .[[1]] < -2, as.character(country), NA_character_)) %>% 
-  #   ggplot(aes(x=.[,2], y=.[,1], label=country_out)) +
-  #   geom_point() +
-  #   geom_text_repel() +
-  #   geom_hline(yintercept = c(-2,0,2))  +
-  #   ggtitle("fEC") +
-  #   ylab("Standardized Residuals") +
-  #   xlab("Fitted Values")
-  # 
-  # 
-  # p5 = plot_data %>% 
-  #   select_at(vars(starts_with("res_std"), starts_with("fitted"), country)) %>% 
-  #   select_at(vars(matches("FeC", ignore.case = F), country)) %>% 
-  #   mutate(country_out = ifelse(.[[1]] > 2 | .[[1]] < -2, as.character(country), NA_character_)) %>% 
-  #   ggplot(aes(x=.[,2], y=.[,1], label=country_out)) +
-  #   geom_point() +
-  #   geom_text_repel() +
-  #   geom_hline(yintercept = c(-2,0,2)) +
-  #   ggtitle("FeC") +
-  #   ylab("Standardized Residuals") +
-  #   xlab("Fitted Values")
-  # 
-  # lay = rbind(c(1,1),
-  #             c(2,3),
-  #             c(4,5))
-  # grid.arrange(p1,p2,p3,p4,p5, layout_matrix = lay)
+  
+  fitted_vals = data.frame(fitted(model)) %>% 
+    rename_all(funs(gsub("mp_", "fit_",.)))
+  
+  stand_resid = data.frame(as.matrix(residuals(model, "standardized"))[,1:dep_dims]) %>% 
+    rename_all(funs(gsub("mp_", "res_",.)))
+  
+  
+  plotlist = list()
+  for (i in 1:dep_dims) {
+    plotlabel = colnames(fitted_vals)[i]
+    plotlabel = gsub("fit_Cluster3_","", plotlabel)
+    plotlabel = gsub("fit_Cluster4_","", plotlabel)
+    plotlabel = gsub("fit_Cluster5_","", plotlabel)
+    
+    
+    plot_data = fitted_vals %>%
+      select(fitted = i) %>% 
+      bind_cols(stand_resid %>%  
+                  select(residuals = i)) %>% 
+      ggplot(aes(x=fitted, y=residuals)) +
+      geom_point() +
+      geom_smooth(se=F, linetype = 2, color="black") +
+      theme_bw() +
+      xlab("Fitted Values") +
+      ylab("Standardized Residuals") +
+      ggtitle(plotlabel) +
+      geom_hline(yintercept=0)
+    
+    
+    plotlist[[i]] = plot_data
+  }
+  
+  p1 = ggarrange(plotlist = plotlist)
   return(p1)
 }
 
@@ -438,9 +417,8 @@ clust4_m6a  = DirichReg(ref_Cluster4_Fec ~  gdp_caus + pop_size_caus + fract_sum
 clust4_m6b  = DirichReg(ref_Cluster4_Fec ~  gdp_caus + pop_size_caus + fract_prod_caus + UKcol_caus + cath_caus| 1,
                         caus_culture_profiles_data_struct, "alternative")
 
-clust4_m6b  = DirichReg(ref_Cluster4_Fec ~  gdp_caus + pop_size_caus + fract_prod_caus + UKcol_caus + cath_caus| 1,
+clust4_m6bc  = DirichReg(ref_Cluster4_Fec ~  gdp_caus + pop_size_caus + fract_prod_caus + UKcol_caus + cath_caus| 1,
                         caus_culture_profiles_data_struct, "alternative")
-
 
 
 
@@ -478,6 +456,8 @@ clust4_m2_cult  = DirichReg(ref_Cluster4_Fec ~  gdp_caus + pop_size_caus + cath_
 clust4_m3_cult  = DirichReg(ref_Cluster4_Fec ~  gdp_caus + pop_size_caus + cath_caus + 
                               mastery_cult_caus + hierarchy_cult_caus| 1,
                             caus_culture_profiles_data_cult, "alternative")
+
+summary(clust4_m3_cult)
 
 clust4_m0_cult_gdp  = DirichReg(ref_Cluster4_Fec ~  pop_size_caus + cath_caus| 1,
                                 caus_culture_profiles_data_cult, "alternative")
@@ -526,6 +506,8 @@ anova(clust4_m5bc, clust4_m6b) %>%
   make_anova_table(diri = T)
 
 plot_residual_diri(clust4_m6b)
+stand_residuals(clust4_m6b)
+
 
 odds_ratio_plot(clust4_m6b, 
                 sign_niveau = 0.05)
@@ -544,6 +526,7 @@ anova(clust4_m2_pr, clust4_m3_pr) %>%
 
 
 plot_residual_diri(clust4_m3_pr)
+stand_residuals(clust4_m3_pr)
 
 p1 = odds_ratio_plot(clust4_m3_pr, sign_niveau = 0.05, vars_sel ="union_caus")
 p2 = odds_ratio_plot(clust4_m3_pr, sign_niveau = 0.05, vars_sel ="leftist_caus")
@@ -565,7 +548,7 @@ anova(clust4_m1_cult, clust4_m3_cult) %>%
   make_anova_table(diri = T)
 
 plot_residual_diri(clust4_m3_cult)
-
+stand_residuals(clust4_m3_cult)
 
 make_table_diri(clust4_m0_cult_isr, clust4_m1_cult_isr, clust4_m2_cult_isr, clust4_m3_cult_isr, oddsRatios=F)
 

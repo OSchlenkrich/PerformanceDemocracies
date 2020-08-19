@@ -65,7 +65,7 @@ centripetalism_vars = centripetalism %>%
 
 # Main Independent Variable ####
 # Log Ratios Democracy Profiles
-source("Analyse/Cluster/LogRatios.R")
+source("Analyse/Cluster/LogRatios_v2.R")
 
 
 
@@ -101,4 +101,18 @@ tscs_data = performance_all %>%
   mutate_at(vars(ends_with("ctl")), funs("na" = if_else(all(is.na(.) == T), 1, 0))) %>%
   ungroup() %>% 
   arrange(country_text_id, year)  
+
+
+
+# Quick Check 
+
+tscs_data %>% 
+  select(country, FKM5_Fec) %>% 
+  arrange(-FKM5_Fec)
+tscs_data %>% 
+  select(country, FKM5_fEc) %>% 
+  arrange(-FKM5_fEc)
+tscs_data %>% 
+  select(country, FKM4_E) %>% 
+  arrange(FKM4_E)
 

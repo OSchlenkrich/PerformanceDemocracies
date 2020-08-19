@@ -70,6 +70,7 @@ performance_all = V_dem %>%
                  ends_with("_ds"), 
                  ends_with("_pc"), 
                  ends_with("_ga")),funs("index" = EPI_fun(., lower = 0.01, upper=0.99))) 
+
 # Other Democracy Profiles ####
 source("Analyse/Cluster/OtherDemocracyProfiles.R")
 

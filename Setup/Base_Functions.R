@@ -563,7 +563,7 @@ xyplot = function(dataset, dependent_vars_label, deselection_independent = NULL)
 
 
 # Make Data for TSCS Regression
-make_reg_data = function(imputatedData, DV_label, naframe, vars_noimput) {
+make_reg_data = function(imputatedData, DV_label, naframe, vars_noimput, lag2 = F, lag3 = F) {
   
   vars_noimput_naid = paste(vars_noimput, "_is_na", sep="")
   
@@ -597,6 +597,7 @@ make_reg_data = function(imputatedData, DV_label, naframe, vars_noimput) {
       mutate(
         # ADL
         DV_lag = dplyr::lag(DV, 1),
+        
         #productivity_eco_lag = dplyr::lag(productivity_eco, 1),
         
         # ECM
@@ -607,21 +608,46 @@ make_reg_data = function(imputatedData, DV_label, naframe, vars_noimput) {
       # Within Effect of LDV
       mutate_at(vars(matches("lag")), funs(DV_wi_lag = . - mean(., na.rm=T))) %>%
       ungroup() 
+
+    if(lag2 == T) {
+      performance_data_LDV = performance_data_LDV %>% 
+        group_by(country_text_id) %>% 
+        mutate(
+          # ADL
+          DV_lag2 = dplyr::lag(DV, 2),
+          
+        )  %>% 
+        # Within Effect of LDV
+        mutate_at(vars(matches("lag2")), funs(DV_wi_lag2 = . - mean(., na.rm=T))) %>%
+        ungroup() 
+    }
     
+    if(lag3 == T) {
+      performance_data_LDV = performance_data_LDV %>% 
+        group_by(country_text_id) %>% 
+        mutate(
+          # ADL
+          DV_lag3 = dplyr::lag(DV, 3),
+          
+        )  %>% 
+        # Within Effect of LDV
+        mutate_at(vars(matches("lag3")), funs(DV_wi_lag3 = . - mean(., na.rm=T))) %>%
+        ungroup() 
+    }
     # Control Variables
     performance_data_LDV_ctl = performance_data_LDV %>% 
       group_by(country_text_id) %>%
       
       # within effect
-      mutate_at(vars(ends_with("num_ctl"), ends_with("cat_ctl"), ends_with("pr_ctl")), funs(wi = . - mean(., na.rm=T))) %>%
-      mutate_at(vars(ends_with("num_ctl_wi"), ends_with("cat_ctl_wi"), ends_with("pr_ctl_wi")), funs(lag = dplyr::lag(.,1))) %>% 
+      mutate_at(vars(ends_with("num_ctl"), ends_with("cat_ctl"), ends_with("pr_ctl"), ends_with("notrans_ctl")), funs(wi = . - mean(., na.rm=T))) %>%
+      mutate_at(vars(ends_with("num_ctl_wi"), ends_with("cat_ctl_wi"), ends_with("pr_ctl_wi"), ends_with("notrans_ctl_wi")), funs(lag = dplyr::lag(.,1))) %>% 
       
-      mutate_at(vars(ends_with("num_ctl"), ends_with("cat_ctl"), ends_with("pr_ctl")), funs(df = first_DF(.)))  %>%
-      mutate_at(vars(ends_with("num_ctl_wi"), ends_with("cat_ctl_wi"), ends_with("pr_ctl_wi")), funs(df = first_DF(.)))  %>%
+      mutate_at(vars(ends_with("num_ctl"), ends_with("cat_ctl"), ends_with("pr_ctl"), ends_with("notrans_ctl_wi")), funs(df = first_DF(.)))  %>%
+      mutate_at(vars(ends_with("num_ctl_wi"), ends_with("cat_ctl_wi"), ends_with("pr_ctl_wi"), ends_with("notrans_ctl_wi")), funs(df = first_DF(.)))  %>%
       
       
       #between effect
-      mutate_at(vars(ends_with("num_ctl"), ends_with("cat_ctl"), ends_with("pr_ctl")), funs(bw = mean(., na.rm=T))) %>% 
+      mutate_at(vars(ends_with("num_ctl"), ends_with("cat_ctl"), ends_with("pr_ctl"), ends_with("notrans_ctl")), funs(bw = mean(., na.rm=T))) %>% 
       ungroup()
     
     # Democracy Profiles

@@ -25,8 +25,12 @@ prior_full_phet_tscs <- c(set_prior("normal(0,10)", class = "b"),
                           set_prior("normal(0,10)", class = "Intercept", dpar="sigma"))
 
 # SAVE BRMS models
-saveBRMS = function(modelname_label) {
-  saveRDS(get(modelname_label), file=paste("Analyse/Performance/SpecificP/brmsModels/", modelname_label, ".rds", sep=""))
+saveBRMS = function(modelname_label, ordner) {
+  saveRDS(get(modelname_label), file=paste("Analyse/Performance/SpecificP/brmsModels/", ordner, "/", modelname_label, ".rds", sep=""))
+}
+
+loadBRMS = function(modelname_label, ordner) {
+  readRDS(file=paste("Analyse/Performance/SpecificP/brmsModels/", ordner, "/", modelname_label, ".rds", sep=""))
 }
 
 
@@ -138,6 +142,7 @@ chech_stationarity_Beck = function(vars, datalist, model = "plm") {
     my_frame = datalist[[1]] %>% 
       select(country_text_id, year_0, variable = vars[i]) %>%
       group_by(country_text_id) %>% 
+      tidyr::complete(country_text_id, year_0 = min(year_0):max(year_0), fill = list(NA)) %>% 
       mutate(lag = dplyr::lag(variable, 1)) %>% 
       as.data.frame() 
     
@@ -158,7 +163,7 @@ chech_stationarity_Beck = function(vars, datalist, model = "plm") {
                    my_frame,
                    control = glmmTMBControl(optCtrl=list(iter.max=1e5,eval.max=1e5)) )
       parameter_estimate = data.frame(confint(m1, "lag", level = 0.95))
-
+      print(summary(m1))
       table_data$variable[i] = vars[i]
       table_data$estimate[i] = parameter_estimate$Estimate
       table_data$CI_l[i] =   parameter_estimate$X2.5..
@@ -180,6 +185,8 @@ chech_stationarity_Beck = function(vars, datalist, model = "plm") {
   
   table_data$variable = gsub("_eco", "",table_data$variable)
   table_data$variable = gsub("_num_ctl", "",table_data$variable)
+  table_data$variable = gsub("_pr_ctl", "",table_data$variable)
+  table_data$variable = gsub("_wi", "",table_data$variable)
   
   dust(table_data)  %>%
     sprinkle(font_size = 12, part="head") %>%
@@ -882,11 +889,11 @@ check_autocorresiduals = function(brmsmodel, runs = 10) {
     formula1[[1]][2] = gsub("\\+ \\(1 \\| year_0\\)","",formula1[[1]][2])
     new_formula = as.formula(paste(formula1[[1]][1], formula1[[1]][2], collapse = ""))
     
-    
     m1 = glmmTMB(new_formula,
                  resid_Data_lag,
                  control=glmmTMBControl(optCtrl=list(iter.max=1e3,eval.max=1e3)))
     
+    print(summary(m1))
     
     results[i,2:4] = as.numeric(confint(m1)["cond.resid_lag", ]  )  
   }
