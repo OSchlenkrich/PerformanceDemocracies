@@ -7,8 +7,7 @@ library(DataCombine)
 # Create Summary Table with Significance
 # For GLMMTMB
 make_glmm_tables = function(..., rsquared = F) {
-  model = sum_obj[[1]]
-  
+
   make_glmm_data = function(model) {
     library(broom.mixed)
     library(DataCombine)
@@ -149,7 +148,10 @@ make_glmm_tables = function(..., rsquared = F) {
            term = gsub("_pt", "<sub>pt", term),
            term = gsub("(Intercept)", "Intercept", term),
            term = gsub("I\\(", "", term),
-           term = gsub("\\^2)", "<sub>sq", term))
+           term = gsub("\\^2)", "<sub>sq", term),
+           term = gsub("_ivs_ctl", "", term),
+           term = gsub("_odempr", "", term),
+           term = gsub("_ord", "", term))
   
   
   

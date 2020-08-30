@@ -40,6 +40,7 @@ library(tidybayes)
 library(brms)
 library(easyCODA)
 library(broom)
+library(rstan)
 
 # for correct display of tibbles
 options(crayon.enabled = FALSE)

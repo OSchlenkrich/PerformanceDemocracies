@@ -563,13 +563,13 @@ xyplot = function(dataset, dependent_vars_label, deselection_independent = NULL)
 
 
 # Make Data for TSCS Regression
-make_reg_data = function(imputatedData, DV_label, naframe, vars_noimput, lag2 = F, lag3 = F) {
+make_reg_data = function(imputatedData, DV_label, naframe, vars_noimput, lag2 = F, lag3 = F, nr_imputations) {
   
   vars_noimput_naid = paste(vars_noimput, "_is_na", sep="")
   
   data_list = list()
   
-  for (i in 1:10) {
+  for (i in 1:nr_imputations) {
     performance_data_nas = imputatedData$imputations[[i]]
     
     for (k in 1:length(vars_noimput)) {
