@@ -55,7 +55,7 @@ mice_data_naframe_ds = mice_data_ds_trans %>%
 
 # Missings Plot ####
 mice_data_ds_trans %>% 
-  select_at(vars(-matches("lag"),-matches("lead"),-starts_with("FKM"), -country_text_id)) %>% 
+  select_at(vars(-matches("lag"),-matches("lead"),-starts_with("FKM"), -country_text_id,-matches("odempr"))) %>% 
   group_by(year_0) %>% 
   summarise_all(pMiss_01) %>% 
   pivot_longer(cols=-year_0) %>% 
@@ -68,15 +68,16 @@ mice_data_ds_trans %>%
   facet_wrap(name~.) +
   scale_y_continuous(name=NULL, breaks=seq(0,1, 0.25), limit=c(0,1), labels=percent)  +
   scale_x_continuous(name=NULL, breaks=seq(1950,2020, 10)) + 
+  scale_fill_grey(start = 0.4, end = 0.4) +
   theme_bw()  +
   theme(axis.text.x = element_text(angle=90), legend.position = "none") +
-  ggtitle("Missings in TSCS - Social Integration")
+  ggtitle("Missings in TSCS - Domestic Security")
 
 
 # Distributions Plot ####
 raw_dist = mice_data_ds %>% 
   select_if(is.numeric) %>% 
-  select_at(vars(-matches("lag"),-matches("lead"), -year_0)) %>% 
+  select_at(vars(-matches("lag"),-matches("lead"), -year_0,-matches("odempr"))) %>% 
   pivot_longer(cols=everything())  %>% 
   mutate(name = gsub("_num_ctl", "", name),
          name = gsub("_pr_ctl", "", name),
@@ -93,7 +94,7 @@ raw_dist = mice_data_ds %>%
 
 trans_dist = mice_data_ds_trans %>% 
   select_if(is.numeric) %>% 
-  select_at(vars(-matches("lag"),-matches("lead"), -year_0)) %>% 
+  select_at(vars(-matches("lag"),-matches("lead"), -year_0,-matches("odempr"))) %>% 
   pivot_longer(cols=everything())  %>% 
   mutate(name = gsub("_num_ctl", "", name),
          name = gsub("_pr_ctl", "", name),
@@ -163,7 +164,7 @@ a.out_ds <- amelia(mice_data_ds_trans_mice,
 
 # Saving ####
 
-save(a.out_ds, file = "Analyse/Performance/SpecificP/Datasets/a.out_ds_v3.Rdata")
+save(a.out_ds, file = "Analyse/Performance/SpecificP/Datasets/a.out_ds_v4.Rdata")
 save(mice_data_naframe_ds, file = "Analyse/Performance/SpecificP/Datasets/mice_data_naframe_ds.Rdata")
 
 
@@ -174,3 +175,19 @@ save(mice_data_naframe_ds, file = "Analyse/Performance/SpecificP/Datasets/mice_d
 disp_ds_tscs = disperse(a.out_ds, dims = 1, m = 5)
 # saveRDS(disp_ds_tscs, "Analyse/Performance/SpecificP/3 Integration/Domestic/RObjects/disp_ds_tscs.RDS")
 
+
+
+disp_ds_tscs = readRDS("Analyse/Performance/SpecificP/3 Integration/Domestic/RObjects/disp_ds_tscs.RDS")
+convergence_amelia(disp_ds_tscs)  +
+  ggtitle("TSCS Domestic Security: Overdispersed Starting Values")
+
+
+gdppc_ds = Amelia::overimpute(a.out_ds, var = "gdppc_wdi_num_ctl")
+# saveRDS(gdppc_ds, "Analyse/Performance/SpecificP/3 Integration/Domestic/RObjects/gdppc_ds.RDS")
+eco_inequal_ds = Amelia::overimpute(a.out_ds, var = "eco_inequal_num_ctl")
+# saveRDS(eco_inequal_ds, "Analyse/Performance/SpecificP/3 Integration/Domestic/RObjects/eco_inequal_ds.RDS")
+
+ggarrange(
+  overimpute_gglot(gdppc_ds, "gdppc_wdi"),
+  overimpute_gglot(eco_inequal_ds, "eco_inequal")
+)

@@ -3,6 +3,149 @@ library(bbmle)
 library(glmmTMB)
 library(broom)
 
+# Profiles to Test
+
+profiles_testing = list()
+profiles_testing[[1]] = "FKM5_Fec_wi + FKM5_Fec_wi_lag + FKM5_Fec_bw"
+profiles_testing[[2]] = "FKM5_FeC_wi + FKM5_FeC_wi_lag + FKM5_FeC_bw"
+profiles_testing[[3]] = "FKM5_fEC_wi + FKM5_fEC_wi_lag + FKM5_fEC_bw"
+profiles_testing[[4]] = "FKM5_fEc_wi + FKM5_fEc_wi_lag + FKM5_fEc_bw"
+profiles_testing[[5]] = "FKM5_FEC_wi + FKM5_FEC_wi_lag + FKM5_FEC_bw"
+profiles_testing[[6]] = "FKM4_E_wi + FKM4_E_wi_lag + FKM4_E_bw"
+profiles_testing[[7]] = "FKM4_c_wi + FKM4_c_wi_lag + FKM4_c_bw"
+# profiles_testing[[8]] = "execpar_1981_odempr + feduni1981_odempr"
+# profiles_testing[[9]] = "centrip_odempr_wi + centrip_odempr_wi_lag + centrip_odempr_bw"
+
+profiles_testing_ecm = list()
+profiles_testing_ecm[[1]] = "FKM5_Fec_df_wi + FKM5_Fec_wi_lag + FKM5_Fec_bw"
+profiles_testing_ecm[[2]] = "FKM5_FeC_df_wi + FKM5_FeC_wi_lag + FKM5_FeC_bw"
+profiles_testing_ecm[[3]] = "FKM5_fEC_df_wi + FKM5_fEC_wi_lag + FKM5_fEC_bw"
+profiles_testing_ecm[[4]] = "FKM5_fEc_df_wi + FKM5_fEc_wi_lag + FKM5_fEc_bw"
+profiles_testing_ecm[[5]] = "FKM5_FEC_df_wi + FKM5_FEC_wi_lag + FKM5_FEC_bw"
+profiles_testing_ecm[[6]] = "FKM4_E_df_wi + FKM4_E_wi_lag + FKM4_E_bw"
+profiles_testing_ecm[[7]] = "FKM4_c_df_wi + FKM4_c_wi_lag + FKM4_c_bw"
+
+# Compiling via Stan
+compile_stan = function(brmsformula, brmsdata, priors, warmup, iter, chains, thin = thin) {
+  scode <- make_stancode(brmsformula,
+                         prior = priors,
+                         data = brmsdata)
+  
+  stanmod <- stan_model(model_code = scode, verbose = F)
+  
+  print(paste("START", Sys.time()))
+  print(brmsformula)
+  
+  brms_fit = list()
+  for (i in 1:length(brmsdata)) {
+    print(i)
+    sdata <- make_standata(brmsformula,
+                           data = brmsdata[i])
+    
+    
+    stanfit <- sampling(stanmod, data = sdata,
+                        warmup=warmup, iter=iter, chains=chains, thin=thin)
+    
+    brms_fit[[i]] <- brm(brmsformula,
+                         prior = priors,
+                         data = brmsdata, empty = TRUE)
+    
+    brms_fit[[i]]$fit <- stanfit
+    brms_fit[[i]] <- rename_pars(brms_fit[[i]])
+    
+  }
+  print(paste("END", Sys.time()))
+  return(brms_fit)
+}
+
+
+
+
+test_modelparameters = function(dependent_var, lagvar, brmsdata,
+                                warmup = 1000, iter = 2000, chains = 6, thin = 1) {
+  
+  LDV_form = paste(dependent_var, lagvar, sep= " ~ ")
+  Unit_form = paste(LDV_form, "(1|country_text_id)", sep = " + ")
+  Time_form = paste(Unit_form, "(1|year_0)", sep = " + ")
+  
+  PHet_form = bf(Time_form,
+                 sigma =~ (1|country_text_id))
+  
+  prior_ldv <- c(set_prior("cauchy(0,5)", class = "sigma"),
+                      set_prior("normal(0,2)", class = "Intercept"),
+                      set_prior("normal(0,100)", class = "b"),
+                      set_prior("normal(0.5, 1)", class = "b", coef=lagvar))
+  prior_unit <- c(set_prior("cauchy(0,5)", class = "sigma"),
+                  set_prior("cauchy(0,5)", class = "sd"),
+                  set_prior("normal(0,2)", class = "Intercept"),
+                  set_prior("normal(0,100)", class = "b"),
+                  set_prior("normal(0.5, 1)", class = "b", coef=lagvar))
+  
+  prior_phet <- c(set_prior("cauchy(0,5)", class = "sd"),  
+                  set_prior("cauchy(0,5)", class = "sd", dpar = "sigma"),                    
+                  set_prior("normal(0,2)", class = "Intercept"),
+                  set_prior("normal(0,100)", class = "b"),
+                  set_prior("normal(0.5, 1)", class = "b", coef=lagvar))
+  
+  
+  model_list = list()
+  
+  model_list[[1]] = compile_stan(LDV_form, brmsdata, priors = prior_ldv,
+                                 warmup = warmup, iter = iter, chains = chains, thin = thin)
+
+  model_list[[2]] = compile_stan(Unit_form, brmsdata, priors = prior_unit,
+                                 warmup = warmup, iter = iter, chains = chains, thin = thin)
+  model_list[[3]] = compile_stan(Time_form, brmsdata, priors = prior_unit,
+                                 warmup = warmup, iter = iter, chains = chains, thin = thin)
+
+  model_list[[4]] = compile_stan(PHet_form, brmsdata, priors = prior_phet,
+                                 warmup = warmup, iter = iter, chains = chains, thin = thin)
+
+  model_list[[1]][[1]] = add_criterion(model_list[[1]][[1]], "loo")
+  model_list[[2]][[1]] = add_criterion(model_list[[2]][[1]], "loo")
+  model_list[[3]][[1]] = add_criterion(model_list[[3]][[1]], "loo")
+  model_list[[4]][[1]] = add_criterion(model_list[[4]][[1]], "loo")
+  
+  return(model_list)
+}
+
+
+
+
+# Adds Profiles to Formula
+make_brms_model = function(base_formula, addprofile = NULL, data, prior_brms, iter = 2000, warmup=1000, chains = 4, thin = 1) {
+  model_maker = function(base_formula, addprofile) {
+    formula = paste(base_formula)
+    formula[3] = gsub("year_0\\)", paste("year_0)", addprofile, sep="+"), formula[3])
+    
+    new_formula = as.formula(paste(formula[2], formula[3], sep = "~"))
+    
+    
+    bf_base_formula = bf(new_formula,
+                         sigma ~ (1|country_text_id))
+    
+    return(bf_base_formula)
+  }
+  
+  if(is.null(addprofile) == T) {
+    newformula = bf(base_formula,
+                    sigma ~ (1|country_text_id))
+  } else {
+    newformula = model_maker(base_formula, addprofile)
+    
+  }
+  
+  print(paste("START", Sys.time()))
+  print(newformula)
+  
+  bayesmodel = compile_stan(newformula, data, prior_brms, warmup = warmup, iter = iter, chains = chains, thin = thin)
+  
+  print(paste("ENDE", Sys.time()))
+  return(bayesmodel)
+}
+
+
+
 
 # Priors BRMS ####
 prior_unit_tscs <- c(set_prior("cauchy(0,5)", class = "sd"),
@@ -139,12 +282,19 @@ chech_stationarity_Beck = function(vars, datalist, model = "plm") {
   
   for (i in 1:length(vars)) {
     print(vars[i])
+    
+    vars_lag = paste(vars[i], "_wi_lag", sep="")
+    
+    # my_frame = datalist[[1]] %>% 
+    #   select(country_text_id, year_0, variable = vars[i]) %>%
+    #   group_by(country_text_id) %>% 
+    #   tidyr::complete(country_text_id, year_0 = min(year_0):max(year_0), fill = list(NA)) %>% 
+    #   mutate(lag = dplyr::lag(variable, 1)) %>% 
+    #   as.data.frame() 
+    
     my_frame = datalist[[1]] %>% 
-      select(country_text_id, year_0, variable = vars[i]) %>%
-      group_by(country_text_id) %>% 
-      tidyr::complete(country_text_id, year_0 = min(year_0):max(year_0), fill = list(NA)) %>% 
-      mutate(lag = dplyr::lag(variable, 1)) %>% 
-      as.data.frame() 
+      select(country_text_id, year_0, variable = vars[i], lag = vars_lag) %>% 
+      as.data.frame()
     
     if (model == "plm") {
       m1 = plm(variable ~ lag,
@@ -284,19 +434,26 @@ chech_stationarity_Fisher = function(vars, datalist) {
 }
 
 # PPC:Unit Heterogeneity ####
-ppc_unithet = function(mod_homogen, mod_unit, dataset, independent_var, unit = "country") {
+
+ppc_unithet = function(mod_homogen, mod_unit, dataset, independent_var, unit = "country_text_id") {
   ppc_homogen = posterior_predict(mod_homogen)
   ppc_unit = posterior_predict(mod_unit)
   
+  mod_hom_data = mod_homogen$data %>% 
+    select_at(vars(-matches("country"), -matches("year"))) %>% 
+    left_join(dataset, by = independent_var)  
+  mod_unit_data = mod_unit$data %>% 
+    select_at(vars(-matches("country"), -matches("year"))) %>% 
+    left_join(dataset, by = independent_var)  
   
   plot_data_homogen = data.frame(mod_homogen$data, 
-                                 country_text_id = dataset$country_text_id, 
-                         year_0 = dataset$year_0,
+                                 country_text_id = mod_hom_data$country_text_id, 
+                         year_0 = mod_hom_data$year_0,
                          posterior = t(ppc_homogen[sample(1:dim(ppc_homogen)[1], 1000),]))
   
   plot_data_unit = data.frame(mod_unit$data, 
-                              country_text_id = dataset$country_text_id, 
-                              year_0 = dataset$year_0,
+                              country_text_id = mod_unit$data$country_text_id, 
+                              year_0 = mod_unit_data$year_0,
                               posterior = t(ppc_unit[sample(1:dim(ppc_unit)[1], 1000),]))
   
   
@@ -358,7 +515,7 @@ ppc_unithet = function(mod_homogen, mod_unit, dataset, independent_var, unit = "
       summarise(TStat = mean(TStat)) %>% 
       mutate(TStat=round(TStat,2))
     
-  if (unit == "country") {
+  if (unit == "country_text_id") {
     
     # draw country sample
     
@@ -372,7 +529,7 @@ ppc_unithet = function(mod_homogen, mod_unit, dataset, independent_var, unit = "
       coord_flip() +
       theme_bw() +
       theme(legend.position = "none")   +
-      ggtitle("No Unit Heterogeneity")
+      ggtitle("Model: No Unit Heterogeneity")
     
     err_unit_plot = errorbar_plot_data_ctr(plot_data_unit)   %>% 
       ggplot(aes(x=country_text_id, y=y_obs, grp=country_text_id)) +
@@ -382,7 +539,7 @@ ppc_unithet = function(mod_homogen, mod_unit, dataset, independent_var, unit = "
       coord_flip() +
       theme_bw() +
       theme(legend.position = "none") +
-      ggtitle("Unit Heterogeneity")   
+      ggtitle("Model: Unit Heterogeneity")   
     
     # P Value Plot
 
@@ -430,7 +587,7 @@ ppc_unithet = function(mod_homogen, mod_unit, dataset, independent_var, unit = "
       coord_flip() +
       theme_bw() +
       theme(legend.position = "none")   +
-      ggtitle("No Time Heterogeneity")
+      ggtitle("Model: No Time Heterogeneity")
       
     err_unit_plot = errorbar_plot_data_year(plot_data_unit)   %>% 
       ggplot(aes(x=year_0, y=y_obs, grp=year_0)) +
@@ -441,7 +598,7 @@ ppc_unithet = function(mod_homogen, mod_unit, dataset, independent_var, unit = "
       coord_flip() +
       theme_bw() +
       theme(legend.position = "none") +
-      ggtitle("Time Heterogeneity")  
+      ggtitle("Model: Time Heterogeneity")  
     
     p_time_data_homogen = p_value_data_year(plot_data_homogen) 
     p_time_values_homogen = pvalues_year(p_time_data_homogen)
@@ -473,9 +630,9 @@ ppc_unithet = function(mod_homogen, mod_unit, dataset, independent_var, unit = "
       theme(axis.text.y = element_blank())
   }
     
-  final_plot = ggarrange(err_homogen_plot, err_unit_plot, 
-                         p_value_plot_homogen, p_value_plot_unit, nrow=2, ncol=2)
-  
+  # final_plot = ggarrange(err_homogen_plot, err_unit_plot, 
+  #                        p_value_plot_homogen, p_value_plot_unit, nrow=2, ncol=2)
+    final_plot = ggarrange(err_homogen_plot, err_unit_plot, nrow=1, ncol=2)
   return(final_plot)
 }
 
@@ -485,15 +642,24 @@ ppc_panelhet = function(mod_homogen, mod_unit, dataset, independent_var) {
   ppc_homogen = posterior_predict(mod_homogen)
   ppc_unit = posterior_predict(mod_unit)
   
+  mod_hom_data = mod_homogen$data %>% 
+    select_at(vars(-matches("country"), -matches("year"))) %>% 
+    left_join(dataset, by = independent_var)  
+  
+  mod_unit_data = mod_unit$data %>% 
+    select_at(vars(-matches("country"), -matches("year"))) %>% 
+    left_join(dataset, by = independent_var)  
+  
+  
   
   plot_data_homogen = data.frame(mod_homogen$data, 
-                                 country_text_id = dataset$country_text_id, 
-                                 year_0 = dataset$year_0,
+                                 country_text_id = mod_hom_data$country_text_id, 
+                                 year_0 = mod_hom_data$year_0,
                                  posterior = t(ppc_homogen[sample(1:dim(ppc_homogen)[1], 1000),]))
   
   plot_data_unit = data.frame(mod_unit$data, 
-                              country_text_id = dataset$country_text_id, 
-                              year_0 = dataset$year_0,
+                              country_text_id = mod_unit_data$country_text_id, 
+                              year_0 = mod_unit_data$year_0,
                               posterior = t(ppc_unit[sample(1:dim(ppc_unit)[1], 1000),]))
   
   
@@ -539,7 +705,7 @@ ppc_panelhet = function(mod_homogen, mod_unit, dataset, independent_var) {
     coord_flip() +
     theme_bw() +
     theme(legend.position = "none")   +
-    ggtitle("No Heteroskedasticity")
+    ggtitle("Model: No Heteroskedasticity")
   
   err_unit_plot = errorbar_plot_data_ctr(plot_data_unit)   %>% 
     ggplot(aes(x=country_text_id, y=y_obs, grp=country_text_id)) +
@@ -549,7 +715,7 @@ ppc_panelhet = function(mod_homogen, mod_unit, dataset, independent_var) {
     coord_flip() +
     theme_bw() +
     theme(legend.position = "none") +
-    ggtitle("Panel heteroskedasticity")   
+    ggtitle("Model: Panel heteroskedasticity")   
   
   # P Value Plot
   
@@ -583,8 +749,9 @@ ppc_panelhet = function(mod_homogen, mod_unit, dataset, independent_var) {
     theme(axis.text.y = element_blank())
   
 
-  final_plot = ggarrange(err_homogen_plot, err_unit_plot, 
-                         p_value_plot_homogen, p_value_plot_unit, nrow=2, ncol=2)
+  # final_plot = ggarrange(err_homogen_plot, err_unit_plot, 
+  #                        p_value_plot_homogen, p_value_plot_unit, nrow=2, ncol=2)
+  final_plot = ggarrange(err_homogen_plot, err_unit_plot, nrow=1, ncol=2)
   
   return(final_plot)
 }
@@ -685,8 +852,8 @@ fitted_res_plot = function(model,  country_sample = NULL, title = NULL) {
     geom_hline(yintercept = c(-2,2), linetype="longdash") +
     #facet_wrap(country_text_id ~ .) +
     theme_bw()  +
-    ggtitle(title) +
-    geom_text(data = fitted_res_data %>% filter(residuals > 4 | residuals < -4), aes(label=paste(country_text_id, year_0, sep = " ")))
+    ggtitle(title)
+    #geom_text(data = fitted_res_data %>% filter(residuals > 4 | residuals < -4), aes(label=paste(country_text_id, year_0, sep = " ")))
 }
 
 fitted_var_plot = function(model, independent_var, country_sample = NULL, title = NULL) {
@@ -731,8 +898,9 @@ fitted_var_alldata_plot = function(model, independent_var, title = NULL) {
 
 # Distribution Plot ####
 
-distribution_plot = function(model) {
-  y = model$data$Y
+distribution_plot = function(model, dep_var) {
+  y = model$data %>% 
+    pull(dep_var)
   yrep = posterior_predict(model)
   group = model$data$country_text_id
   
@@ -753,13 +921,19 @@ distribution_plot = function(model) {
 
 ### Lag Distribution #####
 
-lag_distribution_bayes = function(brms_model, LDV_label, IndV_label, unit = 1, time_periods=4, ci=0.95) {
+
+lag_distribution_bayes = function(brms_model, LDV_label, IndV_label, dep_label, unit = 1, time_periods=4, ci=0.95, ecm = F) {
   
   posterior_coefs = posterior_samples(brms_model, pars = IndV_label) %>% 
     select_at(vars(-matches("_bw")))
   print(colnames(posterior_coefs))
   posterior_LDV = posterior_samples(brms_model, pars = LDV_label)
   print(colnames(posterior_LDV))
+  
+  if (ecm == T) {
+    posterior_LDV = 1 + posterior_LDV
+    posterior_coefs[,2] = posterior_coefs[,2] - posterior_coefs[,1]
+  }
   
   
   shift <- function (x, shift) c(rep(0,times=shift), x[1:(length(x)-shift)])
@@ -768,6 +942,7 @@ lag_distribution_bayes = function(brms_model, LDV_label, IndV_label, unit = 1, t
                 matrix(0, nrow=dim(as.matrix(posterior_coefs))[1], ncol = time_periods))
   LDV = as.matrix(posterior_LDV)
   
+  # Calculate LRM
   LRM = rowSums(coefs)/(1 - rowSums(LDV))
 
   # Impulse Matrices X and Y
@@ -807,21 +982,37 @@ lag_distribution_bayes = function(brms_model, LDV_label, IndV_label, unit = 1, t
   
   print(paste("LRM:", round(median(LRM),3)))
   print(paste("HDI:", round(hdi(LRM, .width = ci), 3)))
-  ggplot(estimates, aes(x=time, y=est)) + 
+  
+  CI = round(hdi(LRM, .width = ci),3)
+  
+  label = paste("LRM: ", round(median(LRM),3), " (", CI[1,1], " - ",CI[1,2],")", sep="")
+  title = gsub("b_","",colnames(posterior_coefs))
+  title = gsub("_wi","",title)
+  title = gsub("_pr_ctl","",title)
+  title = gsub("_num_ctl","",title)
+  title = gsub("_df","",title)
+  
+
+  p1 = ggplot(estimates, aes(x=time, y=est)) + 
     geom_bar(stat="identity") +
     geom_errorbar(aes(ymin=l, ymax=u)) +
     geom_hline(yintercept = 0) +
-    theme_bw()
-  # barplot(colMeans(time_array), width = 1, space = 1, beside = TRUE, xlab = "Time Periods",
-  #         ylab = "Change in Y", cex.main = 0.85, cex.lab=0.75, cex.axis=0.75 )
+    theme_bw()  +
+    #annotate(geom = "text", label = label, x = Inf, y = Inf, hjust = 1, vjust = 1) +
+    ggtitle(title, subtitle = label) +
+    xlab("") +
+    ylab(paste("Change in", dep_label, sep=" "))
+
+  return(p1)
 }
 
 
-lag_distribution_bayes_ecm = function(brms_model_ecm, LDV_label, IndV_label, unit = 1, time_periods=4, ci=0.95) {
+lag_distribution_bayes_ecm = function(brms_model_ecm, LDV_label, IndV_label, dep_label, unit = 1, time_periods=6, ci=0.95) {
   
   posterior_coefs = posterior_samples(brms_model_ecm, pars = IndV_label) %>% 
-    select_at(vars(-matches("_bw"))) %>% 
-    as.matrix()
+    select_at(vars(-matches("_bw")))  %>% 
+    #sample_frac(0.25) %>% 
+    as.matrix() 
   print(colnames(posterior_coefs))
   posterior_LDV = posterior_samples(brms_model_ecm, pars = LDV_label) %>% 
     as.matrix()
@@ -854,24 +1045,121 @@ lag_distribution_bayes_ecm = function(brms_model_ecm, LDV_label, IndV_label, uni
     estimates$l[i] = hdi(time_array[,i], .width = ci)[1]
     estimates$u[i] = hdi(time_array[,i], .width = ci)[2]
   }
+  CI = round(hdi(LRM, .width = ci),3)
   
   print(paste("LRM:", round(median(LRM),3)))
   print(paste("HDI:", round(hdi(LRM, .width = ci), 3)))
+  
+  label = paste("LRM: ", round(median(LRM),3), " (", CI[1,1], " - ",CI[1,2],")", sep="")
+  title = gsub("b_","",colnames(posterior_coefs))
+  title = gsub("_wi","",title)
+  
+  
   ggplot(estimates, aes(x=time, y=est)) + 
     geom_bar(stat="identity") +
     geom_errorbar(aes(ymin=l, ymax=u)) +
     geom_hline(yintercept = 0) +
-    theme_bw()
-  # barplot(colMeans(time_array), width = 1, space = 1, beside = TRUE, xlab = "Time Periods",
-  #         ylab = "Change in Y", cex.main = 0.85, cex.lab=0.75, cex.axis=0.75 )
+    theme_bw() +
+    ggtitle(title, subtitle = label) +
+    xlab("") +
+    ylab("Effect") +
+    ylab(paste("Change in", dep_label, sep=" "))
+  
+  
+}
+
+lag_distribution_both = function(brms_model, LDV_label, IndV_label, dep_label, unit = 1, time_periods=4, ci=0.95, ecm = F) {
+  
+  if (unit == "sd") {
+    unit = brms_model$data %>% 
+      select_at(vars(matches(IndV_label)))  %>% 
+      select_at(vars(-matches("_bw"), -matches("_lag"))) %>% 
+      summarise_all(funs(unit = sd(.))) %>% 
+      pull(unit)
+    
+    print(unit)
+  } else {
+    unit = 1
+  }
+  
+  posterior_coefs = posterior_samples(brms_model, pars = IndV_label) %>% 
+    select_at(vars(-matches("_bw"))) 
+  
+  print(colnames(posterior_coefs))
+  posterior_LDV = posterior_samples(brms_model, pars = LDV_label)
+  print(colnames(posterior_LDV))
+  
+  
+  X = unit
+  
+  a =  as.matrix(posterior_LDV)
+  b0 = as.matrix(posterior_coefs[,1])
+  b1 = as.matrix(posterior_coefs[,2])
+  
+  
+  if (ecm == T) {
+    ECrate = abs(rowSums(a))
+    
+    LRM = (b1/ECrate)
+    LRM = LRM * X # scaling
+  } else {
+    ECrate = 1-abs(rowSums(a))
+    
+    LRM = ((b1 + b0)/ECrate) 
+    LRM = LRM * X # scaling
+  }
+  
+  time_periods = 6
+  
+  Y = array(NA, dim=c(dim(posterior_coefs)[1], time_periods))
+  
+  Y[,1] = b0 * X # T0
+  LR_effect = LRM - Y[,1]
+  
+  for (i in 2:time_periods) {
+    Y[,i] = LR_effect * ECrate
+    LR_effect = LR_effect - Y[,i]
+  }
+  
+  
+  estimates = data.frame(array(NA, dim=c(time_periods,3))) %>% 
+    rename(est = X1, l = X2, u = X3) %>% 
+    mutate(time = paste("t + ", 0:(time_periods-1), sep=""))
+  
+  for (i in 1:dim(estimates)[1]) {
+    estimates$est[i] = median(Y[,i])
+    estimates$l[i] = hdi(Y[,i], .width = ci)[1]
+    estimates$u[i] = hdi(Y[,i], .width = ci)[2]
+  }
+  
+  CI = round(hdi(LRM, .width = ci),3)
+  
+  label = paste("LRM: ", round(median(LRM),3), " (", CI[1,1], " - ",CI[1,2],")", sep="")
+  
+  title = gsub("b_","",colnames(posterior_coefs))
+  title = gsub("_wi","",title)
+  title = gsub("_pr_ctl","",title)
+  title = gsub("_num_ctl","",title)
+  title = gsub("_df","",title)
+  
+  p1 = ggplot(estimates, aes(x=time, y=est)) + 
+    geom_bar(stat="identity") +
+    #geom_errorbar(aes(ymin=l, ymax=u)) +
+    geom_hline(yintercept = 0) +
+    theme_bw()  +
+    ggtitle(title, subtitle = label) +
+    xlab("") +
+    ylab(paste("Change in", dep_label, sep=" "))
+  return(p1)
 }
 
 
 # Check Autocorrelation of Residuals ####
+
 check_autocorresiduals = function(brmsmodel, runs = 10) {
   
-  results = data.frame(array(NA, dim = c(runs, 4)))
-  colnames(results) = c("var", "lower", "upper", "est")
+  results = data.frame(array(NA, dim = c(runs, 5)))
+  colnames(results) = c("var", "lower", "upper", "est", "draw")
   results[,1] = "residuals_lag"
   
   for (i in 1:runs) {
@@ -889,15 +1177,151 @@ check_autocorresiduals = function(brmsmodel, runs = 10) {
     formula1[[1]][2] = gsub("\\+ \\(1 \\| year_0\\)","",formula1[[1]][2])
     new_formula = as.formula(paste(formula1[[1]][1], formula1[[1]][2], collapse = ""))
     
+    #print(new_formula)
     m1 = glmmTMB(new_formula,
+                 #dispformula =~ country_text_id,
                  resid_Data_lag,
                  control=glmmTMBControl(optCtrl=list(iter.max=1e3,eval.max=1e3)))
-    
-    print(summary(m1))
+    library(mvtnorm)
+    draw = rmvnorm(1, mean = fixef(m1)$cond, sigma = vcov(m1)$cond)
     
     results[i,2:4] = as.numeric(confint(m1)["cond.resid_lag", ]  )  
+    results[i,5] = draw[2]
   }
   return(results)
-  
+
 }
 
+make_sig_plot = function(combined_brms, pars="bw", prob_interval = 0.95, dep_label) {
+  
+  conflevel = 1-prob_interval
+  probs = c(0 + conflevel/2, 1 -( conflevel/2))
+  
+  
+  FKM_list = list()
+  for (i in 1:length(combined_brms)) {
+    FKM_list[[i]] = posterior_summary(combined_brms[[i]], pars="FKM", probs = probs) %>% 
+      data.frame() %>% 
+      mutate(parameter = rownames(.))  %>% 
+      select(parameter, Estimate, lower = 3, upper=4) %>% 
+      filter(grepl(pars, parameter))
+    
+  }
+  
+  FKM_rows = bind_rows(FKM_list)
+  
+  
+  titlelab = ifelse(pars == "bw", "Between-Effect", "Within-Effect")
+  
+  posterior_summary(combined_brms[[1]], pars=pars, probs = probs) %>% 
+    data.frame() %>% 
+    mutate(parameter = rownames(.)) %>% 
+    select(parameter, Estimate, lower = 3, upper=4) %>% 
+    filter(grepl("FKM", parameter) == F) %>% 
+    bind_rows(FKM_rows) %>% 
+    filter(grepl("_lag", parameter) == F) %>% 
+    mutate(parameter = gsub("_num_ctl","",parameter),
+           parameter = gsub("_pr_ctl","",parameter),
+           parameter = gsub("b_","",parameter),
+           parameter = gsub("_df_wi","",parameter),
+           parameter = gsub("_bw","",parameter),
+           parameter = gsub("_wi","",parameter),
+           parameter = gsub("_df","",parameter)) %>%
+    ggplot(aes(x=parameter, y=Estimate, ymin=lower, ymax=upper)) +
+    geom_point(size=2) +
+    geom_errorbar(size=1) +
+    xlab("") +
+    ylab(paste("Change in", dep_label, sep=" ")) +
+    coord_flip() +
+    theme_bw() +
+    geom_hline(yintercept = 0) +
+    ggtitle(titlelab)
+}
+
+
+
+# Simulation ####
+
+get_dynsim = function(scenario, brms_model, LDV1, LDV2 = NULL, simulations = 100, length_preds = 20, ecm=F, minus_wi) {
+  
+  mysimulations = matrix(NA, nrow=length_preds, ncol=simulations) %>% 
+    data.frame() 
+
+  scenario_filler = scenario
+  for (i in 2:length_preds) {
+
+    p_sc1 = data.frame(predictions = fitted( brms_model, newdata=scenario_filler[i-1,], summary=F, nsamples=simulations, allow_new_levels=T)) %>% 
+      pull(predictions) %>%
+      as.numeric()
+    
+    if (ecm == T) {
+      p_sc1 = p_sc1 + as.numeric(scenario_filler[i,LDV1])
+    }
+
+    
+    if (is.null(LDV2) == F) {
+      scenario_filler[i,LDV2] =  scenario_filler[i-1,LDV1]
+    }
+    
+    scenario_filler[i,LDV1] = mean(p_sc1) - minus_wi 
+    mysimulations[i,] = p_sc1
+    print(scenario_filler[i,LDV1] )
+    
+  }
+  
+  final_frame = data.frame(
+    est = rowMeans(mysimulations, na.rm=T),
+    lower = apply(mysimulations, 1, FUN = function(x) hdi(x)[1]),
+    upper = apply(mysimulations, 1, FUN = function(x) hdi(x)[2]),
+    year = 1:length_preds
+  )
+  return(final_frame)
+} 
+
+
+
+
+
+
+
+
+
+
+
+get_dynsimxx = function(scenario, brms_model, LDV1, LDV2 = NULL, simulations = 100, length_preds = 20, ecm=F) {
+  
+  mysimulations = matrix(NA, nrow=length_preds, ncol=simulations) %>% 
+    data.frame() 
+  
+
+  p_sc1 = NULL
+  for (i in 1:length_preds) {
+    
+    scenario_filler = scenario[i,] 
+    
+    if (is.null(p_sc1) == F) {
+      if (ecm == T) {
+        p_sc1 = p_sc1 + as.numeric(scenario_filler[LDV1])
+      }
+      
+      if (is.null(LDV2) == F) {
+        scenario_filler[LDV2] =  scenario_filler[LDV1]
+        print(scenario_filler[LDV1])
+      }
+      
+      scenario_filler[LDV1] = mean(p_sc1) 
+      
+      mysimulations[i,] = p_sc1
+    }
+    
+    p_sc1 = data.frame(predictions = fitted( brms_model, newdata=scenario_filler, summary=F, nsamples=simulations)) %>% 
+      pull(predictions) %>%
+      as.numeric()
+    
+    mysimulations[i,] = p_sc1
+    
+  }
+
+  final_frame = data.frame(preds = t(mysimulations))
+  return(final_frame)
+} 

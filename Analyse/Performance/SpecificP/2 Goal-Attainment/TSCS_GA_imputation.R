@@ -16,6 +16,7 @@ ccp_ctl = fread("C:/RTest/ccp_csv.csv") %>%
   mutate(length_const_num_ctl = ifelse(systid_ccp == 355, 13992, length_const_num_ctl))
 
 
+
 # Create Dataset
 tscs_data_GA_Lutz = tscs_data %>% 
   select_at(vars(country_text_id, year, systid_ccp,
@@ -28,7 +29,7 @@ tscs_data_GA_Lutz = tscs_data %>%
   left_join(ccp_ctl, by="systid_ccp") %>% 
   
   # Filter NAs Lutz
-  filter(is.na(GA_lutz_ga) == F | is.na(GA_ccp_ga) == F) %>%  
+  filter(is.na(arate_lutz_ga) == F | is.na(arate_ccp_ga) == F) %>%  
   # not a time-series dataset: Mean Summarize all Values
   group_by(country_text_id, systid_ccp) %>% 
   summarise_at(vars(-year), funs(mean(., na.rm=T))) %>%
@@ -52,13 +53,14 @@ tscs_data_GA_Lutz_trans = tscs_data_GA_Lutz %>%
 
 # Missings Plot ####
 miss_Lutz = tscs_data_GA_Lutz %>% 
-  select(-systid_ccp, -GA_ccp_ga) %>% 
-  filter(is.na(GA_lutz_ga) == F) %>% 
+  select_at(vars(-systid_ccp, -arate_ccp_ga, -matches("odempr"))) %>% 
+  filter(is.na(arate_lutz_ga) == F) %>% 
   summarise_all(pMiss_01) %>% 
   pivot_longer(cols=everything()) %>% 
   mutate(name = gsub("_num_ctl", "", name),
          name = gsub("_pr_ctl", "", name),
-         name = gsub("_ctl", "", name)) %>% 
+         name = gsub("_ctl", "", name),
+         name = gsub("_cat", "", name)) %>% 
   ggplot(aes(x=name, y=value)) +
   geom_bar(stat="identity", width=1) +
   scale_y_continuous(name=NULL, breaks=seq(0,1, 0.25), limit=c(0,1), labels=percent)  +
@@ -68,13 +70,14 @@ miss_Lutz = tscs_data_GA_Lutz %>%
   ggtitle("Missings in TSCS - Goal-Attainment Lutz")
 
 miss_CCP = tscs_data_GA_Lutz %>% 
-  select(-systid_ccp, -GA_lutz_ga) %>% 
-  filter(is.na(GA_ccp_ga) == F) %>% 
+  select_at(vars(-systid_ccp, -arate_lutz_ga, -matches("odempr"))) %>% 
+  filter(is.na(arate_ccp_ga) == F) %>% 
   summarise_all(pMiss_01) %>% 
   pivot_longer(cols=everything()) %>% 
   mutate(name = gsub("_num_ctl", "", name),
          name = gsub("_pr_ctl", "", name),
-         name = gsub("_ctl", "", name)) %>% 
+         name = gsub("_ctl", "", name),
+         name = gsub("_cat", "", name)) %>% 
   ggplot(aes(x=name, y=value)) +
   geom_bar(stat="identity", width=1) +
   scale_y_continuous(name=NULL, breaks=seq(0,1, 0.25), limit=c(0,1), labels=percent)  +
@@ -89,7 +92,7 @@ ggarrange(miss_Lutz, miss_CCP, ncol=2)
 
 # Distributions  Plot ####
 raw_dist = tscs_data_GA_Lutz %>% 
-  select_at(vars(-starts_with("FKM"), -ends_with("ga"), -systid_ccp)) %>% 
+  select_at(vars(-starts_with("FKM"), -ends_with("ga"), -systid_ccp, -matches("odempr"))) %>% 
   select_if(is.numeric) %>% 
   pivot_longer(cols=everything())  %>% 
   mutate(name = gsub("_num_ctl", "", name),
@@ -104,7 +107,7 @@ raw_dist = tscs_data_GA_Lutz %>%
   ylab("")
 
 trans_dist = tscs_data_GA_Lutz_trans %>% 
-  select_at(vars(-starts_with("FKM"), -ends_with("ga"), -systid_ccp)) %>% 
+  select_at(vars(-starts_with("FKM"), -ends_with("ga"), -systid_ccp, -matches("odempr"))) %>% 
   select_if(is.numeric) %>% 
   pivot_longer(cols=everything())  %>% 
   mutate(name = gsub("_num_ctl", "", name),
@@ -135,12 +138,14 @@ corrplot(cor(tscs_data_GA_Lutz_trans %>%
 
 # XYPlots Plot ####
 names(tscs_data_GA_Lutz_trans)
-p1 = xyplot(tscs_data_GA_Lutz_trans, "GA_ccp_ga", c("systid_ccp"))
-p2 = xyplot(tscs_data_GA_Lutz_trans, "GA_lutz_ga", c("systid_ccp")) 
+p1 = xyplot(tscs_data_GA_Lutz_trans %>% 
+              select_at(vars(-matches("odempr"))), "arate_ccp_ga", c("systid_ccp"))
+p2 = xyplot(tscs_data_GA_Lutz_trans%>% 
+              select_at(vars(-matches("odempr"))), "arate_lutz_ga", c("systid_ccp")) 
 ggarrange(p1, p2, ncol=1)
 
 
 # No Imputation Possible ####
 
 # Saving ####
-save(tscs_data_GA_Lutz_trans, file = "Analyse/Performance/SpecificP/Datasets/tscs_data_GA_Lutz_trans.Rdata")
+save(tscs_data_GA_Lutz_trans, file = "Analyse/Performance/SpecificP/Datasets/tscs_data_GA_Lutz_trans_v2.Rdata")

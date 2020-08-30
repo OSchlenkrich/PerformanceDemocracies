@@ -48,7 +48,7 @@ mice_data_naframe_env = mice_data_env_trans %>%
  
 # Missings Plot ####
 mice_data_env_trans %>% 
-  select_at(vars(-matches("lag"),-matches("lead"), -country_text_id)) %>% 
+  select_at(vars(-matches("lag"),-matches("lead"), -country_text_id,-matches("odempr"))) %>% 
   group_by(year_0) %>% 
   summarise_all(pMiss_01) %>% 
   pivot_longer(cols=-year_0) %>% 
@@ -61,15 +61,16 @@ mice_data_env_trans %>%
   facet_wrap(name~.) +
   scale_y_continuous(name=NULL, breaks=seq(0,1, 0.25), limit=c(0,1), labels=percent)  +
   scale_x_continuous(name=NULL, breaks=seq(1950,2020, 10)) + 
+  scale_fill_grey(start = 0.4, end = 0.4) +
   theme_bw()  +
   theme(axis.text.x = element_text(angle=90), legend.position = "none") +
-  ggtitle("Missings in TSCS - Environmental")
+  ggtitle("Missings in TSCS - Environmental Performance")
 
 
 # Distributions Plot ####
 raw_dist = mice_data_env %>% 
   select_if(is.numeric) %>% 
-  select_at(vars(-matches("lag"),-matches("lead"), -year_0)) %>% 
+  select_at(vars(-matches("lag"),-matches("lead"), -year_0,-matches("odempr"))) %>% 
   pivot_longer(cols=everything())  %>% 
   mutate(name = gsub("_num_ctl", "", name),
          name = gsub("_pr_ctl", "", name),
@@ -86,7 +87,7 @@ raw_dist = mice_data_env %>%
 
 trans_dist = mice_data_env_trans %>% 
   select_if(is.numeric) %>% 
-  select_at(vars(-matches("lag"),-matches("lead"), -year_0)) %>% 
+  select_at(vars(-matches("lag"),-matches("lead"), -year_0,-matches("odempr"))) %>% 
   pivot_longer(cols=everything())  %>% 
   mutate(name = gsub("_num_ctl", "", name),
          name = gsub("_pr_ctl", "", name),
@@ -141,8 +142,8 @@ mice_data_env_trans_mice[] <- lapply(mice_data_env_trans_mice, function(x) { att
 # Imputation
 # includes: FE, Polynomial
 
-nr_imputations = 10
-nr_cores = 10
+nr_imputations = 5
+nr_cores = 5
 
 a.out_env <- amelia(mice_data_env_trans_mice, 
                     m = nr_imputations, 
@@ -161,13 +162,30 @@ a.out_env
 
 # Saving ####
 
-save(a.out_env, file = "Analyse/Performance/SpecificP/Datasets/a.out_env_v3.Rdata")
+save(a.out_env, file = "Analyse/Performance/SpecificP/Datasets/a.out_env_v4.Rdata")
 save(mice_data_naframe_env, file = "Analyse/Performance/SpecificP/Datasets/mice_data_naframe_env.Rdata")
 
-# load("Analyse/Performance/SpecificP/Datasets/a.out_env_v3.Rdata")
+# load("Analyse/Performance/SpecificP/Datasets/a.out_env_v4.Rdata")
 
 
 # Diagnostics ####
 
 disp_env_tscs = disperse(a.out_env, dims = 1, m = 5)
 # saveRDS(disp_env_tscs, "Analyse/Performance/SpecificP/1 Adaptation/Environment/RObjects/disp_env_tscs.RDS")
+
+
+
+disp_env_tscs = readRDS("Analyse/Performance/SpecificP/1 Adaptation/Environment/RObjects/disp_env_tscs.RDS")
+convergence_amelia(disp_env_tscs)  +
+  ggtitle("TSCS Environment: Overdispersed Starting Values")
+
+
+gdppc_env = Amelia::overimpute(a.out_env, var = "gdppc_wdi_num_ctl")
+# saveRDS(gdppc_env, "Analyse/Performance/SpecificP/1 Adaptation/Environment/RObjects/gdppc_env.RDS")
+trade_wdi_env = Amelia::overimpute(a.out_env, var = "trade_wdi_num_ctl")
+# saveRDS(trade_wdi_env, "Analyse/Performance/SpecificP/1 Adaptation/Environment/RObjects/trade_wdi_env.RDS")
+
+ggarrange(
+  overimpute_gglot(gdppc_env, "gdppc_wdi"),
+  overimpute_gglot(trade_wdi_env, "trade_wdi")
+)

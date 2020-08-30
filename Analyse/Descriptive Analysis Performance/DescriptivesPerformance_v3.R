@@ -138,7 +138,7 @@ get_OECDvalue_table = function(variable) {
 make_dust_table = function(table_complete) {
   # Split Table for better page fit
   split1 = table_complete %>% 
-    slice(1:ceiling(((dim(table_complete)[1])/2))) %>% 
+    dplyr::slice(1:ceiling(((dim(table_complete)[1])/2))) %>% 
     mutate(id = 1:dim(.)[1])
   split2 = table_complete %>% 
     anti_join(split1)  %>% 
@@ -284,7 +284,7 @@ top_performer_table = function(variable) {
     pivot_longer(cols = -country_text_id) %>% 
     group_by(name) %>% 
     arrange(name, -value) %>% 
-    slice(1:5) %>%
+    dplyr::slice(1:5) %>%
     mutate(rank = 1:5) %>% 
     select(-value) %>% 
     pivot_wider(names_from = name, values_from = country_text_id) %>% 

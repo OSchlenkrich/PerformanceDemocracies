@@ -3,10 +3,10 @@
 # Setup ####
 
 source("Analyse/Performance/SpecificP/LoadTSCSData.R")
-load("Analyse/Performance/SpecificP/Datasets/economy_out_v3.Rdata")
+load("Analyse/Performance/SpecificP/Datasets/economy_out_v4.Rdata")
 load("Analyse/Performance/SpecificP/Datasets/mice_data_naframe_eco.Rdata")
 # source("Analyse/Performance/SpecificP/1 Adaptation/Economy/TSCS_imputation_Economy.R")
-source("Analyse/Performance/SpecificP/WorkFlow_v2.R")
+source("Analyse/Performance/SpecificP/WorkFlow_v3.R")
 source("Setup/brms_tables.R")
 
 
@@ -16,13 +16,15 @@ wealth_list = make_reg_data(economy_out, "wealth_eco",
                             vars_noimput = c("cabinet_cpds_cat_ctl", "unions_vi_num_ctl",
                                              "execpar_1981_odempr", "feduni1981_odempr",
                                              "centrip_odempr"),
-                            lag2 = T) 
+                            lag2 = T,
+                            nr_imputations = 5) 
 prod_list = make_reg_data(economy_out, "productivity_eco", 
                             naframe = mice_data_naframe_eco, 
                             vars_noimput = c("cabinet_cpds_cat_ctl", "unions_vi_num_ctl",
                                              "execpar_1981_odempr", "feduni1981_odempr",
                                              "centrip_odempr"),
-                            lag2 = T) 
+                            lag2 = T,
+                          nr_imputations = 5) 
 
 # Combine TSCS Data ####
 tscs_eco_list = list()
@@ -71,26 +73,36 @@ tscs_eco_list[[1]] %>%
 
 # XY Plots ####
 p1 = xyplot(tscs_eco_list[[1]] %>% 
-              select_at(vars(FKM5_E, FKM5_c, FKM5_Fec, FKM5_fEc, FKM5_fEC, FKM5_FEC, ends_with("ctl"), ends_with("eco"))), 
+              select_at(vars(FKM4_E, FKM4_c, FKM5_Fec, FKM5_fEc, FKM5_fEC, FKM5_FEC, ends_with("ctl"), ends_with("eco"))), 
             "wealth_eco", 
             c("productivity_eco", "productivity_eco_spatial_ctl", "gdppc_wdi_num_ctl")) 
 p2 = xyplot(tscs_eco_list[[1]] %>% 
-              select_at(vars(FKM5_E, FKM5_c, FKM5_Fec, FKM5_fEc, FKM5_fEC, FKM5_FEC, ends_with("ctl"), ends_with("eco"))), 
+              select_at(vars(FKM4_E, FKM4_c, FKM5_Fec, FKM5_fEc, FKM5_fEC, FKM5_FEC, ends_with("ctl"), ends_with("eco"))), 
             "productivity_eco", c("wealth_eco","wealth_eco_spatial_ctl", "gdppc_wdi_num_ctl")) 
 ggarrange(p1, p2, ncol=1)
 
 
-
+tscs_eco_list[[1]]$FKM5_E
 # Check Stationarity ####
 vars = tscs_eco_list[[1]] %>% 
   select_if(is.numeric) %>% 
-  select_at(vars(wealth_eco_wi_lag,
-                 productivity_eco_wi_lag,
-                 ends_with("ctl_wi"),
+  select_at(vars(wealth_eco,
+                 productivity_eco,
+                 FKM4_E,
+                 FKM4_c,
+                 FKM4_c,
+                 FKM5_fEC,
+                 FKM5_FeC,
+                 FKM5_Fec,
+                 FKM5_fEc,
+                 FKM5_FEC,
+                 ends_with("ctl"),
                  -matches("_cat"),
-                 -gdppc_wdi_num_ctl_wi)) %>% 
+                 -gdppc_wdi_num_ctl_wi,
+                 -matches("_spatial"))) %>% 
   colnames()
 
 chech_stationarity_Beck(vars, tscs_eco_list, model = "glmmTMB")
 
 # Only Between Effect of Population Size
+
