@@ -236,7 +236,10 @@ schwartz_caus = fread("Datasets/Schwartz_culture.csv") %>%
 
 # Dependent Variables ####
 profiles_agg_cult = dmx_trade_cluster %>% 
+  
   filter(year >= 1950) %>% 
+  #filter(year >= 1950, year <= 1980) %>% 
+  
   select_at(vars(country, starts_with("mp_cluster4"), starts_with("mp_cluster5"))) %>% 
   group_by(country) %>% 
   summarise_all(mean, na.omit=T) %>% 
@@ -246,7 +249,7 @@ profiles_agg_cult = dmx_trade_cluster %>%
 ### Create Dataset ######
 
 caus_culture_profiles_data = profiles_agg_cult  %>% 
-  left_join(V_dem %>% select(country, COWcode) %>%  distinct() %>%  group_by(country) %>% slice(1), by="country") %>% 
+  left_join(V_dem %>% select(country, COWcode) %>%  distinct() %>%  group_by(country) %>% dplyr::slice(1), by="country") %>% 
   left_join(fract_caus, by="country_text_id") %>% 
   left_join(QoG_caus_num, by="country_text_id") %>% 
   left_join(QoG_caus_cat, by="country_text_id") %>% 

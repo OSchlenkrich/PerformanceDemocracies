@@ -51,7 +51,7 @@ mice_data_naframe_soc = mice_data_soc_trans %>%
 
 # Missings Plot ####
 mice_data_soc_trans %>% 
-  select_at(vars(-matches("lag"),-matches("lead"), -country_text_id)) %>% 
+  select_at(vars(-matches("lag"),-matches("lead"), -country_text_id,-matches("odempr"))) %>% 
   group_by(year_0) %>% 
   summarise_all(pMiss_01) %>% 
   pivot_longer(cols=-year_0) %>% 
@@ -63,7 +63,8 @@ mice_data_soc_trans %>%
   geom_bar(stat="identity", width=1) +
   facet_wrap(name~.) +
   scale_y_continuous(name=NULL, breaks=seq(0,1, 0.25), limit=c(0,1), labels=percent)  +
-  scale_x_continuous(name=NULL, breaks=seq(1950,2020, 10)) + 
+  scale_x_continuous(name=NULL, breaks=seq(1950,2020, 10)) +
+  scale_fill_grey(start = 0.4, end = 0.4) +
   theme_bw()  +
   theme(axis.text.x = element_text(angle=90), legend.position = "none") +
   ggtitle("Missings in TSCS - Social Integration")
@@ -72,7 +73,7 @@ mice_data_soc_trans %>%
 # Distributions Plot ####
 raw_dist = mice_data_soc %>% 
   select_if(is.numeric) %>% 
-  select_at(vars(-matches("lag"),-matches("lead"), -year_0)) %>% 
+  select_at(vars(-matches("lag"),-matches("lead"), -year_0,-matches("odempr"))) %>% 
   pivot_longer(cols=everything())  %>% 
   mutate(name = gsub("_num_ctl", "", name),
          name = gsub("_pr_ctl", "", name),
@@ -89,7 +90,7 @@ raw_dist = mice_data_soc %>%
 
 trans_dist = mice_data_soc_trans %>% 
   select_if(is.numeric) %>% 
-  select_at(vars(-matches("lag"),-matches("lead"), -year_0)) %>% 
+  select_at(vars(-matches("lag"),-matches("lead"), -year_0,-matches("odempr"))) %>% 
   pivot_longer(cols=everything())  %>% 
   mutate(name = gsub("_num_ctl", "", name),
          name = gsub("_pr_ctl", "", name),
@@ -147,8 +148,8 @@ mice_data_soc_trans_mice[] <- lapply(mice_data_soc_trans_mice, function(x) { att
 # Imputation
 # includes: FE, Polynomial
 
-nr_imputations = 10
-nr_cores = 10
+nr_imputations = 5
+nr_cores = 5
 
 a.out_soc <- amelia(mice_data_soc_trans_mice, 
                     m = nr_imputations, 
@@ -168,7 +169,7 @@ a.out_soc
 
 # Saving ####
 
-save(a.out_soc, file = "Analyse/Performance/SpecificP/Datasets/a.out_soc_v3.Rdata")
+save(a.out_soc, file = "Analyse/Performance/SpecificP/Datasets/a.out_soc_v4.Rdata")
 save(mice_data_naframe_soc, file = "Analyse/Performance/SpecificP/Datasets/mice_data_naframe_soc.Rdata")
 
 #load("Analyse/Performance/SpecificP/Datasets/a.out_soc_v3.Rdata")
@@ -177,3 +178,20 @@ save(mice_data_naframe_soc, file = "Analyse/Performance/SpecificP/Datasets/mice_
 
 disp_soc_tscs = disperse(a.out_soc, dims = 1, m = 5)
 # saveRDS(disp_soc_tscs, "Analyse/Performance/SpecificP/3 Integration/Equality/RObjects/disp_soc_tscs.RDS")
+
+
+
+disp_soc_tscs = readRDS("Analyse/Performance/SpecificP/3 Integration/Equality/RObjects/disp_soc_tscs.RDS")
+convergence_amelia(disp_soc_tscs)  +
+  ggtitle("TSCS Equality: Overdispersed Starting Values")
+
+
+gdppc_soc = Amelia::overimpute(a.out_soc, var = "gdppc_wdi_num_ctl")
+# saveRDS(gdppc_soc, "Analyse/Performance/SpecificP/3 Integration/Equality/RObjects/gdppc_soc.RDS")
+trade_wdi_soc = Amelia::overimpute(a.out_soc, var = "trade_wdi_num_ctl")
+# saveRDS(trade_wdi_soc, "Analyse/Performance/SpecificP/3 Integration/Equality/RObjects/trade_wdi_soc.RDS")
+
+ggarrange(
+  overimpute_gglot(gdppc_soc, "gdppc_wdi"),
+  overimpute_gglot(trade_wdi_soc, "trade_wdi")
+)
