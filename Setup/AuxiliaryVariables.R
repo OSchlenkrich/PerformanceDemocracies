@@ -137,7 +137,7 @@ aux_vars_dmx_env %>%
 # ANALYSE VARS
 if (exists("dmx_trade_cluster") == T ){
   # Main Independent Var: Log Ratios Democracy Profiles
- source("Analyse/Cluster/LogRatios.R")
+ source("Analyse/Cluster/LogRatios_v2.R")
 
  # Other Analyse vars
   

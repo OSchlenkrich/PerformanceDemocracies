@@ -382,7 +382,7 @@ odds_ratio_plot = function(ref_model, sign_niveau=0.05, vars_sel = NULL) {
   
   var_labels = plot_data %>% 
     group_by(vars) %>% 
-    slice(1) %>% 
+    dplyr::slice(1) %>% 
     pull(vars)
   print(plot_data)
   var_labels = gsub("_caus","",var_labels)

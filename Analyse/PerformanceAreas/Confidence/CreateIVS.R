@@ -17,7 +17,7 @@ IVS_ctry_id = read.csv("C:/RTest/IVS/ctry_id.csv", header=T, encoding = "UTF-8")
 cty_identifier = V_dem %>% 
   dplyr::select(country, country_text_id) %>% 
   group_by(country) %>% 
-  slice(1) 
+  dplyr::slice(1) 
 
 
 # Check if identifier matches with own sample (Cyprus?)

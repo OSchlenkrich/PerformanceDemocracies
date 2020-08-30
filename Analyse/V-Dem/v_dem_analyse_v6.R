@@ -975,6 +975,14 @@ summary(m3_nc)
 #saveRDS(m3_nc, file="Analyse/V-Dem/robjects/m3_nc.RDS")
 
 # Tables ####
+
+m0_p = readRDS(file="Analyse/V-Dem/robjects/m0_p.RDS")
+m1_ncl = readRDS(file="Analyse/V-Dem/robjects/m1_ncl.RDS")
+m1_ncnl = readRDS(file="Analyse/V-Dem/robjects/m1_ncnl.RDS")
+m2_nc = readRDS(file="Analyse/V-Dem/robjects/m2_nc.RDS")
+m2_nc_exclarea = readRDS(file="Analyse/V-Dem/robjects/m2_nc_exclarea.RDS")
+m3_nc = readRDS(file="Analyse/V-Dem/robjects/m3_nc.RDS")
+
 anova(m0_p, m1_ncl, m1_ncnl, m2_nc, m2_nc_exclarea, m3_nc) %>% 
   make_anova_table(truenames=F)
 
@@ -1206,7 +1214,7 @@ reg_data_bridged_caus_alyse = reg_data_bridged_caus %>%
 m0_noml_bc <- glmmTMB(nr_bcoder ~ 1, 
               family=poisson(link = "log"), 
               reg_data_bridged_caus_alyse)
-
+# saveRDS(m0_noml_bc, file="Analyse/V-Dem/robjects/m0_noml_bc.RDS")
 # Null model with ML
 m0_bc <- glmmTMB(nr_bcoder ~ 1 + 
                    (1|name) + (1|country_text_id) + (1|obs_effect), 
@@ -1336,6 +1344,14 @@ anova(m2_bc, m3_bc)
 
 
 # Tables ####
+
+m0_noml_bc = readRDS(file="Analyse/V-Dem/robjects/m0_noml_bc.RDS")
+m0_bc = readRDS(file="Analyse/V-Dem/robjects/m0_bc.RDS")
+m1_bc = readRDS(file="Analyse/V-Dem/robjects/m1_bc.RDS")
+m1_bc_nl = readRDS(file="Analyse/V-Dem/robjects/m1_bc_nl.RDS")
+m2_bc = readRDS(file="Analyse/V-Dem/robjects/m2_bc.RDS")
+m2_bc_exlarea = readRDS(file="Analyse/V-Dem/robjects/m2_bc_exlarea.RDS")
+m3_bc = readRDS(file="Analyse/V-Dem/robjects/m3_bc.RDS")
 
 anova(m0_noml_bc, m0_bc, m1_bc, m1_bc_nl, m2_bc_exlarea, 
       m2_bc, m3_bc) %>% 
@@ -1756,10 +1772,18 @@ summary(m3_disagree_noqdiff)
 
 # Tables ####
 
+m0_ml_disagree = readRDS(file="Analyse/V-Dem/robjects/m0_ml_disagree.RDS")
+m1_disagree = readRDS(file="Analyse/V-Dem/robjects/m1_disagree.RDS")
+m1_disagree_2_nl = readRDS(file="Analyse/V-Dem/robjects/m1_disagree_2_nl.RDS")
+m2_disagree = readRDS(file="Analyse/V-Dem/robjects/m2_disagree.RDS")
+m2_disagree_exlarea = readRDS(file="Analyse/V-Dem/robjects/m2_disagree_exlarea.RDS")
+m3_disagree_noqdiff = readRDS(file="Analyse/V-Dem/robjects/m3_disagree_noqdiff.RDS")
+m3_disagree = readRDS(file="Analyse/V-Dem/robjects/m3_disagree.RDS")
+
 anova(m0_ml_disagree,
       m1_disagree, m1_disagree_2_nl,
       m2_disagree, m2_disagree_exlarea, 
-      m3_disagree_noqdiff) %>% 
+      m3_disagree) %>% 
   make_anova_table(truenames=F)
 
 make_glmm_tables(m0_ml_disagree,
