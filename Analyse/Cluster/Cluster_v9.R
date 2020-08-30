@@ -163,11 +163,10 @@ year_country = dmx_data_trade %>%
   na.omit() %>% 
   select(country, year) %>% 
   group_by(country) %>% 
-  summarise(No = n()) %>% 
-  pull(No) 
+  summarise(No = n())
+
 string_countries = paste(enc2utf8(year_country$country), " (", year_country$No, ")", sep="")
 # write.csv(paste(string_countries, collapse = ", "), "Analyse/Cluster/Text/countries_cluster.csv", row.names = F, fileEncoding = "UTF-8")
-
 
 
 
@@ -690,21 +689,21 @@ ggarrange(FKM_2_dim_plot, FKM_3_dim_plot, FKM_4_dim_plot, FKM_5_dim_plot, nrow=2
 
 # Descriptive Statistics ####
 countries_cluster = dmx_trade_cluster %>% 
-  select(FKMmed_6_cluster, country) %>% 
-  group_by(FKMmed_6_cluster) %>% 
+  select(Cluster5, country) %>% 
+  group_by(Cluster5) %>% 
   distinct(country) %>% 
   summarise(No = n())
 
 
 cluster_year = dmx_trade_cluster %>% 
-  select(FKMmed_6_cluster, country, year) %>% 
-  group_by(FKMmed_6_cluster, country) %>% 
+  select(Cluster5, country, year) %>% 
+  group_by(Cluster5, country) %>% 
   summarise(No = n()) %>% 
   summarise(mean = round(mean(No), 0),
             min = min(No),
             max = max(No))
 
-string_clusters = paste(countries_cluster$FKMmed_6_cluster,
+string_clusters = paste(countries_cluster$Cluster5,
                          ": ",
                          countries_cluster$No, 
                          " countries",
@@ -714,16 +713,29 @@ string_clusters = paste(countries_cluster$FKMmed_6_cluster,
 
 write.csv(paste(string_clusters, collapse = "; "), "Analyse/Cluster/Text/cluster_info.csv", row.names = F, fileEncoding = "UTF-8")
 
-string_clusters_year = dmx_trade_cluster %>% 
-  select(FKMmed_6_cluster, country) %>% 
-  group_by(FKMmed_6_cluster) %>% 
+string_clusters_year_4 = dmx_trade_cluster %>% 
+  select(Cluster4, country) %>% 
+  group_by(Cluster4) %>% 
   distinct(country) %>% 
-  arrange(FKMmed_6_cluster) %>% 
+  arrange(Cluster4) %>% 
   left_join(dmx_trade_cluster %>% 
-              select(FKMmed_6_cluster, country) %>% 
-              group_by(FKMmed_6_cluster, country) %>%
+              select(Cluster4, country) %>% 
+              group_by(Cluster4, country) %>%
               summarise(No = n()), 
-            by=c("FKMmed_6_cluster", "country")) %>% 
+            by=c("Cluster4", "country")) %>% 
+  mutate(string = paste(country, " (", No, ")", sep=""))
+write.csv(paste(string_clusters_year_4$string, collapse = ", "), "Analyse/Cluster/Text/cluster_country_year_4.csv", row.names = F, fileEncoding = "UTF-8")
+
+string_clusters_year = dmx_trade_cluster %>% 
+  select(Cluster5, country) %>% 
+  group_by(Cluster5) %>% 
+  distinct(country) %>% 
+  arrange(Cluster5) %>% 
+  left_join(dmx_trade_cluster %>% 
+              select(Cluster5, country) %>% 
+              group_by(Cluster5, country) %>%
+              summarise(No = n()), 
+            by=c("Cluster5", "country")) %>% 
   mutate(string = paste(country, " (", No, ")", sep=""))
 write.csv(paste(string_clusters_year$string, collapse = ", "), "Analyse/Cluster/Text/cluster_country_year.csv", row.names = F, fileEncoding = "UTF-8")
 
