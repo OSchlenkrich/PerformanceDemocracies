@@ -42,6 +42,39 @@ confidence_IVS = IVS %>%
 
 # each study year - and + three years
 # vars are not missing since 1990
+#   filter(classification_core == "Deficient Democracy" |  classification_core == "Working Democracy")  %>%
+
+test = confidence_IVS %>%
+  select_at(vars("country_text_id", "year_study", ends_with("_ivs"), weights, -matches("_ind"))) %>% 
+  # na.omit() %>% 
+  pivot_longer(cols=c(-country_text_id, -year_study)) %>% 
+  group_by(country_text_id, year_study, name) %>% 
+  na.omit() %>% 
+  summarise(cases = n()) %>% 
+  arrange(country_text_id, year_study) %>% 
+  group_by(country_text_id, name)%>% 
+  tidyr::complete(country_text_id, year_study = full_seq(year_study, 1)) %>% 
+  # group_by(country_text_id) %>% 
+  # mutate(cases_lag1 = dplyr::lag(cases,1),
+  #        cases_lag2 = dplyr::lag(cases,2),
+  #        cases_lag3 = dplyr::lag(cases,3),
+  #        cases_lead1 = dplyr::lead(cases,1),
+  #        cases_lead2 = dplyr::lead(cases,2),
+  #        cases_lead3 = dplyr::lead(cases,3)
+  # ) %>% 
+  filter_at(vars(starts_with("cases")), any_vars(is.na(.)==F)) %>% 
+  dplyr::select(country_text_id, year = year_study, name) %>% 
+  mutate(helper_ivs = 1) %>% 
+  right_join(dmx_trade_cluster %>% 
+               dplyr::select(country, country_text_id, year, classification_core) %>% 
+               filter(year >= 1950), by=c("country_text_id", "year")) %>%
+  pivot_wider(names_from = name,
+              values_from = helper_ivs) %>% 
+  filter(classification_core == "Deficient Democracy" |  classification_core == "Working Democracy")  %>%
+  group_by(year) %>% 
+  select_at(vars(ends_with("_ivs"), -weights)) %>% 
+  summarise_all(pMiss_01)
+
 confidence_IVS %>%
   select_at(vars("country_text_id", "year_study", ends_with("_ivs"), weights, -matches("_ind"))) %>% 
   # na.omit() %>% 
@@ -64,10 +97,11 @@ confidence_IVS %>%
   dplyr::select(country_text_id, year = year_study, name) %>% 
   mutate(helper_ivs = 1) %>% 
   right_join(dmx_trade_cluster %>% 
-               dplyr::select(country, country_text_id, year, FKM_5_cluster) %>% 
+               dplyr::select(country, country_text_id, year, classification_core) %>% 
                filter(year >= 1950), by=c("country_text_id", "year")) %>%
   pivot_wider(names_from = name,
               values_from = helper_ivs) %>% 
+  filter(classification_core == "Deficient Democracy" |  classification_core == "Working Democracy")  %>%
   group_by(year) %>% 
   select_at(vars(ends_with("_ivs"), -weights)) %>% 
   summarise_all(pMiss_01) %>% 

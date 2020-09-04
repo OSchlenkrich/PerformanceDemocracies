@@ -253,25 +253,25 @@ bench_results_df = as.data.frame(do.call(rbind, poled_results$sstat[[1]])) %>%
   mutate(method = "FKM",
          cluster = 1:10,
          nr = "Solution",
-         aggregate = c(NA, unlist(aggregated_indizes[[17]][1,-1]))) %>% 
+         aggregate = c(NA, unlist(aggregated_indizes[1,-1]))) %>% 
   bind_rows(as.data.frame(do.call(rbind, poled_results$sstat[[2]])) %>% 
               mutate_all(funs(unlist)) %>% 
               mutate(method = "kmeans",
                      cluster = 1:10,
                      nr = "Solution",
-                     aggregate = c(NA, unlist(aggregated_indizes[[17]][2,-1])))) %>% 
+                     aggregate = c(NA, unlist(aggregated_indizes[2,-1])))) %>% 
   bind_rows(as.data.frame(do.call(rbind, poled_results$sstat[[3]])) %>% 
               mutate_all(funs(unlist)) %>% 
               mutate(method = "pam",
                      cluster = 1:10,
                      nr = "Solution",
-                     aggregate = c(NA, unlist(aggregated_indizes[[17]][3,-1]))) ) %>% 
+                     aggregate = c(NA, unlist(aggregated_indizes[3,-1]))) ) %>% 
   bind_rows(as.data.frame(do.call(rbind, poled_results$sstat[[4]])) %>% 
               mutate_all(funs(unlist)) %>% 
               mutate(method = "average",
                      cluster = 1:10,
                      nr = "Solution",
-                     aggregate = c(NA, unlist(aggregated_indizes[[17]][4,-1]))) )  
+                     aggregate = c(NA, unlist(aggregated_indizes[4,-1]))) )  
 
 # sim_df = as.data.frame(do.call(rbind, benchmark_results$sim$km)) %>% 
 #   mutate(cluster = rep(2:10, each = 50),
@@ -286,6 +286,7 @@ bench_results_df = as.data.frame(do.call(rbind, poled_results$sstat[[1]])) %>%
 
 # Analyse
 a1 = bench_results_df %>% 
+  mutate(method = fct_recode(method, "FCM" = "FKM")) %>% 
   filter(method!="average") %>%
   filter(method!="FKM.med") %>% 
   ggplot(aes(x=cluster, y=aggregate, col=method, shape=method)) +
@@ -296,6 +297,7 @@ a1 = bench_results_df %>%
   ylab("Aggregated Indices") +
   theme_bw()
 a2 = bench_results_df %>% 
+  mutate(method = fct_recode(method, "FCM" = "FKM")) %>% 
   filter(method!="average") %>%
   filter(method!="FKM.med") %>% 
   ggplot(aes(x=cluster, y=avewithin, col=method, shape=method)) +
@@ -307,6 +309,7 @@ a2 = bench_results_df %>%
   theme_bw()  +
   xlab("")
 a3 = bench_results_df %>% 
+  mutate(method = fct_recode(method, "FCM" = "FKM")) %>% 
   filter(method!="average") %>%
   filter(method!="FKM.med") %>% 
   ggplot(aes(x=cluster, y=pearsongamma, col=method, shape=method)) +
@@ -318,6 +321,7 @@ a3 = bench_results_df %>%
   theme_bw()  +
   xlab("")
 a4 = bench_results_df %>% 
+  mutate(method = fct_recode(method, "FCM" = "FKM")) %>% 
   filter(method!="average") %>%
   filter(method!="FKM.med") %>% 
   ggplot(aes(x=cluster, y=asw, col=method, shape=method)) +
@@ -552,7 +556,7 @@ FKM_2_plot = data.frame(predict(prcomp(cluster_data))[,1:2]) %>%
   bind_cols(data.frame(Cluster = as.factor(FKM_2$clus[,1]))) %>% 
   ggplot(aes(x=PC1, y=PC2, col=Cluster)) +
   geom_point() +
-  ggtitle("FKM 2") +
+  ggtitle("FCM 2") +
   theme_bw()  +
   theme(legend.position = c("none")) 
 
@@ -560,7 +564,7 @@ FKM_3_plot = data.frame(predict(prcomp(cluster_data))[,1:2]) %>%
   bind_cols(data.frame(Cluster =  as.factor(FKM_3$clus[,1]))) %>% 
   ggplot(aes(x=PC1, y=PC2, col=Cluster)) +
   geom_point() +
-  ggtitle("FKM 3") +
+  ggtitle("FCM 3") +
   theme_bw()  +
   theme(legend.position = c("none")) 
 
@@ -568,7 +572,7 @@ FKM_4_plot = data.frame(predict(prcomp(cluster_data))[,1:2]) %>%
   bind_cols(data.frame(Cluster =  as.factor(FKM_4$clus[,1]))) %>% 
   ggplot(aes(x=PC1, y=PC2, col=Cluster)) +
   geom_point() +
-  ggtitle("FKM 4") +
+  ggtitle("FCM 4") +
   theme_bw()  +
   theme(legend.position = c("none")) 
 
@@ -576,7 +580,7 @@ FKM_5_plot = data.frame(predict(prcomp(cluster_data))[,1:2]) %>%
   bind_cols(data.frame(Cluster =  as.factor(FKM_5$clus[,1]))) %>% 
   ggplot(aes(x=PC1, y=PC2, col=Cluster)) +
   geom_point() +
-  ggtitle("FKM 5") +
+  ggtitle("FCM 5") +
   theme_bw()  +
   theme(legend.position = c("none")) 
 
@@ -584,7 +588,7 @@ FKM_6_plot = data.frame(predict(prcomp(cluster_data))[,1:2]) %>%
   bind_cols(data.frame(Cluster =  as.factor(FKM_6$clus[,1]))) %>% 
   ggplot(aes(x=PC1, y=PC2, col=Cluster)) +
   geom_point() +
-  ggtitle("FKM 6") +
+  ggtitle("FCM 6") +
   theme_bw() +
   theme_bw()  +
   theme(legend.position = c("none")) 

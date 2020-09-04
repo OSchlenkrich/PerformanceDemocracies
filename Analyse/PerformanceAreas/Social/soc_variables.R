@@ -57,8 +57,15 @@ Integration_Performance = QoC_data %>%
 
 
 ##### NA-Plots ####
+test = Integration_Performance %>% 
+  filter(classification_core == "Deficient Democracy" |  classification_core == "Working Democracy")  %>%
+  group_by(year) %>% 
+  select_at(vars(ends_with("_GI"), ends_with("_vdem"), ends_with("_lis"), ends_with("_wdi") )) %>% 
+  summarise_all(pMiss_01)
+
 
 Integration_Performance %>% 
+  filter(classification_core == "Deficient Democracy" |  classification_core == "Working Democracy")  %>%
   group_by(year) %>% 
   select_at(vars(ends_with("_GI"), ends_with("_vdem"), ends_with("_lis"), ends_with("_wdi") )) %>% 
   summarise_all(pMiss_01) %>% 

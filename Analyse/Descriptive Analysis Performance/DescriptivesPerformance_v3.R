@@ -374,6 +374,7 @@ create_world_map_cont= function(dataset, label = NULL) {
 
 # NA values ####
 test = performance_all %>% 
+  filter(classification_core == "Deficient Democracy" |  classification_core == "Working Democracy")  %>%
   group_by(year) %>% 
   select_at(vars(ends_with("_eco"), 
                  ends_with("_env"), 
@@ -384,6 +385,7 @@ test = performance_all %>%
   summarise_all(funs(1-pMiss_01(.)))
 
 performance_all %>% 
+  filter(classification_core == "Deficient Democracy" |  classification_core == "Working Democracy")  %>%
   group_by(year) %>% 
   select_at(vars(ends_with("_eco"), 
                  ends_with("_env"), 
@@ -393,6 +395,11 @@ performance_all %>%
                  ends_with("_pc"))) %>% 
   summarise_all(funs(pMiss_01(.))) %>% 
   pivot_longer(cols=-year) %>% 
+  mutate(name = fct_relevel(name, "wealth_eco", "productivity_eco",
+                            "GEP_env",
+                            "arate_ccp_ga", "arate_lutz_ga",
+                            "eco_equal_soc", "soc_equal_soc",
+                            "domsec_ds")) %>% 
   ggplot(aes(x=year, y=value, fill=name)) +
   geom_bar(stat="identity", width=1) +
   facet_wrap(name~.) +

@@ -104,6 +104,7 @@ Environment_Performance = QoC_data %>%
 
 
 Environment_Performance %>% 
+  filter(classification_core == "Deficient Democracy" |  classification_core == "Working Democracy")  %>%
   group_by(year) %>% 
   select_at(vars(GHG_ugdp_oecd,
                  SOX_ugdp_oecd,

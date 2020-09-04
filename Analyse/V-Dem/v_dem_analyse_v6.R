@@ -17,7 +17,7 @@ p1 = length_varname %>%
   mutate(sections = fct_reorder(sections, -nr_section)) %>% 
   ggplot(aes(x=sections, y=nr_section)) +
   geom_bar(stat="identity") + 
-  ylab("number of country coders") +
+  ylab("Number of country coders") +
   theme_bw()
 p1
 
@@ -46,6 +46,13 @@ grid.arrange(p2, p1, nrow=2)
 
 
 ### Number of coders ####
+test = mean_coder_df %>% 
+  group_by(year, country_name) %>% 
+  summarise(mean_country = mean(value, na.rm=T)) %>% 
+  group_by(year) %>% 
+  summarise(mean_coder = mean(mean_country, na.rm=T),
+            lower_coder = quantile(mean_country, prob=0.25, na.rm=T),
+            higher_coder = quantile(mean_country, prob=0.75, na.rm=T))
 
 mean_coder_df = vdem_main %>% 
   select_at(vars(country_name, year,  ends_with("_nr"))) %>%
@@ -202,6 +209,9 @@ ctry_years_per_coder = all_v2_coders %>%
   mutate(coder_id = as.factor(coder_id),
          coder_id = fct_reorder(coder_id, coded_year))
 
+ctry_years_per_coder %>% 
+  summarize(sum(coded_year))
+
 ctry_years_per_coder %>%  
   ggplot(aes(x=coder_id, y=coded_year)) +
   geom_bar(stat="identity", width=10) +
@@ -215,6 +225,12 @@ ctry_years_per_coder %>%
   theme(axis.text.y = element_text(size=11))
 
 #Cumulative Percentage Plot
+test = ctry_years_per_coder %>% 
+  arrange(coded_year) %>%
+  mutate(expert = 1,
+         cumsum = cumsum(coded_year)/sum(coded_year),
+         expert_sum = cumsum(expert)/sum(expert))
+
 ctry_years_per_coder %>% 
   arrange(coded_year) %>%
   mutate(expert = 1,
@@ -313,10 +329,11 @@ all_v2_coders %>%
   summarise(mean(countriespercoder), median(countriespercoder))
 
 # How many variables coded per expert?
+
 all_v2_coders %>% 
   select(coder_id, name) %>%
   distinct() %>%
-  group_by( coder_id) %>%
+  group_by(coder_id) %>%
   summarize(varspercoder = n()) %>% 
   mutate(coder_id = as.factor(coder_id),
          coder_id = fct_reorder(coder_id, varspercoder)) %>%  
@@ -458,6 +475,7 @@ type_plot_Data = readRDS(file="Analyse/V-Dem/robjects/type_plot_Data.RDS")
 
 
 type_plot_Data %>% 
+  mutate(coder_type = fct_recode(coder_type, "BC" = "BLC")) %>% 
   ggplot(aes(x=year, y=part, fill=coder_type)) +
   geom_area(size=1.1) +
   geom_hline(yintercept = 5, size = 1.1, linetype="dashed") +

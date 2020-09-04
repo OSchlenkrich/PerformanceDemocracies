@@ -505,7 +505,17 @@ domestic_security =  QoC_data %>%
 
 
 ##### NA-Plots ####
+test = domestic_security %>% 
+  filter(classification_core == "Deficient Democracy" |  classification_core == "Working Democracy")  %>%
+  group_by(year) %>% 
+  select_at(vars(order_safety_gdpcapita_oecd,
+                 hom_rate_unodc,
+                 theft_rate_unodc, 
+                 reliab_police_gcr)) %>% 
+  summarise_all(pMiss_01)
+
 domestic_security %>% 
+  filter(classification_core == "Deficient Democracy" |  classification_core == "Working Democracy")  %>%
   group_by(year) %>% 
   select_at(vars(order_safety_gdpcapita_oecd,
                  hom_rate_unodc,

@@ -125,6 +125,10 @@ saveBRMS("model_list_lutz_2", "GoalAttainment")
 
 
 # CCP ####
+ccp_ga %>% 
+  distinct(country_text_id) %>% 
+  dim()
+
 
 # Create CCP Dataset ####
 ccp_ga = tscs_data_GA_Lutz_trans %>% 

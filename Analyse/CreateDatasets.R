@@ -48,8 +48,6 @@ performance_all = V_dem %>%
               select(country_text_id, year, wealth_eco, productivity_eco), by=c("country_text_id", "year")) %>%
   left_join(performance_env %>%
               select(country_text_id, year, GEP_env), by=c("country_text_id", "year")) %>%
-  # left_join(performance_wdi_env %>%
-  #             select(country_text_id, year, air_wdi_env), by=c("country_text_id", "year")) %>%
   left_join(performance_ga %>%
               select(country_text_id, year,  GA_ccp_ga, GA_lutz_ga, systid_ccp), by=c("country_text_id", "year")) %>%
   left_join(performance_soc %>%

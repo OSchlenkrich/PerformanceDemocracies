@@ -191,6 +191,7 @@ imf_gdp= fread("Datasets/imf_gdpppp.csv", header = T) %>%
   left_join(V_dem %>%  select(country, country_text_id) %>%  distinct(), by=c("country")) %>% 
   select(-country)
 
+
 # Create Main Dataset
 Economy_Perfomance = QoC_data %>% 
   select(country_text_id, year,
@@ -255,6 +256,7 @@ test = Economy_Perfomance %>%
   summarise_all(pMiss_01) 
 
 Economy_Perfomance %>% 
+  filter(classification_core == "Deficient Democracy" |  classification_core == "Working Democracy")  %>%
   group_by(year) %>% 
   select_at(vars(ends_with("oecd"), ends_with("imf"), ends_with("pwt"), ends_with("wdi"), -GDP_capita_gen_num_wdi, -gdp_imf)) %>% 
   summarise_all(pMiss_01) %>% 
